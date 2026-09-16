@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import importlib
 import math
 import os
+import platform
 import sys
 import time
 from datetime import datetime
@@ -103,6 +105,17 @@ QPushButton#recordBtn:checked {{ background: {c['rec']}; color: #ffffff; }}
 MAX_POINTS = 500_000
 
 
+def environment_summary() -> str:
+    """Machine and library versions - the first thing to check when one PC misbehaves."""
+    parts = [f"Python {platform.python_version()}"]
+    for name in ("PySide6", "pyqtgraph", "numpy", "pyvisa", "minimalmodbus", "serial"):
+        try:
+            parts.append(f"{name} {getattr(importlib.import_module(name), '__version__', '?')}")
+        except Exception:
+            parts.append(f"{name} missing")
+    return f"{platform.system()} {platform.release()} ({platform.machine()}); " + ", ".join(parts)
+
+
 class Bridge(QObject):
     """Thread-safe hop from the acquisition thread into the GUI thread."""
 
@@ -172,6 +185,7 @@ class MainWindow(QMainWindow):
         self._clock = QTimer(self, interval=1000, timeout=self._tick)
         self._clock.start()
         self.log("info", f"PyFERRO {__version__} ready. Settings: {config.config_path()}")
+        self.log("info", environment_summary())
         if sessionlog.path():
             self.log("info", f"Session log: {sessionlog.path()}")
 
@@ -353,10 +367,22 @@ class MainWindow(QMainWindow):
         self.bridge.status.connect(lambda k, s, m: self.lights[k].set_state(s, m))
         self.bridge.recording.connect(self._on_recording)
         # settings that are safe to change live
-        self.interval.valueChanged.connect(lambda v: setattr(self.cfg.run, "interval_s", v))
-        self.min_dt.valueChanged.connect(lambda v: setattr(self.cfg.run, "min_delta_t", v))
-        self.max_temp.valueChanged.connect(lambda v: setattr(self.cfg.run, "max_temp_c", v))
+        self.interval.valueChanged.connect(
+            lambda v: self._setting_changed("interval_s", v, f"Reading interval changed to {v:g} s"))
+        self.min_dt.valueChanged.connect(
+            lambda v: self._setting_changed("min_delta_t", v, "Saving every reading" if v == 0
+                                            else f"Now saving only when T changes by {v:g} °C"))
+        self.max_temp.valueChanged.connect(
+            lambda v: self._setting_changed("max_temp_c", v, f"Chamber limit warning set to {v:g} °C"))
         self.temp_source.currentIndexChanged.connect(self._temp_source_changed)
+        for field, what in ((self.sample, "Run name"), (self.operator, "Operator"),
+                            (self.drive, "Drive/circuit")):
+            field.editingFinished.connect(
+                lambda f=field, w=what: self._note_changed(f"{w} changed to: {f.text().strip()}"))
+        self._notes_timer = QTimer(self, interval=3000, singleShot=True,
+                                   timeout=lambda: self._note_changed(
+                                       f"Notes updated: {self.notes.toPlainText().strip()[:200]}"))
+        self.notes.textChanged.connect(self._notes_timer.start)
 
     def _load_run(self, cfg: config.AppConfig) -> None:
         r = cfg.run
@@ -450,6 +476,16 @@ class MainWindow(QMainWindow):
         acq = self.acq
         run_task(acq.stop, lambda _: self._stopped(), lambda msg: (self.log("error", msg), self._stopped()))
 
+    def _setting_changed(self, field: str, value, message: str) -> None:
+        """Apply a setting to the running loop, and record that it changed."""
+        setattr(self.cfg.run, field, value)
+        if self.running:
+            self.acq.annotate(message)
+
+    def _note_changed(self, message: str) -> None:
+        if self.running:
+            self.acq.annotate(message)
+
     def _temp_source_changed(self) -> None:
         source = self.temp_source.currentData()
         self.cfg.run.temp_source = source
@@ -457,8 +493,8 @@ class MainWindow(QMainWindow):
             self.cfg.dmm.enabled = True
             self.setup.dmm_enabled.setChecked(True)
         if self.running:
-            self.log("info", f"Temperature now taken from the "
-                             f"{'CND3 controller' if source == 'pid' else 'multimeter Pt100'}")
+            self.acq.annotate(f"Temperature now taken from the "
+                              f"{'CND3 controller' if source == 'pid' else 'multimeter Pt100'}")
 
     def _stopped(self) -> None:
         self._stopping = False
@@ -569,6 +605,8 @@ class MainWindow(QMainWindow):
                     return
             self.acq.stop()
         self._apply()
+        self.log("info", "PyFERRO closed")  # so a log that ends abruptly means a crash
+        sessionlog.current() and sessionlog.current().close()
         event.accept()
 
 

@@ -132,6 +132,13 @@ heating = df[df.direction == 1]
 *Old LabVIEW file format* writes only T, X, Y with no header (readable by `plot.vi`);
 the metadata then goes to a `.json` file of the same name.
 
+**Events inside the file.** Anything that changes what the numbers mean is written into
+the data file as a `#` comment line at the moment it happens — a sensitivity or time
+constant change, an overload starting or clearing, the controller switching to STOP, a
+changed reading interval or temperature source, edited notes. `numpy.loadtxt` and pandas
+skip these lines, so nothing breaks; the header also names the port each instrument used
+(`# connection_lockin:`, `# connection_pid:`).
+
 **Session log.** Everything the log panel shows is also written to
 `~/.ferro/logs/pyferro_<start>.log`, from the moment the program starts — so the
 messages that explain a run (an instrument that never answered, an auto-detect that

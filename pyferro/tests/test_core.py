@@ -195,6 +195,66 @@ def test_recording_copies_the_session_log_next_to_the_data(tmp_path, monkeypatch
     assert f"# session_log: {sessionlog.path()}" in data.read_text()
 
 
+def test_annotations_land_in_the_data_file(tmp_path):
+    cfg = config.AppConfig(simulate=True)
+    cfg.run.output_dir = str(tmp_path)
+    cfg.run.interval_s = 0.1
+    cfg.run.sample = "note"
+    acq = Acquisition(cfg)
+    acq.start(record=True)
+    time.sleep(0.4)
+    acq.annotate("Reading interval changed to 5 s")
+    time.sleep(0.3)
+    acq.stop()
+
+    path = next(tmp_path.glob("note_*.txt"))
+    text = path.read_text()
+    assert "# " in text and "Reading interval changed to 5 s" in text
+    assert np.loadtxt(path).shape[0] >= 3, "comment lines must not break numeric loading"
+    assert "# connection_lockin: Lock-in: SIMULATED" in text
+
+
+def test_connections_name_the_actual_ports():
+    cfg = config.AppConfig()
+    cfg.lockin.resource = "GPIB0::12::INSTR"
+    cfg.pid.port = "COM7"
+    cfg.dmm.enabled = True
+    conn = Acquisition(cfg).connections()
+    assert "GPIB0::12::INSTR" in conn["lockin"]
+    assert "COM7" in conn["pid"] and "ASCII" in conn["pid"] and "9600 7E1" in conn["pid"]
+    assert "GPIB0::24::INSTR" in conn["dmm"]
+
+
+def test_lockin_range_and_overload_changes_are_announced():
+    from ferro.instruments.lockin5302 import LockinReading
+
+    logs = []
+    acq = Acquisition(config.AppConfig(simulate=True), on_log=lambda lvl, m: logs.append(m))
+
+    def reading(counts, sen, expand=False):
+        return LockinReading(counts, 0, sen, expand, 0.0, 0.0)
+
+    acq._watch_lockin(reading(5000, 17))          # first sample: nothing to report
+    assert logs == []
+    acq._watch_lockin(reading(5000, 19))          # range changed
+    acq._watch_lockin(reading(12500, 19))         # now overloaded
+    acq._watch_lockin(reading(4000, 19))          # cleared
+    assert any("sensitivity changed to 200 mV" in m for m in logs)
+    assert any("OVERLOAD" in m for m in logs)
+    assert any("overload cleared" in m for m in logs)
+
+
+def test_recovery_after_a_gap_is_announced():
+    logs = []
+    acq = Acquisition(config.AppConfig(simulate=True), on_log=lambda lvl, m: logs.append(m))
+    slot = acq.slots["pid"]
+    slot.device = object()
+    slot.state = "error"
+    slot.failing_since = time.monotonic() - 12
+    acq._read("pid", lambda device: "a reading")
+    assert any("answering again after 12 s" in m for m in logs), logs
+
+
 def test_datafile_never_overwrites(tmp_path):
     path = tmp_path / "a.txt"
     DataWriter(path, {}).close()

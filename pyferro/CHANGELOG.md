@@ -24,6 +24,19 @@ to the code that produced it. The number is written in exactly one place,
   began. Each data file names it in its header (`# session_log:`) and gets a copy beside
   it (`<name>.log`) when the recording closes. The twenty newest logs are kept.
 
+- Events that change what the numbers mean are now logged **and written into the data
+  file** as `#` comment lines: lock-in sensitivity, expand and overload changes, time
+  constant and reference frequency changes, controller mode or RUN/STOP changes,
+  reading interval, ΔT threshold, chamber limit, temperature source, and edits to the
+  run name, operator, drive and notes.
+- Instruments now report recovery ("answering again after 12 s") and reconnection
+  attempts, not only the first failure.
+- The header of every data file names the port each instrument used
+  (`# connection_lockin:`, `# connection_pid:`), and the same lines are logged when a run
+  starts, so files from different rigs can be told apart.
+- The session log records the machine, Python and library versions at start-up, and a
+  closing line, so a log that ends abruptly means a crash rather than a normal exit.
+
 ### Changed
 - *Temperature from* can be changed while monitoring and is locked only while recording,
   so a single file keeps one temperature source. The multimeter is opened on demand when

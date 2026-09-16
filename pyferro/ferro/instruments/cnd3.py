@@ -119,6 +119,14 @@ class CND3:
     def read_pv(self) -> float:
         return decode_temperature(self._read(REG_PV)[0])
 
+    def control_method(self) -> str:
+        """PID / ON-OFF / Manual / Fuzzy (register 1005H)."""
+        return CONTROL_METHODS.get(self._read(REG_CONTROL_METHOD)[0], "?")
+
+    def run_state(self) -> str:
+        """RUN / STOP / END / HOLD (register 103CH)."""
+        return RUN_STATES.get(self._read(REG_RUN_STOP)[0], "?")
+
     def version(self) -> str:
         raw = self._read(REG_VERSION)[0]
         return f"V{raw >> 8}.{raw & 0xFF:02X}"

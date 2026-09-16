@@ -132,6 +132,18 @@ class DataWriter:
         except OSError:
             pass
 
+    def comment(self, text: str) -> None:
+        """Record an event in the file itself, e.g. a setting changed mid-run.
+
+        Comment lines are ignored by numpy.loadtxt and pandas (comment="#"), so they
+        are safe to interleave with the data.
+        """
+        if self.legacy:  # the old format must stay numbers only
+            return
+        stamp = datetime.now().strftime("%H:%M:%S")
+        self._fh.write(f"# {stamp} {text}\n")
+        self._sync()
+
     def write(self, row: dict) -> None:
         names = LEGACY_COLUMNS if self.legacy else [name for name, _ in COLUMNS]
         self._fh.write("\t".join(_fmt(row.get(name)) for name in names) + "\n")

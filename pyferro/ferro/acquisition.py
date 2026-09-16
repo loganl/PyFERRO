@@ -31,6 +31,7 @@ from .datafile import (
     unique_path,
 )
 from .instruments.cnd3 import CND3, PIDError
+from .instruments.lockin5302 import SENSITIVITY_LABELS, TIME_CONSTANT_LABELS
 from .instruments.hp34401a import HP34401A
 from .instruments.lockin5302 import Lockin5302
 from .instruments import simulated
@@ -39,6 +40,7 @@ from .transports import SerialTransport, TransportError, VisaTransport
 NAN = float("nan")
 REOPEN_AFTER_FAILURES = 3
 REOPEN_BACKOFF_S = 5.0
+POLL_SETTINGS_S = 60.0  # how often to re-read settings that are not read every sample
 
 
 # --- instrument factories (also used by the GUI "Test" buttons) ------------
@@ -75,6 +77,7 @@ class InstrumentSlot:
     opener: Callable[[], object]
     device: object | None = None
     failures: int = 0
+    failing_since: float = 0.0
     next_attempt: float = 0.0
     state: str = "off"  # off | ok | error
     message: str = ""
@@ -90,7 +93,8 @@ class InstrumentSlot:
             raise TransportError(f"{self.name}: waiting to reconnect")
         return self.device
 
-    def failed(self) -> None:
+    def failed(self) -> bool:
+        """Count a failed read; returns True when the device was closed for reopening."""
         self.failures += 1
         if self.failures >= REOPEN_AFTER_FAILURES and self.device is not None:
             try:
@@ -100,6 +104,8 @@ class InstrumentSlot:
             self.device = None
             self.next_attempt = time.monotonic() + REOPEN_BACKOFF_S
             self.failures = 0
+            return True
+        return False
 
     def close(self) -> None:
         if self.device is not None:
@@ -136,6 +142,15 @@ class Acquisition:
         self._last_logged_t = NAN
         self._over_temp = False
         self._t0 = 0.0
+        # Instrument state we watch for changes, so the file explains itself.
+        self._last_sen: int | None = None
+        self._last_expand: bool | None = None
+        self._overloaded = False
+        self._next_settings_poll = 0.0
+        self._last_tc: int | None = None
+        self._last_freq: float | None = None
+        self._last_control: str | None = None
+        self._last_run_state: str | None = None
 
     # --- control (call from any thread) ---------------------------------
     @property
@@ -164,6 +179,35 @@ class Acquisition:
             self._thread.join(timeout)
 
     # --- loop ------------------------------------------------------------
+    def connections(self) -> dict:
+        """Which port each instrument is actually using - needed to tell rigs apart."""
+        c = self.cfg
+        if c.simulate:
+            return {"lockin": "Lock-in: SIMULATED", "pid": "Controller: SIMULATED"}
+        lockin = (f"Lock-in: {c.lockin.serial_port} (RS-232, {c.lockin.baudrate} baud)"
+                  if c.lockin.interface == "serial" else f"Lock-in: {c.lockin.resource}")
+        pid = (f"Controller: {c.pid.port or 'no port selected'}, Modbus {c.pid.mode.upper()}, "
+               f"address {c.pid.address}, {c.pid.baudrate} "
+               f"{c.pid.bytesize}{c.pid.parity}{c.pid.stopbits}")
+        out = {"lockin": lockin, "pid": pid}
+        if c.dmm.enabled or c.run.temp_source == "dmm":
+            out["dmm"] = f"Multimeter: {c.dmm.resource} ({c.dmm.mode})"
+        return out
+
+    def annotate(self, text: str, level: str = "info") -> None:
+        """Log an event and, while recording, record it in the data file too.
+
+        Anything that changes what the numbers mean belongs here, so the file carries
+        its own explanation rather than relying on a header written at the start.
+        """
+        self.on_log(level, text)
+        writer = self.writer
+        if writer is not None:
+            try:
+                writer.comment(text)
+            except OSError:
+                pass
+
     def _set_status(self, key: str, state: str, message: str = "") -> None:
         slot = self.slots[key]
         if (state, message) != (slot.state, slot.message):
@@ -174,19 +218,28 @@ class Acquisition:
         slot = self.slots[key]
         try:
             value = fn(slot.get())
+            if slot.state == "error":  # back after a gap: say so, and say how long
+                gap = time.monotonic() - slot.failing_since if slot.failing_since else 0.0
+                self.annotate(f"{slot.name}: answering again after {gap:.0f} s")
             slot.failures = 0
+            slot.failing_since = 0.0
             self._set_status(key, "ok")
             return value
         except Exception as exc:
             if slot.state != "error":
-                self.on_log("warning", f"{slot.name}: {exc}")
+                slot.failing_since = time.monotonic()
+                self.annotate(f"{slot.name}: {exc}", level="warning")
             self._set_status(key, "error", str(exc))
-            slot.failed()
+            if slot.failed():
+                self.on_log("info", f"{slot.name}: closing and reopening the connection "
+                                    f"in {REOPEN_BACKOFF_S:.0f} s")
             return None
 
     def _run(self) -> None:
         self._t0 = time.monotonic()
         self.on_log("info", "Acquisition started" + (" (SIMULATION)" if self.cfg.simulate else ""))
+        for line in self.connections().values():
+            self.on_log("info", f"  {line}")
         next_tick = self._t0
         try:
             while not self._stop.is_set():
@@ -195,6 +248,7 @@ class Acquisition:
                     row = self._sample()
                     self.on_sample(row)
                     self._maybe_write(row)
+                    self._poll_settings()
                 except Exception:
                     self.on_log("error", "Unexpected error (acquisition continues):\n" + traceback.format_exc())
                 interval = max(0.05, float(self.cfg.run.interval_s))
@@ -239,6 +293,7 @@ class Acquisition:
                        sens_V=li.full_scale_v, percent_fs=li.percent_fs)
             if li.overloaded:
                 row["flags"] |= FLAG_LOCKIN_OVERLOAD
+            self._watch_lockin(li)
 
         row["T_C"] = row["T_dmm_C"] if self.cfg.run.temp_source == "dmm" else row["PV_C"]
         row["direction"] = self.tracker.update(row["time_s"], row["T_C"])
@@ -253,6 +308,52 @@ class Acquisition:
             self._over_temp = t > limit
         row["over_temp"] = self._over_temp
         return row
+
+    def _watch_lockin(self, reading) -> None:
+        """Announce range, expand and overload changes: they change what X and Y mean."""
+        if self._last_sen != reading.sen_index:
+            if self._last_sen is not None:
+                self.annotate(f"Lock-in sensitivity changed to "
+                              f"{SENSITIVITY_LABELS[reading.sen_index]} full scale")
+            self._last_sen = reading.sen_index
+        if self._last_expand != reading.expand:
+            if self._last_expand is not None:
+                self.annotate(f"Lock-in expand (x10) turned {'on' if reading.expand else 'off'}")
+            self._last_expand = reading.expand
+        if reading.overloaded != self._overloaded:
+            self._overloaded = reading.overloaded
+            if reading.overloaded:
+                self.annotate("Lock-in OVERLOAD: signal beyond full scale, X/Y unreliable",
+                              level="warning")
+            else:
+                self.annotate("Lock-in overload cleared")
+
+    def _poll_settings(self) -> None:
+        """Every POLL_SETTINGS_S, check the settings that are not read every sample."""
+        now = time.monotonic()
+        if now < self._next_settings_poll:
+            return
+        self._next_settings_poll = now + POLL_SETTINGS_S
+        li = self.slots["lockin"].device
+        if li is not None:
+            try:
+                tc, freq = li.time_constant_index(), li.frequency_hz()
+                if self._last_tc is not None and tc != self._last_tc:
+                    self.annotate(f"Lock-in time constant changed to {TIME_CONSTANT_LABELS[tc]}")
+                if self._last_freq is not None and abs(freq - self._last_freq) > 0.001 * max(freq, 1):
+                    self.annotate(f"Lock-in reference frequency changed to {freq:.4g} Hz")
+                self._last_tc, self._last_freq = tc, freq
+            except Exception:
+                pass  # a failed poll is not worth reporting; the reading path already does
+        pid = self.slots["pid"].device
+        if pid is not None:
+            try:
+                control, state = pid.control_method(), pid.run_state()
+                if self._last_control is not None and (control, state) != (self._last_control, self._last_run_state):
+                    self.annotate(f"Controller now {control}, {state}")
+                self._last_control, self._last_run_state = control, state
+            except Exception:
+                pass
 
     def _maybe_write(self, row: dict) -> None:
         if self.writer is None:
@@ -291,6 +392,7 @@ class Acquisition:
             "min_delta_T_C": run.min_delta_t,
             "simulation": self.cfg.simulate,
             "session_log": sessionlog.path() or "not written",
+            **{f"connection_{k}": v for k, v in self.connections().items()},
         }
         for key, label in (("lockin", "lockin"), ("pid", "controller")):
             slot = self.slots[key]
