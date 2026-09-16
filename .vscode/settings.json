@@ -1,0 +1,29 @@
+{
+    "chat.disableAIFeatures": true,
+
+    // Python interpreter: the pixi "test" environment (same packages as the
+    // default one, plus pytest/pytest-qt). Created by `pixi install` in ferro/.
+    "python.defaultInterpreterPath": "${workspaceFolder}/ferro/.pixi/envs/test/bin/python",
+    "python.terminal.activateEnvironment": false,
+
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.cwd": "${workspaceFolder}/ferro",
+    "python.testing.pytestArgs": ["tests"],
+
+    "python.analysis.extraPaths": ["${workspaceFolder}/ferro"],
+
+    "files.exclude": {
+        "**/.pixi": true,
+        "**/__pycache__": true
+    },
+    "search.exclude": {
+        "**/.pixi": true,
+        "**/dist": true,
+        "**/__pycache__": true
+    },
+    "files.watcherExclude": {
+        "**/.pixi/**": true,
+        "**/dist/**": true
+    }
+}

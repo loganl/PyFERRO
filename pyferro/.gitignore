@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.pixi/
+dist/
+.pytest_cache/

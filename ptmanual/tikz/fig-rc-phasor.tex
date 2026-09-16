@@ -1,0 +1,34 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}[every node/.style={font=\small}]
+  % ---- series RC circuit -------------------------------------------------
+  \begin{scope}
+    \draw[wire] (0,0) to[sV={$V_0,\,I$},invert] (0,2.6)
+                      to[R=$R$] (2.4,2.6)
+                      to[C=$C$] (2.4,0) -- (0,0);
+    \node[font=\footnotesize,anchor=south east] at (-0.15,1.55) {AC};
+  \end{scope}
+
+  % ---- phasor diagram ----------------------------------------------------
+  \begin{scope}[shift={(6.0,1.3)},rotate=-20]
+    \draw[line width=0.5pt,gray] (-1.6,0) -- (3.2,0) coordinate (inph);
+    \draw[line width=0.5pt,gray] (0,-1.9) -- (0,1.5) coordinate[at start] (outph);
+  \end{scope}
+  \node[anchor=west,font=\footnotesize] at ([xshift=2pt]inph)
+      {The \textit{in-phase} direction (1)};
+  \node[anchor=north west,font=\footnotesize] at ([yshift=-2pt]outph)
+      {The \textit{out-of-phase} direction (2)};
+  \begin{scope}[shift={(6.0,1.3)}]
+    \coordinate (O) at (0,0);
+    \coordinate (VR) at (28:1.9);
+    \coordinate (VC) at (-62:0.95);
+    \coordinate (V0) at ($(VR)+(VC)$);
+    \draw[phasor] (O) -- (VR) node[anchor=south east,inner sep=1pt] {$V_R$};
+    \draw[phasor] (O) -- (VC) node[anchor=north,inner sep=3pt] {$V_C$};
+    \draw[phasor] (O) -- (V0) node[anchor=north west,inner sep=1pt] {$V_0$};
+    \draw[guide] (VR) -- (V0) -- (VC);
+    \draw[phasor,line width=0.8pt] (O) -- (28:2.9) node[anchor=south west,inner sep=1pt] {$I$};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

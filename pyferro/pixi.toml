@@ -1,0 +1,31 @@
+[workspace]
+name = "pyferro"
+# No version here on purpose: ferro/__init__.py holds the only copy.
+description = "PHY445 phase-transition data acquisition (EG&G 5302 lock-in + Omega CND3 over RS-485)"
+channels = ["conda-forge"]
+platforms = ["win-64", "osx-arm64", "linux-64"]
+
+[dependencies]
+python = "3.12.*"
+pyside6 = ">=6.5"
+pyqtgraph = ">=0.13"
+numpy = "*"
+pyserial = ">=3.5"
+pyvisa = ">=1.12"
+pyvisa-py = "*"
+minimalmodbus = ">=2.0"
+
+[tasks]
+start = "python -m ferro"
+simulate = "python -m ferro --simulate"
+
+[feature.test.dependencies]
+pytest = "*"
+pytest-qt = "*"
+
+[feature.test.tasks]
+test = "python -m pytest -q"
+
+[environments]
+default = { solve-group = "main" }
+test = { features = ["test"], solve-group = "main" }

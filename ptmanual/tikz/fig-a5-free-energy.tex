@@ -1,0 +1,22 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}[every node/.style={font=\small}]
+  \draw[axis line] (0,0) -- (0,4.0) node[anchor=south east] {$F$};
+  \draw[axis line] (0,0) -- (7.0,0) node[anchor=south east,inner sep=4pt] {$T$};
+
+  \draw[line width=0.9pt]
+    (1.2,3.15) .. controls (2.4,3.2) and (2.9,3.05) .. (3.5,2.55)
+                .. controls (4.1,2.05) and (4.6,1.75) .. (5.5,1.65)
+    node[anchor=west,inner sep=3pt] {};
+  \node[anchor=north east,font=\footnotesize] at (2.55,2.75) {$F_1$};
+
+  \draw[line width=0.9pt]
+    (1.2,2.15) .. controls (2.2,2.2) and (2.9,2.35) .. (3.5,2.55)
+                .. controls (4.2,2.78) and (4.7,2.85) .. (5.5,2.85);
+  \node[anchor=west,font=\footnotesize] at (5.55,2.85) {$F_2$};
+
+  \draw[guide,black] (3.5,0) -- (3.5,2.55);
+  \node[anchor=north,font=\footnotesize] at (3.5,-0.1) {$T_C$};
+\end{tikzpicture}
+\end{document}

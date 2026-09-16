@@ -1,0 +1,30 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}[every node/.style={font=\small}]
+  % ---------------- semiconducting side ----------------------------------
+  \draw[wire] (0,1.75) rectangle (4.0,3.4);
+  \node at (2.0,2.55) {Conduction Zone};
+  \draw[wire,pattern=horizontal lines,pattern color=black!45] (0,0) rectangle (4.0,1.05);
+  \draw[wire] (0,0) rectangle (4.0,1.05);
+  \node[fill=white,inner sep=2pt] at (2.0,0.5) {Valence Zone};
+
+  % ---------------- metallic side ----------------------------------------
+  \draw[wire] (4.3,1.4) rectangle (8.3,3.4);
+  \node at (6.3,2.55) {Empty states};
+  \draw[wire,pattern=horizontal lines,pattern color=black!45] (4.3,0) rectangle (8.3,1.4);
+  \draw[wire] (4.3,0) rectangle (8.3,1.4);
+  \node[fill=white,inner sep=2pt] at (6.3,0.7) {Filled states};
+
+  % ---------------- Fermi level & gap ------------------------------------
+  \draw[densely dashed,line width=0.8pt] (0,1.4) -- (8.3,1.4);
+  \draw[guide,black] (0,1.05) -- (-0.55,1.05);
+  \draw[guide,black] (0,1.75) -- (-0.55,1.75);
+  \draw[{Stealth[length=2.4mm]}-{Stealth[length=2.4mm]},line width=0.6pt]
+        (-0.4,1.05) -- (-0.4,1.75);
+  \node[anchor=east,font=\footnotesize] at (-0.5,1.4) {$E_g$};
+
+  \node[anchor=north,font=\footnotesize] at (2.0,-0.15) {Semiconductor at $T<T_C$};
+  \node[anchor=north,font=\footnotesize] at (6.3,-0.15) {Metal at $T>T_C$};
+\end{tikzpicture}
+\end{document}

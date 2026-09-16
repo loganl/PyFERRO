@@ -1,0 +1,27 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}[every node/.style={font=\small}]
+  \draw[line width=0.5pt] (0,-1.7) -- (0,2.0);
+  \draw[line width=0.5pt] (-1.2,0) -- (6.2,0);
+  \node[anchor=south west,font=\footnotesize] at (0.6,1.35) {Out-of-phase};
+  \node[anchor=west,font=\footnotesize] at (5.3,0.28) {In-phase};
+
+  \coordinate (O)   at (0,0);
+  \coordinate (VCp) at (-13:4.1);           % V_{C'} = V (measured)
+  \coordinate (VR)  at (77:1.35);
+  \coordinate (V0)  at ($(VCp)+(VR)$);
+
+  \draw[phasor] (O) -- (VCp) node[anchor=north west,font=\footnotesize,inner sep=2pt] {$V_{C'}=V$};
+  \draw[phasor] (O) -- (VR);
+  \node[anchor=east,font=\footnotesize] at (-0.12,1.15) {$V_R$};
+  \draw[phasor] (O) -- (V0)  node[anchor=south east,font=\footnotesize,inner sep=2pt] {$V_0$};
+  \draw[guide] (VR) -- (V0) -- (VCp);
+  \draw[guide] (V0) -- (V0 |- O);
+
+  \draw[line width=0.5pt] (1.85,0) arc[start angle=0,end angle=18.5,radius=1.85];
+  \node[font=\footnotesize] at (9:2.15) {$\beta$};
+  \draw[line width=0.5pt] (2.75,0) arc[start angle=0,end angle=-13,radius=2.75];
+  \node[font=\footnotesize] at (-6.5:3.1) {$\varphi$};
+\end{tikzpicture}
+\end{document}

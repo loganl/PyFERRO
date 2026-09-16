@@ -1,0 +1,29 @@
+# --- Python / pixi ---------------------------------------------------------
+__pycache__/
+*.pyc
+.pixi/
+.venv*/
+
+# --- build outputs ---------------------------------------------------------
+pyferro/dist/
+
+# --- LaTeX auxiliaries (the figure and manual PDFs are tracked) ------------
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# --- local notes, photos and the legacy LabVIEW export ---------------------
+ferroexport/
+IMG_*.jpg
+IMG_*.HEIC
+.claude/
+
+# --- macOS -----------------------------------------------------------------
+.DS_Store
+
+# --- pytest ---------------------------------------------------------------
+.pytest_cache/

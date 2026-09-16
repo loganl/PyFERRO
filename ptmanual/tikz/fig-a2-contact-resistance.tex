@@ -1,0 +1,13 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}
+  \draw[wire] (-1.2,0) -- (0,0);
+  \draw[-{Stealth[length=2.6mm]},line width=0.7pt] (-1.2,0) -- (-0.6,0);
+  \draw[wire] (0,0) to[rmeterwa, t=A] (1.6,0) -- (2.0,0)
+              to[R=$R_{\mathrm{cont}}$] (3.7,0)
+              to[R=$R_x$] (5.4,0)
+              to[R=$R_{\mathrm{cont}}$] (7.1,0) -- (8.3,0);
+  \draw[wire] (2.0,0) -- (2.0,1.9) to[rmeterwa, t=V] (7.1,1.9) -- (7.1,0);
+\end{tikzpicture}
+\end{document}

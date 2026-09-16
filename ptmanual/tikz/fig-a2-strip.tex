@@ -1,0 +1,27 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}
+  % strip sample
+  \draw[wire] (1.6,-0.55) rectangle (6.4,0.55);
+  \draw[wire] (2.1,0) .. controls (3.2,0.34) and (4.8,0.34) .. (5.9,0);
+  \draw[wire] (2.1,0) .. controls (3.2,-0.34) and (4.8,-0.34) .. (5.9,0);
+  \foreach \x in {2.7,3.5,4.3} {
+    \draw[-{Stealth[length=2.2mm]},line width=0.6pt] (\x,0.16) -- (\x+0.35,0.16);
+    \draw[-{Stealth[length=2.2mm]},line width=0.6pt] (\x,0)    -- (\x+0.35,0);
+    \draw[-{Stealth[length=2.2mm]},line width=0.6pt] (\x,-0.16)-- (\x+0.35,-0.16);
+  }
+  \node[node dot] at (2.1,0) {};
+  \node[node dot] at (5.9,0) {};
+
+  % current leads
+  \draw[wire] (-1.4,0) -- (0,0);
+  \draw[-{Stealth[length=2.6mm]},line width=0.7pt] (-1.4,0) -- (-0.9,0);
+  \draw[wire] (0,0) to[rmeterwa, t=A] (1.6,0);
+  \draw[wire] (6.4,0) -- (7.6,0);
+  \draw[-{Stealth[length=2.6mm]},line width=0.7pt] (7.0,0) -- (7.6,0);
+
+  % voltmeter
+  \draw[wire] (2.1,0.55) -- (2.1,1.8) to[rmeterwa, t=V] (5.9,1.8) -- (5.9,0.55);
+\end{tikzpicture}
+\end{document}

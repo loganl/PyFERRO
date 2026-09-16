@@ -1,0 +1,12 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}[every node/.style={font=\small}]
+  \draw[line width=0.5pt] (0,-1.0) -- (0,1.6);
+  \draw[line width=0.5pt] (-1.1,0) -- (4.6,0);
+  \node[anchor=south west,font=\footnotesize] at (0.15,0.55) {Out-of-phase};
+  \node[anchor=north west,font=\footnotesize] at (3.55,-0.12) {In-phase};
+  \draw[phasor] (0,0) -- (3.5,0);
+  \node[anchor=south,font=\footnotesize] at (2.4,0.14) {$V_0=V$};
+\end{tikzpicture}
+\end{document}

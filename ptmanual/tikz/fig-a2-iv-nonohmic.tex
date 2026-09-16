@@ -1,0 +1,9 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}
+  \draw[axis line] (-2.2,0) -- (2.4,0) node[anchor=north east,font=\footnotesize] {$V$};
+  \draw[axis line] (0,-2.0) -- (0,2.2) node[anchor=north west,font=\footnotesize] {$I$};
+  \draw[line width=0.9pt] plot[domain=-1.75:1.75,samples=80] (\x, {0.30*(\x)^3});
+\end{tikzpicture}
+\end{document}

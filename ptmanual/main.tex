@@ -1,0 +1,3406 @@
+% =============================================================================
+%  Phase Transitions: Metal--Insulator transition in VO2 and
+%  Ferroelectric transition in BaTiO3
+%  Advanced Laboratory, Dept. of Physics & Astronomy, Stony Brook University
+%
+%  Accessible (tagged, PDF/UA-2) LaTeX edition.
+%  Compile with pdflatex (>= TeX Live 2024).  Run twice for cross-references.
+% =============================================================================
+
+% ---- Accessibility / PDF standard -------------------------------------------
+% \DocumentMetadata MUST be the very first line of the file.  It switches on
+% the new LaTeX tagged-PDF engine, declares the document language, and asks for
+% a PDF 2.0 file conforming to PDF/UA-2 (the accessibility standard).
+\DocumentMetadata{
+  lang        = en-US,
+  pdfversion  = 2.0,
+  pdfstandard = ua-2,
+  testphase   = {phase-III, math, graphic, table, firstaid},
+}
+
+\documentclass[11pt,a4paper]{article}
+
+% ---- Encoding & fonts --------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% ---- Page geometry -----------------------------------------------------------
+\usepackage[margin=2.5cm,headheight=14pt]{geometry}
+
+% ---- Maths -------------------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{siunitx}
+\sisetup{separate-uncertainty, range-units=single}
+
+% ---- Graphics, color, floats ------------------------------------------------
+\usepackage{graphicx}
+\graphicspath{{figures/}{tikz/}}
+\usepackage{xcolor}
+\usepackage{float}
+% Pack floats more tightly so that a single figure never claims a whole page.
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\usepackage{booktabs}
+
+% ---- Links -------------------------------------------------------------------
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = [rgb]{0.00,0.25,0.60},
+  urlcolor   = [rgb]{0.00,0.35,0.30},
+  citecolor  = [rgb]{0.00,0.25,0.60},
+  pdftitle   = {Phase Transitions: Metal-Insulator Transition in VO2 and
+                Ferroelectric Transition in BaTiO3},
+  pdfauthor  = {Michael Gurvitch and Laszlo Mihaly},
+  pdfsubject = {Advanced Laboratory write-up, Stony Brook University},
+  pdfkeywords= {phase transition, metal-insulator transition, vanadium dioxide,
+                ferroelectricity, barium titanate, lock-in amplifier,
+                four-probe method, Landau theory},
+}
+\usepackage{url}
+
+% ---- Convenience macros ------------------------------------------------------
+\newcommand{\VOtwo}{VO\textsubscript{2}}
+\newcommand{\BTO}{BaTiO\textsubscript{3}}
+\newcommand{\Rs}{R_S}
+\newcommand{\degC}{\si{\degreeCelsius}}
+
+% \tikzfig{<file base>}{<alt text>}  -- include a standalone TikZ figure that
+% has been pre-compiled to tikz/<base>.pdf, together with its alternative text.
+% The optional argument holds graphicx keys (default: full text width).
+\newcommand{\tikzfig}[3][width=\linewidth]{%
+  \includegraphics[#1,alt={#3}]{tikz/#2.pdf}}
+
+% \photo{<file>}{<alt text>} -- a raster image plus its alternative text.
+\newcommand{\photo}[3][width=0.7\linewidth]{%
+  \includegraphics[#1,alt={#3}]{figures/#2}}
+
+% A boxed safety / practical note, announced in words as well as by its frame.
+\newcommand{\notebox}[2]{%
+  \par\medskip\noindent
+  \fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{\textbf{#1.} #2}}%
+  \par\medskip}
+
+\title{Phase Transitions:\\
+       Metal--Insulator Transition in \VOtwo\ and\\
+       Ferroelectric Transition in \BTO}
+\author{Advanced Laboratory\\
+        Department of Physics \& Astronomy\\
+        Stony Brook University}
+\date{Write-up version of 14 November 2012\\[2pt]
+      \small Sections on ferroelectricity in \BTO\ by Laszlo Mihaly and, in
+      part, Michael Gurvitch; sections on phase-transition theory and the
+      metal--insulator transition in \VOtwo\ by Michael Gurvitch.}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\clearpage
+\tableofcontents
+\clearpage
+
+% =============================================================================
+\section*{Pre-experiment and mid-experiment evaluation sheet}
+\addcontentsline{toc}{section}{Pre-experiment and mid-experiment evaluation sheet}
+% =============================================================================
+
+You must meet with a staff member for the experiment you are doing before
+beginning an experiment and before the lab period indicated in the middle of the
+experiment for an evaluation of your preparation and your progress to date. This
+form must be signed and dated by the staff member to indicate you have done the
+required work to date. It must be attached as the first page of your report. You
+will lose one grade point from your report grade for each section of this form
+that is not properly signed on time. If this is your first experiment you should
+also be prepared to demonstrate you have read and understood the information on
+log books in the course notes.
+
+\bigskip
+\noindent Student name\ \hrulefill
+
+\medskip
+\noindent Partner name\ \hrulefill
+
+\subsection*{Pre-lab discussion}
+
+Be prepared to demonstrate you have read the background material for this
+experiment (most of this material is contained in this write-up, but also in
+cited references; it includes theory described in Appendix~\ref{app:ac}).
+Discuss the following questions with the staff:
+
+\begin{enumerate}
+  \item Describe what we mean by phase transitions; give some examples; what is
+        the difference between phase transitions of the first and second kind?
+        Experimentally, in this lab, how can we tell which transition it is?
+  \item Give a general description of a metal--insulator transition; what
+        happens to the electronic spectrum of a solid when this transition takes
+        place? What is the most direct manifestation of this transition, and how
+        can it be detected? Is this transition taking place all at once in the
+        whole sample, or not (explain)?
+  \item Explain what ferroelectricity is and what the mechanism for it in \BTO\
+        is.
+  \item What does a PID controller do? Be specific about its principle of
+        operation.
+  \item What is the general principle of operation of a lock-in amplifier?
+\end{enumerate}
+
+\bigskip
+\noindent Completed before first period for the experiment?\qquad Yes\,/\,No
+
+\bigskip
+\noindent Staff comments\ \hrulefill
+
+\bigskip
+\noindent Staff signature\ \hrulefill\ Date\ \hrulefill
+
+\clearpage
+% =============================================================================
+\section{How to prepare for the measurement}
+% =============================================================================
+
+This write-up contains a lot of material. You should study parts of it before
+coming to the lab, and read and study the entire text throughout the course of
+this experiment.
+
+\notebox{Note}{A big chunk of this manual is in the Appendices, so do not treat
+them as secondary-importance material.}
+
+You should also supplement this write-up by looking up and reading some of the
+books/articles/websites from the list of references. We propose that you start
+in the following order:
+
+First read Sections \ref{sec:prepare}--\ref{sec:report}, which will give you an
+overview of this lab. Then spend some time learning how to use the lock-in
+amplifier. Your first task will be to master preliminary practice measurements
+of resistance and capacitance. During the first two periods of the lab work,
+concentrate on Section~\ref{sec:techniques} of this write-up entitled
+``Measurement techniques'' and study Appendices \ref{app:ac} and
+\ref{app:fourprobe}. Read the equipment
+manual for the lock-in amplifier and Ref.~\cite{ref:lockin}; study the
+principle of its operation. Simultaneously, study the instrument hands-on:
+connect a circuit and first measure a known resistor, and then a known
+capacitor, using the lock-in.
+
+Once you get familiarized with using the lock-in, read about the rest of the
+experimental set-up, which is described in Sections
+\ref{sec:apparatus}--\ref{sec:advice}. Then you should start reading more of a
+physics theory, which is to be found mainly in a large
+Appendix~\ref{app:physics}. The physics of phase transitions is not trivial,
+and it will take time to ``digest'' and understand it.
+
+From the beginning, keep good records in your notebook. All electrical circuits
+that you will build, simple calculations which accompany construction of these
+circuits, such as estimates of the measuring current, choice of a limiting
+resistor, calculations of resistance and capacitance, sketches of samples or
+experimental apparatus, details of sample preparation and geometry, all notes
+concerning physics, and all your calculations of physical quantities should be
+recorded in the notebook. Short comments you may write should be
+understandable, in case you or someone else will later examine your records. The actual experimental
+data will be stored in the computer and need not be in the notebook.
+
+% =============================================================================
+\section{Goals of the experiment}\label{sec:prepare}
+% =============================================================================
+
+\begin{itemize}
+  \item Understand experimental techniques used in this lab, including the
+        principle and practical operation of a lock-in amplifier when measuring
+        resistance and capacitance, the four-probe method, temperature control.
+  \item Learn to handle and prepare samples; learn how to quickly check samples
+        before they are used in lengthy measurements.
+  \item Study the metal--insulator transition in \VOtwo.
+  \item Study the ferroelectric transition in \BTO.
+  \item Learn basic physics associated with phase transitions and apply it to
+        interpreting specific experiments at hand.
+  \item We do not just do measurements for the sake of measurements. An
+        experiment should lead to some conclusions and it should culminate and
+        result in learning of some ``new'' physics (new to us in this lab;
+        perhaps not new to the physics community). Therefore it is very
+        important to use your data to extract some meaningful physical results:
+        namely, estimates of
+        microscopic or theoretical quantities which enhance our quantitative
+        understanding of the studied phenomena. You will do so for both phase
+        transitions studied in this lab.
+\end{itemize}
+
+% =============================================================================
+\section{Experimental set-up}
+% =============================================================================
+
+\begin{itemize}
+  \item Sample chamber with four electric leads.
+  \item Temperature controller.
+  \item Lock-in amplifier to measure the samples.
+  \item Keithley four-probe resistance meter to measure temperature.
+  \item Computer (username \texttt{gradlab}, password \texttt{senior}).
+  \item Decade resistance box, additional resistors, capacitors, BNC cables etc.
+\end{itemize}
+
+See the equipment manuals for details. The temperature controller has a web
+interface. Use this interface for programming the controller (see
+Appendix~\ref{app:tempcontrol}). The lock-in amplifier and the Keithley
+multimeter are connected to a computer by the IEEE~488 interface. A data-taking
+routine, written in LabVIEW, is provided for recording data
+(Appendix~\ref{app:labview}).
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=\linewidth]{fig-daq-wiring}{%
+    Wiring diagram of the experiment. At the top left a box labeled Lock-in
+    amplifier, EG and G 5302, has measuring-input and oscillator-output
+    terminals; the oscillator drives the sample through resistor R-zero and the
+    measuring input sits across the sample. Below it a dashed box marks the
+    sample chamber, containing the sample capacitor, a heater winding and a
+    Pt100 probe. The probe runs to the PID controller box, an Omega CND3, which
+    lists probe input terminals 10, 11 and 12, output OUT1 on terminals 8 and 9,
+    and RS-485 on terminals 13 (D minus) and 14 (D plus). OUT1 switches a
+    solid-state relay that powers the heater from AC mains. On the right, the
+    lock-in reaches the lab PC over GPIB at address 12 through an NI adapter,
+    and the controller reaches it over RS-485 through a Dtech USB converter.}
+  \caption{Instrument connections for the temperature-dependent measurement.}
+  \label{fig:daqwiring}
+\end{figure}
+
+\paragraph{Samples.}
+You will be studying samples of \VOtwo\ and \BTO. If two students work on this
+lab, they should together measure at least one \VOtwo\ sample, which will be
+provided, and prepare themselves and measure two \BTO\ samples. Sample
+preparation and all the measurements can be done in collaboration, but for the
+purposes of data analysis we will consider that one of these two samples belongs
+to one student, and another one to the other, so that each student will report
+and evaluate the data on the common \VOtwo\ sample and on their own \BTO\
+sample.
+
+% =============================================================================
+\section{Principle of the measurement and an overview of data analysis}
+% =============================================================================
+
+Details on these subjects will be found in the rest of this write-up; and you
+know what they say: the devil is in the detail. Here is the brief summary:
+
+You will be studying two different phase transitions, both taking place as a
+function of temperature: a metal--insulator transition in vanadium dioxide
+(\VOtwo) and a ferroelectric transition in barium titanate (\BTO). Read
+Appendix~\ref{app:physics} where the physics of phase transitions is reviewed
+and detailed.
+
+The sample is placed in a temperature-controlled chamber. The temperature is
+slowly changed, first rising, and then cooling down, while either resistance
+$R$ (in \VOtwo) or capacitance $C$ (with \BTO\ serving as dielectric) is
+measured and data is recorded. The temperature will change between room
+temperature and about \SI{100}{\degreeCelsius} in the case of \VOtwo, and
+between room temperature and about \SI{150}{\degreeCelsius} in the case of
+\BTO. The measurement of $R$ and $C$ is performed in an AC mode using a lock-in
+amplifier, which is described below in Section~\ref{sec:techniques} and in
+Appendix~\ref{app:ac}.
+
+What will you be able to learn from these measurements? In the case of the
+resistive \VOtwo\ data, you will be able to make conclusions concerning the
+nature and order of a phase transition, including estimates of the
+metal--insulator transition temperature, of the percolation transition
+temperature, of the coercive temperature. You will also be able to analyze the
+data to extract the gap of \VOtwo\ in a semiconducting phase and to
+estimate absolute resistivities of the two phases.
+
+In the case of a capacitance measurement, \BTO\ will be the dielectric inside a
+capacitor. In a parallel-plate capacitor,
+\begin{equation}
+  C = \frac{\varepsilon A}{d} = \frac{\varepsilon_0 k A}{d},
+\end{equation}
+where $A$ is the area of the capacitor, $d$ is the distance between the plates,
+$\varepsilon$ is the dielectric constant, $\varepsilon_0$ is a constant called
+the permittivity of free space, and $k$ is the relative dielectric constant. We
+will be interested in finding $k$ as a function of temperature. It will not be
+possible to exactly measure $A$ and $d$ in the type of samples you will have,
+but they can be roughly estimated. So, by measuring $C$ (which is measured quite
+precisely), you will be able to estimate $k$ to within about a factor of two
+accuracy, the uncertainty coming almost entirely from a limited ability here to
+evaluate capacitor geometry. At the same time, you can certainly follow how $k$
+will change with temperature with the full precision of the capacitance
+measurement. This $T$-dependence will pinpoint the temperature of a phase
+transition, $T_C$. Combined, these data will allow a calculation of microscopic parameters
+of a ferroelectric transition as outlined in Appendix~\ref{app:physics}. At the
+end, you will be able to estimate an interesting microscopic quantity: the very
+small distance by which atoms shift in the lattice of \BTO\ in a ferroelectric
+transition. The ability to estimate such a quantity is what makes this
+experiment especially interesting.
+
+\subsection*{List of physical quantities which you will be expected to extract,
+calculate and estimate from your data}
+
+\noindent(Some of these can be measured rather precisely; others only roughly
+estimated.)
+
+\paragraph{In \VOtwo:}
+\begin{itemize}
+  \item The semiconducting gap $E_g$
+  \item The resistance ratio between semiconducting and metallic phases
+  \item Absolute resistivities in semiconducting and metallic phases
+  \item The value of $T_C$
+  \item The coercive temperature $T^{*}$
+  \item The temperature of a percolation transition $T_M$
+\end{itemize}
+
+\paragraph{In \BTO:}
+\begin{itemize}
+  \item $T_C$
+  \item Relative dielectric constant $k$ vs.\ $T$, from about
+        \SI{20}{\degreeCelsius} to \SI{150}{\degreeCelsius}
+  \item Curie--Weiss law at $T > T_C$ and Curie--Weiss constant $C_{CW}$
+  \item The value of a microscopic dipole moment $p$
+  \item The effective atomic displacement $x$ responsible for the appearance of
+        $p$
+  \item The last two quantities can be also calculated for \BTO\ single crystals
+        using the literature value of $C_{CW}$
+\end{itemize}
+
+% =============================================================================
+\section{Looking ahead: what should and should not be included in your Final
+         Report}\label{sec:report}
+% =============================================================================
+
+Your performance will be judged primarily from the contents of your Final
+Report. In it there will be several different (but related) parts:
+
+\begin{itemize}
+  \item A physics introduction concerning phase transitions and materials
+        which you studied and a physics analysis of your results at the end. To
+        get these right, you have to study Appendix~\ref{app:physics} of this
+        write-up and related literature.
+
+  \item A description of experimental set-up (including electrical circuit
+        diagrams) and experimental techniques that you used (lock-in and how it
+        was used; four-probe method), including significant details of how you
+        obtained your data. For example, if you are measuring some voltage, but
+        your ``final product'' is capacitance, you will need to
+        explain in some detail how you proceeded from that voltage to knowing
+        that capacitance. This may include phasor diagrams and some formula
+        derivations given in Section~\ref{sec:techniques} and
+        Appendix~\ref{app:ac}.
+
+  \item Initially you will be measuring \emph{known} resistances and
+        capacitances just to learn how to connect the circuits and how to use
+        the lock-in amplifier. It is very important to perform such calibrations
+        or baseline measurements in order to be sure that later you will be
+        measuring your samples correctly. While a detailed description of such
+        calibrations may be perfectly appropriate for your mid-lab report, it
+        should not take center-stage in the Final Report, except as a short
+        mention of the fact that these calibrations were done. You may want to
+        report the uncertainty (i.e.\ \% of relative deviation) in the
+        measurement of a known $R$ and $C$ (of course, assuming that the values
+        of these $R$ and $C$ were known very accurately in the first place). But
+        detailed data on such baseline measurements would be out of place; the
+        focus of the Final Report should be on measuring real samples which
+        exhibit phase transitions.
+
+  \item You will present results of sample measurements, your data, in the form
+        of graphs, possibly some tables (but do not list all of the data points
+        in long tables --- this is neither necessary nor desirable in the Final
+        Report). If you are measuring resistance $R$ and capacitance
+        $C$ as a function of temperature $T$, your data may consist of graphs of
+        $R(T)$ and $C(T)$.
+
+        Let us discuss this in a little more detail. There exists a notion of
+        \emph{raw data}, the data you directly obtain in your measurement,
+        directly read off the instruments. And then there is data which was to
+        some degree analyzed and organized. For example, you may be measuring
+        separate values of voltage $V$ and current $I$, and later you may be
+        combining the two when obtaining resistance $R = V/I$. But your interest
+        --- and the interest of the reader of your report --- is in that
+        resistance $R$, and not in $V$ or $I$. Thus one should use common sense
+        when reporting data: probably in this example, separate values of $V$
+        and $I$ should not be reported (they can remain in your electronic data
+        storage, to be examined if necessary), and $R$ should be reported.
+        Likewise, if you are measuring a voltage signal which is being converted
+        to a capacitance, do not report those voltages; report capacitance
+        directly. You may however mention the range of the voltage signals
+        that you measured in order to tell your reader something meaningful
+        about the quality of your data.
+
+  \item The data should be presented with uncertainties, which not only should
+        be included, but accompanied with a brief explanation of how they were
+        obtained or estimated. If a calculation is involved, the error must be
+        propagated from the raw data to the calculated quantity. If curve
+        fitting is involved, the uncertainty will come out of the fitting
+        routine. You need also to point out which uncertainties are more
+        significant, and which can be ignored; in this lab this last comment
+        will be particularly relevant, as some of the uncertainties will far
+        exceed others.
+
+  \item There will be data analysis: corrections which you introduced to your
+        data, extraction of physical parameters of interest. And at the end
+        there will be some conclusions based on your results. You will need to
+        study this write-up and references in order to ``connect the dots'', to
+        make your experiments meaningful. When applicable, you will compare your
+        results to the published results. Finding relevant publications by doing
+        literature searches, reading them, and extracting from these
+        publications important parameters, is part of a skill of an experimental
+        physicist.
+\end{itemize}
+
+% =============================================================================
+\section{Measurement techniques}\label{sec:techniques}
+% =============================================================================
+
+The main instrument you will be using in your measurements in this lab is
+called a \emph{lock-in amplifier}~\cite{ref:lockin}. This wonderful instrument
+was invented in the 1950's by a physicist Robert Dicke; it is used extensively
+for a variety of measurements in physics experiments and elsewhere.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.24\linewidth]{dicke.png}{%
+    Black-and-white portrait photograph of the physicist Robert Dicke, seated
+    and facing the camera.}
+  \caption{Robert Dicke (1916--1997), a famous American physicist who made
+    important contributions to the fields of astrophysics, atomic physics,
+    cosmology and gravity. He also invented the lock-in amplifier in the 1950s,
+    with the first commercial model developed in 1962.}
+\end{figure}
+
+The advantage a lock-in gives to an experimentalist is in that it rejects a good
+deal of noise, increasing the signal-to-noise ratio and allowing the use of
+small currents which will not damage even the most delicate of samples.
+Additionally, by virtue of always measuring in an AC mode, it automatically
+averages the readout voltage, getting rid of the so-called thermal emf offsets
+and DC level drifts which are endemic with DC measurements, even when we are
+using the best and most accurate DC voltmeters.
+
+While the lock-in amplifier was invented to measure weak signals in the
+presence of large noise, in our measurements we will not be pushing the limits
+of its capacity in that regard. Instead, we will be using its ability to
+measure signals of different specified phases, as explained below and in
+Appendix~\ref{app:ac}. This lab gives you an opportunity to learn about this
+important instrument.
+
+The name ``lock-in'' refers to locking to a frequency and to a phase of an AC
+signal, and measuring only that part of a signal which is in a specified phase
+relationship to the reference. This is a version of the \emph{phase-sensitive
+detection} technique. The phase can be continually varied and also changed in
+\ang{90} steps.
+
+You should read about lock-in operation in our lock-in manual (available online
+through Blackboard) and elsewhere~\cite{ref:lockin}. Here and in
+Appendix~\ref{app:ac} we give a brief general introduction to its operating
+principle, and discuss in more detail the two types of measurements we will be
+doing in this lab.
+
+\notebox{Review AC circuits first}{If you have not been dealing with AC
+circuits lately, this would be a good time to thoroughly review them: read
+about AC currents in general, and the phasor method in particular, in your
+introductory physics course textbook; some of this is also discussed in
+Ref.~\cite{ref:accircuits}. Study this section and Appendix~\ref{app:ac}; it is
+essential that you understand this topic in order to do this lab.}
+
+\paragraph{The principle of lock-in measurement} is as follows: the lock-in
+contains its own AC voltage source called \emph{oscillator output}, in which you
+can adjust the amplitude (but only up to \SI{2.0}{\volt}), and frequency
+(adjustable in a wide range from a fraction of \SI{1}{\hertz} to
+\SI{100}{\kilo\hertz}). The frequency, once you set it, will be kept with great
+precision and stability by a lock-in. The readout is tuned to read only
+voltage at this frequency (actually, at a double frequency, but this is
+immaterial for our general discussion), all the other frequencies being
+filtered out. Moreover, it will \emph{look} into a specified \emph{phase} of
+this signal. The exact meaning of this last statement will be explained below
+and in Appendix~\ref{app:ac}.
+
+The \emph{measuring input} (actually, there are two of them, A and B, and you
+can also hook the instrument up to measure the difference $\mathrm{A}-\mathrm{B}$)
+is an AC voltmeter, which will measure rms values, and where the sensitivity of
+a readout can be changed according to experimental needs, from several volts to
+a few millivolts full scale. It can be connected across different parts of a
+circuit: for example, it can be connected across $R$ or across $C$. Let us now
+discuss specific measuring arrangements: one for measuring a resistance,
+another for measuring a capacitance.
+
+\subsection{How to use lock-in to measure resistance?}
+
+Suppose we want to measure a resistance, which may be changing in the course of
+a measurement, for example, as a function of temperature. This will be the case
+in our \VOtwo\ measurement in this lab. We may connect the lock-in as shown in
+Figure~\ref{fig:lockinR}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.8\linewidth]{fig-lockin-resistance}{%
+    Circuit diagram. A box labeled Lock-in amplifier sits at the top, with two
+    terminals for the measuring input, across which V-meas appears, and two for
+    the oscillator voltage output, which supplies V-zero RMS. From the
+    oscillator output a wire runs straight down through the resistor R-zero and
+    then through the resistor R-D to the right-hand outer contact of the sample.
+    The sample is drawn as a horizontal strip carrying four contacts, labeled
+    from left to right I-plus, V-plus, V-minus and I-minus. The two inner
+    contacts are connected straight up to the measuring-input terminals; a
+    parasitic capacitance C-p, drawn with dashed lines, bridges those two inner
+    leads. The return wire leaves the second oscillator terminal, runs down the
+    right-hand side, along the bottom of the figure and up the left-hand side to
+    the left-hand outer contact of the sample, so the current path forms one
+    closed loop through the sample.}
+  \caption{Connecting the lock-in amplifier for a four-probe resistance
+    measurement. $R_0 = \SI{600}{\ohm}$ is the oscillator's internal output
+    resistance, $R_D$ the limiting decade resistor, and $C_p$ the parasitic
+    capacitance of the cables. The current enters and leaves through the outer
+    contacts $I_{\pm}$; the voltage is measured across the inner contacts
+    $V_{\pm}$.}
+  \label{fig:lockinR}
+\end{figure}
+
+Looking at the front panel of the lock-in reveals that the oscillator circuit
+has internal resistance $R_0 = \SI{600}{\ohm}$, which is really a part of the
+lock-in, but, for clarity, is shown on the diagram above outside of a lock-in
+block. It is connected in series with the limiting decade resistance $R_D$ and
+the sample. The measuring input of the lock-in is connected across the inner
+contacts of the sample.
+
+\paragraph{Let us first discuss the current.}
+It is alternating, AC current; we will be always talking about rms values of all
+voltages and currents in this discussion. The limiting resistor $R_D$ serves to
+limit the current, and to make this current approximately constant. To do so,
+$R_D$ should be much greater than the sample resistance $R_{S\,tot}$, which is
+the total resistance of a sample between the \emph{outside} current contacts
+shown in the figure above, and also includes the resistance of these current
+contacts (a contact to a sample may have appreciable resistance, see
+Appendix~\ref{app:fourprobe}); it is the total resistance encountered by the
+current as it flows through the sample.
+
+The value of $R_{S\,tot}$ will be changing in the course of a measurement, as we
+change the sample temperature. Let us say its maximum value is
+$R_{S\,tot} = \SI{500}{\kilo\ohm}$, and the minimum value can be neglected
+compared to \SI{500}{\kilo\ohm}, which is indeed the case with \VOtwo\ (assuming
+contact resistance is not very large). Suppose we decided that we will be
+satisfied with keeping current constant to \SI{5}{\percent}, i.e.\ we are not
+worried about up to \SI{5}{\percent} possible overall distortion in our
+measurement. The maximum and minimum rms currents then will be
+$I_{\max} = V_0/(R_0+R_D)$ when $R_{S\,tot}$ is negligible, and
+$I_{\min} = V_0/(R_0+R_D+R_{S\,tot})$ when $R_{S\,tot}$ is maximum; here $V_0$
+is the rms voltage at the oscillator output. We want to have
+\begin{equation}
+  \frac{\Delta I}{I_{\min}}
+    = \frac{I_{\max}-I_{\min}}{I_{\min}} = 0.05 ,
+\end{equation}
+or, as it is easy to see, simply $R_{S\,tot}/(R_0+R_D) = 0.05$, or
+$R_0 + R_D = R_{S\,tot}/0.05 = \SI{10}{\mega\ohm}$. Compared to this value,
+$R_0 = \SI{600}{\ohm}$ can be neglected, and essentially our limiting resistor
+$R_D$ should be set at \SI{10}{\mega\ohm} (which, incidentally, is the maximum
+resistance which can be set in our decade box). If we use this large limiting
+resistor, the current will be equal to
+$I = \SI{2}{\volt}/\SI{10}{\mega\ohm} = \SI{0.20}{\micro\ampere}$.
+
+\paragraph{Let us now discuss the voltage signal.}
+Small current $I$ will result in a fairly small voltage $I R_S$, especially when
+$R_S$ also becomes small. Lock-in can measure small voltages, but below about
+the \SI{1}{\milli\volt} level, the precision will suffer. If we want to
+increase the current, in the present scheme we will have to sacrifice some
+additional accuracy in our overall measurement of $R_S$ over the whole range of
+its variation.
+
+The sample has four contacts: two outside contacts for the current and two
+inner ones for the voltage. You should read about the four-probe measurement in
+Appendix~\ref{app:fourprobe}, and a brief description of this principle should
+be given in your Final Report. The voltage from the inner leads
+$V_{\mathrm{meas}}$ (see the figure above) is supplied to the lock-in's
+measuring input, where it will be amplified (thus the name lock-in
+\emph{amplifier}), and provided for the readout on the front panel and, through
+the digitizing interface, to the computer. The resistance between the inner contacts will be found as
+$R_S = V_{\mathrm{meas}}/I$. Above, when we were discussing the current, we
+considered $R_{S\,tot}$ between the outside current contacts, but now we are
+measuring resistance $R_S$ between the inner voltage contacts. The lock-in will
+display the RMS value as a DC-level signal.
+
+The maximum voltage $V_{\mathrm{meas}}$ in our example (measuring \VOtwo) is
+going to be found at room temperature; it will correspond to the maximum value
+of $R_S$. Suppose the maximum $R_S$ is equal to \SI{300}{\kilo\ohm} (note that
+we are using here $R_S < R_{S\,tot}$). Then the maximum
+\begin{equation}
+  V_{\mathrm{meas}} = I R_S
+    = (\num{2e-7})\times(\num{3e5}) = \SI{60}{\milli\volt}.
+\end{equation}
+Such a signal would be quite sufficient, but the trouble is that it will be a
+lot lower once $R_S$ decreases at high temperatures, where, above the
+semiconductor-to-metal transition (see below), we may get a signal as small as
+about \SI{0.1}{\milli\volt}. The lock-in is going to give us poor resolution in
+that range. Recall also that, with our proposed numbers, we will have a
+distortion in resistance values of about \SI{5}{\percent} over the whole range,
+as our current will increase by \SI{5}{\percent} when $R_S$ drops by such a
+large factor.
+
+An alternative way of dealing with changing $R_S$ is to measure the current
+instead of stabilizing it; it can be best measured by monitoring voltage across
+the known limiting resistor. Then we do not need such a large limiting
+resistor: instead of being \SI{10}{\mega\ohm} it can be, for example,
+\SI{10}{\kilo\ohm}, and the current will be 1000 times higher, i.e.\
+\SI{0.200}{\milli\ampere} instead of \SI{0.200}{\micro\ampere}. But we will have
+to monitor the current and to use the measured current $I_{\mathrm{meas}}$ in a
+calculation of a sample resistance at every point along the way. This can be
+done with the use of an additional computer-interfaced voltmeter, and with
+modification of a LabVIEW program.
+
+\notebox{Do not overdrive the sample}{The current should not be increased
+indefinitely; excessive currents can produce self-heating and even damage the
+thin-film sample. Do not use currents greater than \SI{1}{\milli\ampere} with
+our \VOtwo\ samples.}
+
+\paragraph{So, how is the lock-in measuring resistance?}
+The oscillator output, as we said above, provides sinusoidal voltage of rms
+value $V_0$ at a fixed stable frequency which we can set at will. The readout is
+tuned to read only voltage at this frequency (actually, at a double frequency),
+all the other frequencies being filtered out. Additionally, it will read only a
+specified phase of this signal. For our resistive measurement we expect that the
+specified phase should be zero, as resistor does not produce a phase shift. So,
+if we are measuring pure resistance, we should be interested in the
+\emph{in-phase} signal (see Appendix~\ref{app:ac}). The circuit and the phasor
+diagram of a pure resistor $R_S$ are shown in Figure~\ref{fig:resistorphasor}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.95\linewidth]{fig-resistor-phasor}{%
+    On the left, a series circuit: an AC source of RMS voltage V-zero drives a
+    current I through three resistors in series, R-zero, R-S and R-D. On the
+    right, a phasor diagram with a horizontal in-phase axis and a vertical
+    out-of-phase axis. A single heavy arrow lies along the in-phase axis and is
+    labeled V-R-S equals I times R-S equals V-zero R-S divided by the sum of
+    R-S, R-zero and R-D. A curved arrow to the right of the diagram marks the
+    counterclockwise rotation with angular frequency omega.}
+  \caption{Circuit and phasor diagram for a purely resistive sample.}
+  \label{fig:resistorphasor}
+\end{figure}
+
+As always, the phasor should be imagined rotating counterclockwise with
+$\omega$; the in-phase direction rotates with it; the projection onto the
+horizontal axis is the real signal. The current is determined by the source
+voltage $V_0$ applied across all of the resistors. We see that in any other
+direction the signal will be smaller than in this in-phase direction. Thus, if
+we adjust the phase till we see the \emph{maximum} voltage at the measuring
+input, this maximum voltage will correspond to the true value of resistance
+according to $R_S = V_{\mathrm{meas}}/I$. Simultaneously, the
+\ang{90}-shifted, out-of-phase signal should be zero. It is easier to tune the
+out-of-phase signal to zero than to find the true maximum in-phase, because when
+measuring the near-zero signal we can increase the sensitivity. So the usual
+procedure is to change the phase till one brings out-of-phase signal as close to
+zero as possible and then to shift the phase by \ang{90} displaying the in-phase
+signal. Further, all of the above should be independent
+of frequency $f = \omega/2\pi$. This is what one expects; however, there are
+complications.
+
+\paragraph{Complications} arise because, in addition to the resistance, the
+circuit contains the so-called \emph{parasitic} or \emph{stray} capacitance
+$C_p$. This is the capacitance of shielded cables, etc. In our circuit it is
+typically of the order of \SIrange{10}{100}{\pico\farad}. This parasitic
+capacitance can be thought of as being plugged in parallel to the sample
+resistance $R_S$, as shown in the circuit diagram above where it is drawn in
+dashed lines. It will effectively shunt (short out) the resistance, leading to
+incorrect, decreased values of $V_{\mathrm{meas}}$.
+
+\paragraph{Solution.}
+Recall that lock-in allows you to adjust the oscillator frequency $f$, which of
+course implies that reactance $X_C = 1/(2\pi f C_p)$ can be controlled. The
+solution is then clear: in order to minimize the detrimental effect of $C_p$ we
+need to decrease $f$ as much as possible: at low $f$ the reactance
+$1/(2\pi f C_p)$ will be large, and the shunting effect of the parasitic
+capacitance will be minimized. On the other hand, using extremely low frequency
+$f \sim \SI{1}{\hertz}$ may be difficult, as the lock-in tends to lose
+its ability to lock the phase at extremely low frequencies. Additionally, the
+so-called flicker or $1/f$ noise increases at low frequencies. But we do not
+need to reduce $f$ that much: using $f \approx \SI{50}{\hertz}$ is comfortable
+in terms of this phase-locking and achieves what we need. Indeed, at
+$f = \SI{50}{\hertz}$, for $C_p = \SI{100}{\pico\farad}$, we find
+$X_C = 1/(2\pi f C_p) \approx \SI{30}{\mega\ohm}$, which is more than sufficient
+to prevent a decrease in $V_{\mathrm{meas}}$ due to shunting.
+
+\notebox{Practical advice}{Insert a \emph{known} resistor in place of your
+sample (preferably, with the value similar to $R_S$) and empirically find the
+frequency range at which your measurement agrees with that known resistor
+value. This is an example of a \emph{baseline} measurement which is done to
+establish the validity of the measurement technique.}
+
+\subsection{How to use the lock-in amplifier to measure the capacitance?}
+
+The sample is now a capacitor; the material we want to study (\BTO) is a
+dielectric inside the capacitor. In this measurement we do not need to worry
+about additionally limiting the current; the current we are dealing with here
+is sufficiently limited by $R_0 = \SI{600}{\ohm}$. Here we will be using lock-in
+as a device to measure signals that are \emph{phase shifted} from the phase of
+$V_0$ due to the presence of resistors and capacitors in the circuit.
+The basic circuit diagram for the capacitance measurement is shown in
+Figure~\ref{fig:lockinC}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.8\linewidth]{fig-lockin-capacitance}{%
+    Circuit diagram. A box labeled Lock-in amplifier sits at the top, with two
+    measuring-input terminals, across which V-meas appears, and two
+    oscillator-output terminals supplying V-zero RMS. From one oscillator
+    terminal a wire runs down through the resistor R-zero to point 1, the top
+    plate of the sample capacitor. The capacitor, marked sample and drawn as two
+    plates with a shaded dielectric between them, has terminals numbered 1 and 2
+    at the top and 3 and 4 at the bottom; the sample is inserted by connecting
+    leads 2 and 4 between points 1 and 3. From point 3 a wire returns down and
+    round to the second oscillator terminal. The two measuring-input leads run
+    down the left of the figure to points 1 and 3, so the measuring input sits
+    across the capacitor, and a parasitic capacitance C-p, drawn with dashed
+    lines, is connected in parallel with the sample.}
+  \caption{Connecting the lock-in amplifier for a capacitance measurement.
+    $R_0 = \SI{600}{\ohm}$ is the built-in internal resistance of the signal
+    generator, and $C_p$ is the parasitic capacitance of the empty circuit,
+    which acts in parallel with the sample.}
+  \label{fig:lockinC}
+\end{figure}
+
+As in a resistance measurement described above, the signal is generated by the
+lock-in amplifier's internal reference (oscillator) output; in this measurement
+we will be setting it at $V_0 = \SI{2.0}{\volt}$ (actually, at
+\SI{1.999}{\volt}), $f = \SI{25}{\kilo\hertz}$. As before, the built-in internal
+resistance of the signal generator is $R_0 = \SI{600}{\ohm}$, and there exists
+parasitic capacitance $C_p$ shown in dashed lines; this capacitance can be
+thought of as connected in parallel to sample capacitance.
+
+Surprising as it may sound, we will first do the measurement of an \emph{empty}
+circuit, without the sample. Later we will insert the sample by connecting
+sample leads~2 and~4 between points~1 and~3, as shown in the diagram above. The
+purpose of the measurement without the sample is in tuning the lock-in, so as to
+make it later correctly measure the sample's capacitance.
+
+First, leaving the sample unconnected, we will tune the lock-in so that it is
+in-phase with the oscillator; it will measure $V_0 = \SI{2.0}{\volt}$. We then
+change the phase by \ang{90} and look at $V_{\mathrm{meas}}$ while gradually
+increasing the sensitivity of the measuring readout. On a sensitive-enough scale
+we will see some non-zero signal due to parasitic capacitance of our ``empty''
+circuit. We will adjust the phase watching the signal on increasingly more and
+more sensitive scales till this out-of-phase signal will be made as close as
+possible to zero. So, in other words, we will follow the same procedure as in
+measuring resistance, as was described above. See Appendix~\ref{app:ac} for the details of the
+phasor diagrams in this case.
+
+Once we zeroed the out-of-phase signal, we will insert the sample, so that
+points~2 and~4 are connected to~1 and~3; once we have done that, the out-of-phase
+readout from the sample $V_{\mathrm{meas}}$ will appear at the measuring input
+and the magnitude of that out-of-phase signal is going to be proportional to the
+capacitance of the sample. Indeed, the capacitance of our sample is usually
+small, of the order of \SI{100}{\pico\farad}--\SI{1}{\nano\farad}, and so, with
+$R_0 = \SI{600}{\ohm}$ and at our chosen frequency, we have $\omega R_0 C \ll 1$.
+In this limit the in-phase component of the signal will be very close to the
+voltage provided by the signal generator, $V_0$, and the out-of-phase component
+will be close to $V_0\,\omega R_0 C$ (see Appendix~\ref{app:ac} for the details).
+By measuring the out-of-phase component $V_{\mathrm{meas}}$, knowing $V_0$,
+$\omega$ and $R_0$, we can calculate the capacitance of the sample as
+\begin{equation}\label{eq:Csimple}
+  C = \frac{\delta}{\omega R_0},
+  \qquad\text{where}\qquad
+  \delta = \frac{|V_{\mathrm{meas}}|}{V_0}.
+\end{equation}
+
+\subsection{Lock-in amplifier settings}
+
+The standard settings of the EG\&G model 5209 lock-in amplifier are:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+  \toprule
+  \textbf{Setting} & \textbf{Value} \\
+  \midrule
+  Input            & A \\
+  Sensitivity      & \SI{3}{\volt} \\
+  Filter           & flat, track \\
+  Oscillator level & \SI{1.999}{\volt} \\
+  Oscillator frequency & \SI{25}{\kilo\hertz} \\
+  Reference phase  & tuned (see below) \\
+  Reference        & internal \\
+  Oscillator out   & BNC cable connected \\
+  Time constant    & \SI{300}{\milli\second} \\
+  Dynamic reserve  & high resolution \\
+  Output display   & signal \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+Before measuring the sample, we do a practice run by measuring the capacitance
+of a piece of BNC cable. See Appendix~\ref{app:ac} for the relevant phasor
+diagrams.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
+    Photograph of the instrument rack. On top is an EG\&G Princeton Applied
+    Research model 5209 lock-in amplifier; its front panel is divided into
+    sections labeled Sensitivity, Filters, Tuning, Reference and Output, with a
+    digital display reading 6.0, an analog meter, and a second display reading
+    0.00. A BNC cable is plugged into the oscillator output at the right. Below
+    it is a Keithley 199 System DMM/Scanner whose red display reads 001.090
+    kilohms.}
+  \caption{The lock-in amplifier (top) and the Keithley 199 multimeter
+           (bottom).}
+  \label{fig:frontpanel}
+\end{figure}
+
+First we check the signal generated by the internal source of the lock-in.
+Connect one end of a BNC cable to the ``osc out'' connector, and the other end
+to input~A. In the ``tuning'' section scroll until the display shows the
+reference phase, ``ref ph'', and set it to \num{0.0}. The analog meter and the
+output display on the right should show a voltage slightly less than
+\SI{2}{\volt}.
+
+We are going to be interested in the out-of-phase component, and we can get that
+by pressing the \textsc{90 deg} button once. Ideally, the out-of-phase signal
+should be zero. However, with all the electronics inside the lock-in, keeping the
+phase of the output voltage under control is not an easy job and there will be a
+small but finite out-of-phase signal.
+
+The engineers designing the lock-in provided a way to correct any phase error:
+run an autotune cycle. First press the red ``auto'' button, and then press the
+button slightly up and left. Wait a few seconds, and the lock-in will find the
+best phase so that the in-phase signal is maximum, and the out-of-phase signal
+is zero. To check the out-of-phase, press the \textsc{90 deg} button again and
+you should see zero.
+
+Upon closer inspection you may discover that the autotuning is not perfect. Change
+the sensitivity from \SI{3}{\volt} to \SI{300}{\milli\volt}, and you will see
+that there is a finite signal. You should do a manual fine tuning of the phase,
+so that this signal is as close to zero as possible. You may increase the
+sensitivity to \SI{100}{\milli\volt} and continue tuning the phase.
+
+\notebox{Do not overload the input}{Do not increase the sensitivity further,
+because the input of the lock-in will be overloaded. If you see the red overload
+sign flashing, change to a less sensitive setting. Never set the lock-in to
+sensitivity of \SI{10}{\milli\volt} or higher.}
+
+Now that you have the out-of-phase voltage at zero, select the sensitivity of
+\SI{300}{\milli\volt} again. Insert a BNC ``T'' connector to the line and
+connect another BNC cable. Suddenly, there will be a finite out-of-phase signal
+$V_{\mathrm{meas}}$. Calculate $C$ using
+$C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ with $V_0 = \SI{2.00}{\volt}$,
+$\omega = \SI{1.57e5}{\per\second}$ and $R_0 = \SI{600}{\ohm}$. Measure the
+length of the cable. Test a longer cable.
+
+\notebox{Question}{In round numbers, what is the capacitance of one foot of BNC
+cable?}
+
+% =============================================================================
+\section{The rest of the experimental apparatus in detail}\label{sec:apparatus}
+% =============================================================================
+
+\subsection{Sample chamber}
+
+A photograph of the sample chamber is shown in Figure~\ref{fig:chamber}. There
+are four wires reaching the inside of the chamber, ``red'' and ``black'' pairs.
+The sample will be either a film of \VOtwo\ with four resistive leads, or a
+capacitor with \BTO\ requiring only two leads attached to its plates. If two
+students do the measurement, it is recommended that each one of them mounts
+their own sample and evaluates the data independently. However, \VOtwo\ samples are
+fragile, and a staff member should be asked to mount them in the chamber, at
+least initially.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.62\linewidth]{sample-chamber.png}{%
+    Photograph looking down into the open sample chamber. A cylindrical aluminum
+    block, wrapped on the outside with many turns of copper heater wire, has a
+    circular well in the middle. Inside the well lie small samples with red and
+    black wires soldered to metal clips. A platinum resistor for temperature
+    control is visible at the upper right, and the edge of the aluminum cup
+    cover appears at the top right of the frame.}
+  \caption{The sample chamber, opened. A heater is wrapped around the aluminum
+    block; the platinum resistor for temperature control is visible at the upper
+    right. A second platinum resistor (barely visible) sits in the center of the
+    chamber and is used to measure the temperature of the samples.}
+  \label{fig:chamber}
+\end{figure}
+
+In normal use, the sample chamber is covered by an aluminum cup (see the upper
+right corner of the photograph). The whole assembly is covered by a
+double-walled stainless steel cover for thermal insulation. A double-walled
+evacuated vessel is called a \emph{dewar}. If you wish to cool the sample faster,
+remove the stainless steel dewar. You may also remove the aluminum cup, but in
+that case stop taking data, since the temperature readout will not be reliable.
+
+\subsection{Samples and sample preparation}
+
+Samples of \VOtwo\ in a form of thin films (about \SI{100}{\nano\metre} thick)
+have been deposited on Si/SiO\textsubscript{2} substrates in another lab on campus.
+Contacts to them will be attached by staff members. These samples are rather
+fragile, especially those contacts, and should be handled with great care. Ask a
+staff member to plug the sample into the holder, at least initially.
+
+The \BTO\ sample is from a commercial distributor. It comes in ceramic form with
+many different, randomly oriented microcrystals. Feel free to split off your
+sample from larger chunks of the ceramic blocks. Pick a flat and thin piece of
+ceramic \BTO, and shape it to a thin plate by lightly sanding on the sides. Keep
+in mind that capacitance $C = \varepsilon A/d$: the thinner the better, and the
+larger the area the better. Also remember that you will need to estimate $A$ and
+$d$ numerically, and so the more regular the sample shape, the easier and more
+accurate this estimate will be.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.62\linewidth]{silver-paint.png}{%
+    Photograph of the sample-preparation bench. On the left stands an open glass
+    vial of grey silver paint; behind it is the paint container labeled High
+    Purity Silver Paint. In the center of the bench lie a small black two-pin
+    connector and a small pale chip of ceramic barium titanate. On the right is
+    the vial cap with a long thin wire used to apply the paint.}
+  \caption{Materials for mounting the \BTO\ sample: silver paint, a two-pin
+           connector, a ceramic chip, and the thin wire used to apply the
+           paint.}
+  \label{fig:silverpaint}
+\end{figure}
+
+Use silver paint to create the capacitor plates and mount the sample (with the
+silver paint) onto the two-terminal connector shown in the middle of the figure.
+The best way to do this is by placing the sample between the two pins and using
+the silver paint to create the capacitor plates. The silver paint should be
+applied by a piece of thin wire (visible in the photograph above). Be careful
+not to paint over the edges, because that creates a short circuit and ruins the
+sample. Remember that you are making a capacitor.
+
+\notebox{The paint dries very quickly}{Do not leave the silver-paint container
+open for an extended period of time; open it for as short an interval as
+possible, just to get the paint onto a piece of wire.}
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.48\linewidth]{two-pin-connectors.png}{%
+    Photograph of three small black two-pin connectors side by side. The one on
+    the right is empty, with two bare gold pins. The one in the center has a
+    translucent chip of ceramic barium titanate mounted between its pins. The one
+    on the left has a small test capacitor soldered across its pins.}
+  \caption{An empty two-pin connector (right), a mounted \BTO\ sample (center),
+    and a \SI{100}{\pico\farad} test capacitor soldered to the connector (left).}
+  \label{fig:connectors}
+\end{figure}
+
+A stereo microscope is provided for mounting the sample, although with good eyes
+and eye--hand coordination it can be done without the microscope.
+
+\notebox{Return your sample}{The sample of \BTO\ (but not of \VOtwo) you make
+for the studies should be returned with your final lab report. Simply attach the
+sample with Scotch tape to the first page of your report.}
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.6\linewidth]{bnc-connections.png}{%
+    Photograph of the bench-top wiring. The bottom of the aluminum sample
+    chamber stands at the top of the frame on a white insulating base, with a
+    white Teflon-insulated cable and red and black wires running from it down to
+    a metal panel carrying four BNC bulkhead connectors. One BNC is fitted with a
+    black coaxial cable and another carries a short-circuit termination.}
+  \caption{Connecting the apparatus. One BNC cable runs from the signal source to
+    input~A of the lock-in, and another from the lock-in to the BNC leading to
+    the sample. When the sample is in place, the other BNC must be terminated
+    with a short circuit to ground, as shown.}
+  \label{fig:bnc}
+\end{figure}
+
+Connect the experimental apparatus: one BNC cable from the signal source to
+input~A of the lock-in, and another cable from the lock-in to the BNC leading to
+the sample. Check that there is no sample in the sample chamber. (For later use,
+when you put in the sample, you need to terminate the other BNC with a short
+circuit to ground, as shown in the photograph.)
+
+The out-of-phase signal you see now is due to all of the capacitances leading to
+the sample, including the capacitance between the Teflon-insulated black wire and
+ground. Do a fine tuning of the phase so that this signal is zero. Switch to a
+sensitivity of \SI{300}{\milli\volt} and insert the sample. The signal you see
+now is entirely due to the sample, and you can use
+$C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ again to calculate the capacitance of
+the sample. (If the signal is small, you may need to change the sensitivity to
+\SI{100}{\milli\volt}.)
+
+For all of this to work, $V_{\mathrm{meas}}/V_0 = \omega R_0 C$ should be much
+less than~1. In Appendix~\ref{app:ac} we derived the exact formula for the
+calculation of the capacitance, and we noted that the difference between the
+exact and the approximate formulae is about \SI{1}{\percent} when
+$\delta = 0.1$.
+Therefore, for $V_0 = \SI{2}{\volt}$, the systematic error caused by using the
+approximate formula will be less than \SI{1}{\percent} if $V_{\mathrm{meas}}$ is
+smaller than \SI{200}{\milli\volt}. If you made a very thin sample and the
+capacitance is large, you may go outside of this limit. When that happens you should
+either use the exact formula or reduce the frequency to \SI{10}{\kilo\hertz} or
+\SI{5}{\kilo\hertz} and repeat the tuning.
+
+At this point you are ready to measure the temperature dependence of the
+capacitance. Keep in mind that we expect the capacitance to increase as we warm
+the sample, and select a range where the current signal is less than one third of
+the full range. This way you do not have to change sensitivity when the most
+interesting part of the measurement is happening.
+
+\subsection{Temperature control}
+
+The ``guts'' of the temperature controller~\cite{ref:pid} are shown in
+Figure~\ref{fig:tcguts}. The ``brain'' is an Omega CNi8DH44 unit, connected to a
+solid-state relay (on the left) and other circuitry, like fuses and connection
+pads. The solid-state relay converts the low-power output of the converter into
+the high power that drives the heater wrapped around the sample chamber (see the
+photograph of the sample chamber above). The input for the temperature controller
+is a platinum resistor that is placed in the aluminum block of the sample
+chamber. The resistance of platinum (and all other metals) depends on the
+temperature, and this resistor has a resistance of \SI{100}{\ohm} at temperature
+\SI{0}{\degreeCelsius}. For
+platinum, a \SI{1}{\degreeCelsius} increment of temperature changes the
+resistance by \SI{0.38}{\ohm}.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.72\linewidth]{temperature-controller.png}{%
+    Photograph of the inside of the open temperature-controller enclosure. A
+    black Omega CNi8DH44 module with a white specification label sits at the top
+    right. To its left are a solid-state relay and a transformer, and the base of
+    the box is filled with blue, grey, black and yellow wiring running to a row
+    of screw terminals along the front edge.}
+  \caption{Inside the temperature controller.}
+  \label{fig:tcguts}
+\end{figure}
+
+The simplest way to warm the sample to a pre-set temperature and keep it there is
+the ``on/off'' control mechanism. You specify the \emph{set point} (or
+\emph{setpoint} in one word), which is just the highest temperature needed, and
+the controller starts to heat the sample chamber with full power. If the ramp is
+specified, the controller will slow down this heating rate by lowering the power
+to keep the specified ramp. This is important in order to obtain good data. You
+should experiment with the ramp rate and settle at the acceptable rate which you
+will judge by the quality of your data.
+
+Once the temperature at the control thermometer reaches the set point, the
+heating power is switched off. It is most likely, however, that at this moment
+there is an amount of excess heat in the system, and temperature keeps climbing
+(this is called an ``overshoot''). After a while the readout of the control
+thermometer starts decreasing, and crosses the setpoint from above. The
+``on/off'' controller switches ``on'', but by this time the rest of the sample
+chamber is too cold, and the temperature keeps dropping for a while. Then the
+temperature overshoots again (in the opposite direction) and the process goes
+into a cycle. The desired temperature will never be reached; instead there will
+be an oscillation around it. To fix this problem the temperature controller is
+programmed to use ``PID'' control, with the P, I and D parameters optimized for
+this particular sample chamber. Read about the PID control in
+Ref.~\cite{ref:pid}.
+
+\notebox{Question}{Be ready to answer this question: what is the role of the
+``I'' in PID?}
+
+\notebox{Hot surfaces and overheating}{Most of the capacitive measurement is done
+at temperatures over \SI{100}{\degreeCelsius}. Be careful: the sample chamber
+will be hot. Do not exceed \SI{160}{\degreeCelsius}, because the sample chamber
+will be damaged. The sample chamber can be seriously overheated if left alone
+with the heater on. Always switch off the temperature controller when the
+measurement is done. If you are using ``ramp'' mode, remember to make sure that
+``soak'' is also on for a short time, to ensure that the heater shuts off once
+the desired temperature is reached; more on this in
+Appendix~\ref{app:tempcontrol}.}
+
+\subsection{Temperature measurement}
+
+In measurements of temperature-dependent properties it is a good practice to
+have two thermometers: one to control the temperature (described above) and
+another one to measure the actual temperature of the sample. This second thermometer is often
+directly attached to the sample. In our case, for the sake of easy sample
+changes, the thermometer is simply inserted into the center of the sample
+chamber. This thermometer is also a platinum resistor.
+
+We use a Keithley 199 multimeter in four-probe resistivity mode to read out the
+resistance of the temperature probe. Learn about the four-probe method in
+Appendix~\ref{app:fourprobe}.
+
+\notebox{Question}{Be ready to answer this question: what is the advantage of the
+four-terminal method over the two-terminal method, and how is this advantage
+achieved?}
+
+The multimeter is set to ``Ohm'' mode and the four leads should be connected to
+the four terminals. (Note the two red leads go to the same side of the resistor,
+and the two black leads go to the other side. For the extension wires the reds
+are connected to browns and the blacks are connected to whites.)
+
+When the computer reads out the resistance values, it will convert them to
+temperature according to the (approximate) relation
+\begin{equation}
+  T = \SI{100}{\degreeCelsius}
+      + \frac{R - \SI{100}{\ohm}}{\SI{0.385}{\ohm\per\degreeCelsius}} .
+\end{equation}
+
+The two data files contain (1) the time dependence of the temperature and (2) the
+temperature dependence of the lock-in output voltage. It is expected that you
+transfer the relevant data files to a thumb drive to carry out the evaluation of
+the data.
+
+Before measuring the sample, study the temperature control process. Start at room
+temperature or at a temperature below \SI{50}{\degreeCelsius}. Select a set point
+of \SI{70}{\degreeCelsius}. Record the time dependence of the temperature. Put
+the temperature controller into ``on/off'' mode and keep recording. Temperature
+oscillations will develop. Put the temperature controller into ``PID'' mode.
+Discuss these observations in your lab report.
+
+% =============================================================================
+\section{Suggested protocol for a measurement}
+% =============================================================================
+
+\begin{enumerate}
+  \item Tune the lock-in, and set up the sample (\VOtwo\ or \BTO) in the sample
+        chamber. Cover the sample chamber with the stainless steel cover (the
+        dewar).
+  \item Start the \texttt{Ferro.vi} LabVIEW routine.
+  \item Start saving data in LabVIEW.
+  \item Program ``Set point 1'' of the temperature controller to
+        \SI{90.0}{\degreeCelsius} for a \VOtwo\ measurement and
+        \SI{150.0}{\degreeCelsius} for the capacitance \BTO\ measurement.
+  \item Program the ramp rate. Change the ramp rate and examine the data: you
+        want to make sure that your ramp rate is slow enough for the data to be
+        reliable. Discuss with the laboratory staff what this means.
+  \item Watch the signal as the sample crosses the phase transition. In \VOtwo\
+        this will take place over a fairly wide temperature range; in \BTO, in
+        a narrow temperature range.
+  \item Once the setpoint is reached you will take more data while the sample is
+        cooling.
+  \item If you are not in ramp/soak mode, program the lower set point of the
+        temperature controller to \SI{10.0}{\degreeCelsius}.
+  \item The sample will slowly cool while the data is recorded. In the \BTO\
+        measurement, nothing interesting happens below \SI{80}{\degreeCelsius},
+        so when the temperature reaches \SI{80}{\degreeCelsius} you can take off
+        the dewar to speed up the cooling. When measuring a \VOtwo\ sample, you
+        want to take the data in a slow-enough ramp mode in the whole
+        temperature range.
+\end{enumerate}
+
+% =============================================================================
+\section{Advice for evaluating the capacitance data}\label{sec:advice}
+% =============================================================================
+
+From the graph of the measured capacitance as a function of temperature you will
+find the $T_C$ for this material.
+
+Estimate the area of the capacitor and the distance between the plates and
+calculate the relative dielectric constant $k$ at room temperature. To find $k$,
+you will need to calculate the capacitance $C_0$ of an empty (i.e.\ filled with
+vacuum or air) capacitor with the same geometry as your sample, and then take
+your measured $C$ and divide it by that calculated $C_0$: $k = C/C_0$.
+
+Give an estimate of the error in $k$ due to the necessarily inaccurate
+measurement of the area and the distance between the painted plates. This error
+is expected to be large. Compare the value of $k$ to the known dielectric
+constant of this ceramic material.
+
+Our main interest, however, is to use the data from our ceramic sample to access
+some of the intrinsic, fundamental properties of \BTO. This means that your
+values of $k$ will need an important correction, which we discuss here. If the
+dielectric constant is very large, the capacitance of the sample should be very
+large too. However, in this measurement, the capacitance will not increase near
+the transition that much. A possible explanation is that in a ceramic sample the
+dielectric polarization is interrupted at the grain boundaries. The capacitance
+between the grains provides coupling, but that inter-grain capacitance does not
+change with temperature, and certainly does not diverge at $T_C$.
+
+You can model this behavior by taking the sample as \emph{two capacitors in
+series}: $C_b$ (capacitance of the grain boundaries) and $C_{BTO}$ (capacitance
+of the bulk grains of \BTO). For the effective (measured) capacitance
+in this case we have
+\begin{equation}
+  C = \left[C_b^{-1} + C_{BTO}^{-1}\right]^{-1}.
+\end{equation}
+Here $C_b$ is independent of the temperature and $C_{BTO}$ corresponds to an
+ideal \BTO\ uniformly-filled capacitor. In this model you can assume that at the phase transition
+point, when $C_{BTO}$ is very large, the $C_{BTO}^{-1}$ term can be neglected,
+and all you measure is $C_b$, i.e.\ $C \approx C_b$. Thus, from your measurement
+of the peak capacitance at $T_C$, you will know $C_b$. For all the other
+temperatures you can calculate $C_{BTO}$ as
+\begin{equation}\label{eq:CBTO}
+  C_{BTO} = \frac{C_b\,C}{C_b - C} = \frac{C}{1 - C/C_b},
+\end{equation}
+where $C$ is the measured capacitance and $C_b$ is the maximum (peak)
+capacitance at $T_C$. Therefore, you should use this corrected $C_{BTO}$ and not
+the measured capacitance $C$ directly in finding $k$ values: $k = C_{BTO}/C_0$.
+
+Once you obtain corrected $k$ versus $T$ data, refer to
+Appendix~\ref{app:physics} (which you should be reading continually while doing
+this experiment; it contains most of the physics), analyze Curie--Weiss
+dependence of $k$ in the vicinity of the transition, and find Curie--Weiss
+constant $C_{CW}$. From it, calculate the microscopic dipole moment and the
+displacement of Ti ion in the unit cell based on your data. Compare it to the
+displacement you will find in the literature (you will have to find this
+value, which is known from X-ray measurements of \BTO). Also calculate the same
+quantities using the intrinsic (single-crystalline) value of $C_{CW}$ from the
+literature.
+
+\clearpage
+\appendix
+% =============================================================================
+\section{Elements of AC circuit theory relevant to our measurements using the
+         lock-in amplifier}\label{app:ac}
+% =============================================================================
+
+We are dealing with sinusoidal AC voltages and currents, such as
+$V = V_0\cos(\omega t + \gamma)$, where $V_0$ is the amplitude, $\omega$ is the
+angular frequency, and $V(t=0) = V_0\cos\gamma$ is the initial condition, i.e.\
+a signal at $t = 0$; $\gamma$ is called the \emph{phase angle}, or the
+\emph{phase}. You will recall that on a \emph{phasor diagram} which you studied
+in your first physics course, all signal amplitudes are represented as rotating
+vectors; $\omega$ is the angular velocity of a rotating phasor related to
+regular frequency by $\omega = 2\pi f$; projections of these vectors onto a
+chosen axis are real instantaneous signals. A \emph{cosine} function used above
+corresponds to a projection onto a horizontal axis; if we used a \emph{sine}
+function, it would represent a projection onto a vertical axis. In
+Figure~\ref{fig:phasorrot} we show $V_0$ at the moment of time $t$, when it makes
+an angle $\omega t + \gamma$ with the horizontal; we see $V_0$'s projection onto
+the horizontal direction, $V_0\cos(\omega t + \gamma)$, which is the real signal
+at the moment $t$.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.85\linewidth]{fig-phasor-rotating}{%
+    Phasor diagram. A dashed circle is centered on the origin of a pair of faint
+    axes. A heavy arrow labeled V-zero runs from the origin to the circle at an
+    angle above the horizontal; the angle between the arrow and the positive
+    horizontal axis is marked omega t plus gamma. A dashed vertical line drops
+    from the tip of the arrow onto the horizontal axis, and the segment of the
+    horizontal axis from the origin to that foot is drawn heavy; a callout
+    identifies it as V equals V-zero cosine of omega t plus gamma, the projection
+    of V-zero onto the horizontal direction, that is, the real signal at the
+    moment t. A curved arrow above the circle indicates counterclockwise rotation
+    with omega.}
+  \caption{A rotating phasor and its projection onto the horizontal axis.}
+  \label{fig:phasorrot}
+\end{figure}
+
+We will recognize that a phase angle also specifies a \emph{direction} on a
+phasor diagram; there is an infinite number of possible radial directions in a
+circle.
+
+It is convenient to measure all phases with respect to the phase of the source,
+$V_0$. A zero phase angle then corresponds to the direction of $V_0$; we will
+call it in what follows the \emph{in-phase} direction. A direction perpendicular
+to the in-phase is called \emph{out-of-phase}. It is clear that projections of
+$V_0$ onto the in-phase and out-of-phase directions are $V_0$ and zero
+respectively.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.85\linewidth]{fig-phasor-directions}{%
+    Phasor diagram. A dashed circle is crossed by two perpendicular grey lines
+    that are tilted with respect to the page: one is labeled in-phase direction
+    number one, running from lower left to upper right, and the other is labeled
+    out-of-phase direction number two. A heavy arrow labeled V-zero runs from
+    the center along the in-phase direction to the circle. A curved arrow above
+    the circle indicates counterclockwise rotation with omega.}
+  \caption{The in-phase and out-of-phase reference directions, defined relative
+           to the source voltage $V_0$.}
+  \label{fig:phasordir}
+\end{figure}
+
+Deciding to use these two phases (or these two phase directions), we are
+effectively setting our initial $\gamma$ to zero. But we will be eventually
+measuring average rms values which do not depend on the initial phase; at the
+same time, all \emph{relative} phases will be preserved in this new system of
+phase referencing.
+
+Measuring a specified phase of a signal (or ``looking'' at a phase, as we say in
+electronics) is equivalent to looking at a signal projection onto a chosen
+direction in a phasor diagram. While we chose two such directions, in-phase and
+out-of-phase with respect to the source voltage $V_0$, the lock-in is capable of
+looking at any phase direction. This is one of its advantages over a normal
+voltmeter.
+
+With this, let us now consider a phasor of an RC circuit.
+Figure~\ref{fig:rcphasor} shows a phasor of a series connection of $R$ and $C$,
+with AC source supplying voltage $V_0$; it is a vector sum of voltages $V_R$ and
+$V_C$. For completeness we also show the current $I$, which is established in the
+circuit; it is shown pointing in the direction of $V_R$. The current is shown
+only once because it is the same for all elements in a series connection.
+
+Note that current is said to be \emph{in-phase with the voltage across the
+resistor}, $V_R$. We should be careful not to mix our in-phase direction along
+$V_0$ as it was defined above with the in-phase direction for the current; these
+are two different phase directions, as can be seen on the diagram.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.95\linewidth]{fig-rc-phasor}{%
+    On the left, a series RC circuit: an AC source supplying V-zero and current I
+    drives a resistor R and a capacitor C connected in series. On the right, a
+    phasor diagram whose in-phase and out-of-phase reference axes are drawn
+    tilted. Three heavy arrows leave the common origin: V-R points up and to the
+    right, V-C points down and to the right at right angles to it, and V-zero
+    lies between them, completing the rectangle drawn with dashed construction
+    lines. A longer arrow along the direction of V-R is labeled I.}
+  \caption{Series $RC$ circuit and its phasor diagram.}
+  \label{fig:rcphasor}
+\end{figure}
+
+It is clear that projections of $V_R$ and $V_C$ onto both in-phase and
+out-of-phase directions are non-zero, while the algebraic sum of projections of
+vectors $V_R$ and $V_C$ onto the in-phase direction is $V_0$ and to the
+out-of-phase direction is zero. Projections of $V_R$ and $V_C$ constitute signals
+measured with the lock-in amplifier across $R$ or $C$ respectively, either
+in-phase or out-of-phase.
+
+Measuring signals in a particular phase as described above is called
+``phase-sensitive'' detection. We are not discussing here how it is practically
+implemented in the inside electronics of a lock-in amplifier, but only its
+meaning in terms of a phasor diagram.
+
+Measuring resistance is discussed in the main text in
+Section~\ref{sec:techniques}; we need to watch for the detrimental effect of a
+parasitic capacitance, and the practical solution is to measure at low-enough
+frequency.
+
+\subsection{Measuring capacitance}
+
+Here is an illustration of the lock-in tuning process in terms of phasor
+diagrams.
+
+\paragraph{Initial tuning.}
+The source voltage $V_0$ is directly measured, $V = V_0$. The phase is adjusted
+so that there is no out-of-phase component (Figure~\ref{fig:tune1}).
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.62\linewidth]{fig-tune-initial}{%
+    Phasor diagram with a horizontal in-phase axis and a vertical out-of-phase
+    axis. A single heavy arrow labeled V-zero equals V lies exactly along the
+    in-phase axis, so the out-of-phase component is zero.}
+  \caption{Initial tuning: the measured voltage lies entirely along the in-phase
+           direction.}
+  \label{fig:tune1}
+\end{figure}
+
+\paragraph{The capacitor is added to the circuit.}
+The voltage drop on the resistor $V_1 = V_R$ and the voltage drop on the
+capacitor $V_2 = V_C$, via vector addition, add up to the source voltage
+$V_0$. There is a \ang{90} phase difference between $V_R$ and $V_C$. The phasor
+diagram looks as shown in Figure~\ref{fig:tune2}. The phase angle $\alpha$ is
+given by
+\begin{equation}
+  \tan\alpha = \frac{V_R}{V_C} = \omega R C .
+\end{equation}
+For $\omega = 2\pi f = 2\pi \times \SI{25}{\kilo\hertz}$,
+$R_0 = \SI{600}{\ohm}$ and $C = \SI{100}{\pico\farad}$ we get
+$\tan\alpha = \num{0.0094}$. For such small angles (in radians!) we can safely
+take $\tan\alpha = \alpha = \omega R C$.
+
+For $V_0 = \SI{2.0}{\volt}$ the measured out-of-phase voltage is
+$V_2 = V_C\sin\alpha$. For small $\alpha$, $V_C \approx V_0$ and
+$V_2 = -V_0\,\omega R_0 C = \SI{-19}{\milli\volt}$.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.66\linewidth]{fig-tune-capacitor}{%
+    Phasor diagram with horizontal in-phase and vertical out-of-phase axes. A
+    heavy arrow labeled V-C equals V points to the right and slightly downward,
+    making a small angle alpha below the in-phase axis. Dashed construction lines
+    drop from its tip to the two axes, marking a large in-phase component V-one
+    on the horizontal axis and a small negative out-of-phase component V-two on
+    the vertical axis.}
+  \caption{With the capacitor added, the measured voltage acquires a small
+           negative out-of-phase component.}
+  \label{fig:tune2}
+\end{figure}
+
+\paragraph{The parasitic capacitance, retuned.}
+Connecting the measurement circuitry is like adding a capacitor to the circuit.
+Here $C = C_p$ represents the sum of all parasitic capacitances. Now we tune the
+lock-in so that the out-of-phase component is zero again. The angle $\alpha$ is
+still small, so $\tan\alpha = \alpha = \omega R_0 C_p$
+(Figure~\ref{fig:tune3}).
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.66\linewidth]{fig-tune-parasitic}{%
+    Phasor diagram with horizontal in-phase and vertical out-of-phase axes. After
+    retuning, the heavy arrow labeled V-C equals V lies along the in-phase axis.
+    A short arrow labeled V-R points straight up along the out-of-phase axis,
+    and the arrow labeled V-zero, the vector sum of the two, lies a small angle
+    alpha above the in-phase axis.}
+  \caption{After retuning, the measured signal is again purely in-phase; the
+           source phasor $V_0$ now sits at the small angle $\alpha$.}
+  \label{fig:tune3}
+\end{figure}
+
+\paragraph{The sample is added.}
+Finally we add the sample. The capacitance gets larger: $C' = C_p + C$, where $C$
+is the capacitance of the sample. Since the larger capacitance results in smaller
+impedance, the current in the circuit increases, and the voltage drop on the
+resistor increases. The phasor diagram now looks as in Figure~\ref{fig:tune4},
+where $\tan\beta = \omega R_0 C'$.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.68\linewidth]{fig-tune-sample}{%
+    Phasor diagram with horizontal in-phase and vertical out-of-phase axes. A
+    heavy arrow labeled V-C-prime equals V points to the right and slightly
+    downward, at a small angle phi below the in-phase axis. A steeper arrow
+    labeled V-R points up and slightly to the right, and their vector sum,
+    labeled V-zero, lies at the angle beta above the in-phase axis. Dashed
+    construction lines complete the parallelogram.}
+  \caption{With the sample inserted, the measured out-of-phase signal is
+    $V_2 = V_{C'}\sin\varphi$ with $\varphi = \alpha - \beta$.}
+  \label{fig:tune4}
+\end{figure}
+
+The measured out-of-phase signal is $V_2 = V_{C'}\sin\varphi$, where
+$\varphi = \alpha - \beta$. As long as all of these angles are small, we get
+$V_2 = V_0\,\omega R_0 C$, where $C$ is the capacitance of the sample. Therefore
+\begin{equation}\label{eq:Cdelta}
+  C = \frac{\delta}{\omega R_0},
+\end{equation}
+where $\delta = -V_2/V_0$ ($\delta$ is a positive quantity and, of course, so is
+the capacitance). Here $V_2 = V_{\mathrm{meas}}$.
+
+The capacitance of the typical sample is in the \SI{100}{\pico\farad} range. For
+\SI{100}{\pico\farad}, at \SI{25}{\kilo\hertz} and $R_0 = \SI{600}{\ohm}$, the
+quantity $\omega R_0 C$ is much less than~1. Therefore, in this limit,
+\begin{align}
+  V_1/V_0 &\sim 1, \\
+  V_2/V_0 &\sim -\omega R_0 C, \\
+  C       &= -\frac{V_2/V_0}{\omega R_0} = \frac{\delta}{\omega R_0}.
+\end{align}
+
+\subsection{Alternative derivation using complex numbers}
+
+The same result can be obtained using complex numbers instead of phasors.
+Complex numbers and symbols for treatment of AC circuits were introduced in the
+``Primer to Linear Circuits and Transmission Lines'', posted with the Course
+Documents on Blackboard. The impedance of the capacitor is $Z = 1/(j\omega C)$.
+The current in the RC circuit shown in Figure~\ref{fig:rccomplex} is
+$I = V_0/[R + 1/(j\omega C)]$, and the voltage on the capacitor is
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.42\linewidth]{fig-rc-complex}{%
+    A simple series circuit drawn as a rectangle: a resistor R along the top left,
+    a capacitor C along the top right, and an AC source symbol supplying V-zero
+    along the bottom.}
+  \caption{The series $RC$ circuit used in the complex-number derivation.}
+  \label{fig:rccomplex}
+\end{figure}
+
+\begin{equation}
+  V = \frac{V_0\,/\,j\omega C}{R + 1/j\omega C}
+    = \frac{V_0}{1 + j\omega RC}
+    = \frac{V_0}{1 + (\omega RC)^2}
+      - \frac{j\,V_0\,\omega RC}{1 + (\omega RC)^2}.
+\end{equation}
+The real and imaginary parts are
+\begin{equation}
+  V_1 = \frac{V_0}{1 + (\omega RC)^2}
+  \qquad\text{and}\qquad
+  V_2 = -\frac{V_0\,\omega RC}{1 + (\omega RC)^2}.
+\end{equation}
+With the proper setting of the lock-in amplifier, described in the main text, we
+can measure $V_2$. Since we know $V_0$, $\omega$ and $R$, we can calculate the
+capacitance of the sample:
+\begin{equation}\label{eq:Cexact}
+  C = \frac{1}{\omega R}\,\frac{1 - \sqrt{1 - 4\delta^{2}}}{2\delta},
+\end{equation}
+where $\delta = -V_2/V_0$ (since the measured voltage is negative, $\delta$ is a
+positive number).
+
+So, to summarize, when $\omega R_0 C$ is small ($\ll 1$) we can use formula
+$C = \delta/(\omega R)$, but for a very large and thin sample, capacitance will
+not be small, and one has to use the complete expression \eqref{eq:Cexact}
+derived above. A simple calculation shows that the difference between the exact
+and the approximate formula is about \SI{1}{\percent} when $\delta = 0.1$ and
+about \SI{5}{\percent} when $\delta = 0.2$.
+
+\clearpage
+% =============================================================================
+\section{The four-probe method: advantages and limitations}\label{app:fourprobe}
+% =============================================================================
+
+A simple resistance measurement is performed either by measuring both the current
+through the resistor and the voltage across the resistor (an $I$ and $V$
+measurement), as in Figure~\ref{fig:a2f1},
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.6\linewidth]{fig-a2-two-terminal}{%
+    Circuit diagram. Current enters from the left through an ammeter, marked A in
+    a circle, and passes through the unknown resistor R-x. A voltmeter, marked V
+    in a circle, is connected across R-x between two black dots that mark the two
+    terminals.}
+  \caption{Two-terminal resistance measurement.}
+  \label{fig:a2f1}
+\end{figure}
+
+or by measuring a current, supplied by a battery, which flows through an
+adjustable resistor and the unknown resistor connected in series, with the scale
+being set as to read the unknown resistance (an \emph{ohmmeter} measurement,
+which we do not show here). Either way, it is a \emph{two-terminal} measurement:
+the unknown resistor is connected to the rest of the circuit at two points, or
+two terminals, shown in Figure~\ref{fig:a2f1} as black dots. In this measurement
+it is implicitly assumed that \emph{contact resistance} and resistance of the
+wires is negligible compared to the resistance $R_x$. In many cases, especially
+when dealing with commercially-made resistors, this is an excellent
+assumption.
+
+There are however many experimental situations in which this measurement is
+complicated by the presence of finite, non-negligible \emph{contact resistance},
+and sometimes also by the presence of \emph{lead resistance} (resistance of
+electrical connections, wires). Consider for example a measurement performed on a
+sample shaped as a uniform-width strip (for example, it may be a thin film
+sample). When performing a two-terminal measurement, we place two metal contacts
+at the ends of a film strip and attach to them current and voltage leads, as
+shown in Figure~\ref{fig:a2f2}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.75\linewidth]{fig-a2-strip}{%
+    Diagram of a rectangular film strip with one contact, drawn as a black dot,
+    at each end. Current enters from the left through an ammeter marked A and
+    leaves at the right; short arrows inside the strip show the current flow
+    lines, which spread out around each contact. A voltmeter marked V is
+    connected between the same two contacts.}
+  \caption{Two-terminal measurement on a sample shaped as a strip, with two
+           contacts.}
+  \label{fig:a2f2}
+\end{figure}
+
+There are at least two problems with this arrangement:
+
+\begin{enumerate}
+  \item If there is appreciable contact resistance between the film and the
+        contacts (black dots), the equivalent electrical circuit describing this
+        measurement will look like the one depicted in Figure~\ref{fig:a2f3},
+        where the resistors $R_{\mathrm{cont}}$ indicate the presence of said
+        contact resistance. If $R_{\mathrm{cont}}$ is not negligibly small
+        compared to $R_x$, the voltage drops across them,
+        $2 I R_{\mathrm{cont}}$, will be included in the voltmeter measurement.
+        Note that here the full sample current $I$ flows through these
+        $R_{\mathrm{cont}}$.
+  \item Current flow lines in Figure~\ref{fig:a2f3} may be non-uniform around the
+        contacts. This makes the length of a sample ill-determined, and thus will
+        introduce an error in the calculation of \emph{resistivity}, even if
+        contact resistances were negligible.
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.8\linewidth]{fig-a2-contact-resistance}{%
+    Circuit diagram. Current enters from the left through an ammeter marked A and
+    passes through three resistors in series: a contact resistance R-cont, the
+    sample resistance R-x, and a second contact resistance R-cont. A voltmeter
+    marked V is connected across all three, so that both contact resistances lie
+    inside the measured section.}
+  \caption{Equivalent circuit showing the presence of contact resistance in a
+           two-terminal measurement.}
+  \label{fig:a2f3}
+\end{figure}
+
+We note that the same un-avoidable problems exist in an ohmmeter two-terminal
+measurement.
+
+These problems with the two-terminal connection can be overcome by making a
+\emph{four-terminal measurement} described below. This measurement is known under
+different names such as the \emph{four-probe method}, a \emph{four-terminal
+sensing}, a \emph{four-probe geometry}, or as \emph{Kelvin sensing} (the latter
+name is rarely used today; it acknowledges that a similar method was first
+described by Lord Kelvin a very long time ago). It is universally used in solid
+state physics to perform accurate measurements of true material parameters,
+primarily of resistivity $\rho$, as well as in other situations when contact
+resistance needs to be excluded from the measurement.
+
+The idea is simple: make current and voltage contacts separately. The current is
+measured, and so the results will not depend of current contact resistance. The
+two inner voltage leads detect \emph{potential difference} between them. The
+current practically does not flow into these inner leads, as the voltmeter
+resistance is very high. So again, their contact resistances do not enter into
+the picture, except for the case when these resistances are becoming very large,
+namely, comparable with the input resistance (impedance) of a voltmeter.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.85\linewidth]{fig-a2-four-probe}{%
+    Diagram of the four-probe geometry. A rectangular, lightly hatched strip
+    sample carries four contacts, drawn as large black dots. The current I enters
+    from the left and leaves at the right through lead resistances, passing
+    through the two outer contacts, which are labeled a and b. Inside the strip,
+    five evenly spaced lines run parallel to its length, marked with arrowheads:
+    they fan out from contact a, stay uniform and parallel across the middle of
+    the sample, and converge again into contact b, so the current density is
+    uniform in the region being measured. A dashed arc near each outer contact
+    marks where the flow spreads. The two inner contacts are each connected
+    straight up to a probe, and a dashed double-headed arrow across the top,
+    labeled V, denotes the voltmeter. A dotted double-headed arrow just above the
+    strip, between the two voltage leads, marks the distance L. At the right, a
+    pair of dotted arrows above and below the strip marks its width w.}
+  \caption{The basic four-probe method.}
+  \label{fig:a2f4}
+\end{figure}
+
+If the current is $I$ and the potential difference between the inner leads is
+$V$, then the resistance of the sample which lies between the voltage leads is
+simply $R_S = V/I$. Now we can find the resistivity $\rho$ from the formula
+\begin{equation}
+  \frac{V}{I} = R_S = \frac{\rho L}{w\delta}
+  \qquad\text{or}\qquad
+  \rho = R_S\,\frac{w\delta}{L},
+\end{equation}
+where $w$ is the sample width, $\delta$ is its thickness, and $L$ is the distance
+between the voltage leads. Here we assume that we know or can measure sample
+geometry (uniform width $w$, uniform thickness $\delta$, distance between voltage
+leads $L$).
+
+As we said, this method was designed to exclude from the measurement contact and
+wire resistances, and it always achieves this goal once we separate the two sets
+of contacts. However, the question of \emph{how accurately} one can find the
+absolute value of $\rho$ depends somewhat on the placement and shape of the
+middle voltage contacts. If we have four contacts which are essentially large
+dots placed along the sample (as is shown in the figure above, and is the case in
+this lab when we measure \VOtwo), we will not be able to find $\rho$ exactly. The
+reason is that our Figure~\ref{fig:a2f4} is somewhat idealized in that current
+may not flow along the sample in such a perfect uniform fashion, being somewhat
+disrupted by the middle voltage contacts; additionally, we may have a difficulty
+measuring $L$ precisely, as it is essentially known to the uncertainty in the
+contact dot size. This is illustrated below in Figure~\ref{fig:a2f5}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.8\linewidth]{fig-a2-imperfections}{%
+    Diagram of a strip sample carrying four large contact dots, with a current
+    lead entering at each end. Two irregular, wavy lines run from the left-hand
+    contact to the right-hand one, marked with arrows to show the current
+    direction; they pinch together at each of the two inner contacts and bulge
+    apart in between, so the current does not flow uniformly along the strip. A
+    solid lead drops well below the strip from each of the two inner contacts.
+    Above the strip, a dotted double-headed arrow labeled L with a question mark
+    spans the gap between the inner contacts; each of those contacts carries a
+    pair of dashed extension lines, one at either edge of the dot, showing that
+    the separation can only be read to within the size of a contact dot. A dotted
+    arrow drops from the middle of that span onto the top of the strip. Below,
+    another dotted arrow points up into the strip and is labeled w with a
+    question mark, showing that the width is uncertain too.}
+  \caption{Imperfections associated with placing contacts on the sample surface.}
+  \label{fig:a2f5}
+\end{figure}
+
+We will ask you to roughly estimate resistivity of the \VOtwo\ sample, despite
+these imperfections. The thickness $\delta$ will be given to you. You may not
+have perfectly uniform $w$, but you can estimate average $w$ between voltage
+leads; and you can roughly measure $L$ between them as well.
+
+We note that one can further improve the four-probe method in order to accurately
+measure $\rho$ by moving inner voltage leads out of the way of the current and
+having well defined sample width $w$. We will not address these improvements
+here.
+
+\subsection{How much voltage-contact resistance can be tolerated?}
+
+\textbf{Finally, how much of a voltage contact resistance can be tolerated}
+before we run into a problem with this measurement? The answer is that
+resistances in the voltage contacts will become important if they are comparable
+or exceeding the \emph{impedance of our voltmeter} (in our case, the lock-in
+amplifier). The input impedance of a voltmeter can be anywhere from
+\SI{10}{\mega\ohm} to a gigaohm; one should consult with the instruction manual
+of a particular instrument one is using.
+
+To understand why this is so, recall that a real voltmeter \emph{does} need a
+tiny current for its operation. The last statement applies to both analog and
+digital voltmeters: whether the current is needed to move the \emph{d'Arsonval
+galvanometer} in an old analog meter, or to charge a capacitor in a digital one,
+it is fundamentally needed nonetheless. (The only voltage-measuring instrument which
+does not need a current is a potentiometer, which is not practical in the type of
+measurements discussed here.) That is why all voltmeters have finite --- not
+infinite --- impedance $R_{\mathrm{imp}}$ (internal resistance): they must admit
+some current. So, a voltmeter is essentially a current-sensing instrument
+converted to measure a voltage. It fundamentally comprises a current-sensing
+element (such as a galvanometer G) in series with a very large resistor
+$R_{\mathrm{imp}}$, as depicted in Figure~\ref{fig:a2f6}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.75\linewidth]{fig-a2-voltmeter}{%
+    Circuit diagram. A dashed rectangle labeled Voltmeter encloses a large
+    resistor R-imp in series with a galvanometer marked G in a circle. This
+    branch is connected across the sample resistor R-x, which lies in the main
+    horizontal line. The total current I enters from the left; at the first node
+    a small current I-G is drawn up into the voltmeter branch, while the
+    remainder, I minus I-G, continues through R-x.}
+  \caption{Recalling how a voltmeter works.}
+  \label{fig:a2f6}
+\end{figure}
+
+We can see that $(I - I_G)R_x = I_G R_{\mathrm{imp}}$, and thus
+\begin{equation}
+  I_G = \frac{(I - I_G)R_x}{R_{\mathrm{imp}}}
+      \approx \frac{I R_x}{R_{\mathrm{imp}}}
+      = \frac{V_x}{R_{\mathrm{imp}}},
+\end{equation}
+where we neglected $I_G \ll I$. The instrument, while measuring $I_G$, is
+calibrated to read the voltage across the sample $V_x$, which is proportional to
+$I_G$.
+
+Now suppose that the voltage contact resistances are comparable to
+$R_{\mathrm{imp}}$. The corresponding electrical circuit showing these unknown
+contact resistances $R_{\mathrm{cont}}$ is shown in Figure~\ref{fig:a2f7}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.75\linewidth]{fig-a2-voltmeter-contacts}{%
+    The same circuit as the previous figure, but now a contact resistance R-cont
+    is inserted in each of the two leads that connect the voltmeter branch to the
+    sample. The dashed rectangle labeled Voltmeter still encloses only R-imp and
+    the galvanometer G, so the two contact resistances lie in series with the
+    small current I-G.}
+  \caption{A voltmeter measuring a sample with large contact resistances.}
+  \label{fig:a2f7}
+\end{figure}
+
+Here we have $(I - I_G)R_x = I_G(R_{\mathrm{imp}} + 2R_{\mathrm{cont}})$, or,
+again neglecting $I_G \ll I$,
+$I R_x \approx I_G(R_{\mathrm{imp}} + 2R_{\mathrm{cont}})$, or
+\begin{equation}
+  I_G = \frac{V_x}{R_{\mathrm{imp}} + 2R_{\mathrm{cont}}} .
+\end{equation}
+Since $R_{\mathrm{cont}}$ is not known, the voltmeter will measure incorrect
+$I_G$ and thus it will display an incorrect $V_x$.
+
+Note the difference between this circuit and the one depicted in
+Figure~\ref{fig:a2f3}: here a \emph{very small} current $I_G$ flows through
+contact resistances; there, in a two-terminal measurement, the \emph{full
+current} $I$ was flowing through these resistances. This is the main advantage of
+a four-terminal over two-terminal measurement.
+
+Generally it is rather difficult to make good contacts to high-resistivity
+semiconductors. Contacts to semiconductors and avoidance of contact problems
+constitute an active field of study, with many publications devoted just to this
+subject. One characteristic of a good contact is that it is \emph{ohmic}, that
+is, it has a linear $I$--$V$ curve, as in Figure~\ref{fig:ivohmic}.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{minipage}{0.45\linewidth}\centering
+    \tikzfig[width=0.7\linewidth]{fig-a2-iv-ohmic}{%
+      Current--voltage graph with V on the horizontal axis and I on the vertical
+      axis. The characteristic is a single straight line of constant positive
+      slope passing through the origin.}
+  \end{minipage}\hfill
+  \begin{minipage}{0.45\linewidth}\centering
+    \tikzfig[width=0.7\linewidth]{fig-a2-iv-nonohmic}{%
+      Current--voltage graph with V on the horizontal axis and I on the vertical
+      axis. The characteristic is an S-shaped curve through the origin: nearly
+      flat near zero voltage, then rising steeply at larger positive voltage and
+      falling steeply at larger negative voltage, so the slope, and hence the
+      resistance, depends on the current.}
+  \end{minipage}
+  \caption{Left: the linear current--voltage curve of a good, ohmic contact.
+    Right: the non-linear curve typical of a high-resistance, ``bad'' contact.}
+  \label{fig:ivohmic}
+\end{figure}
+
+One often finds that high-resistance ``bad'' contacts are usually also
+\emph{non-ohmic}, having a non-linear $I$--$V$ curve, for example like the one on
+the right of Figure~\ref{fig:ivohmic}. As one can see, here not only is
+$R_{\mathrm{cont}}$ unknown, but it also is not well-defined, depending on the
+current $I_G$ that is being passed through it. If in doubt about a contact,
+measure its $I$--$V$ characteristic, and stay away from the ones with a
+non-linear $I$--$V$.
+
+\notebox{Practical advice}{When preparing to measure the \VOtwo\ sample, first
+check its contacts with a simple two-probe ohmmeter. If any of the pairs from the
+four contacts turn out to have high resistance (say, of the order of several
+Mohms), report this to the TA or to the Instructor, for you will probably not be
+able to measure such a sample with the four-probe method.}
+
+\clearpage
+% =============================================================================
+\section{Programming the temperature controller}\label{app:tempcontrol}
+% =============================================================================
+
+The temperature controller can be programmed from the front panel (see the
+manual) or by using its web interface. Front panel programming is cumbersome and
+not recommended. There are two ways to access the web interface:
+
+\subsection{If you want to change the setpoint only}
+
+Open ``Shortcut to internet'' on the desktop (Internet Explorer). The home page
+is served by the temperature controller (the IP address is
+\texttt{192.168.1.200}). An ``I Server'' page will appear, with Device Type
+Selection. No need to change anything, just click on ``Update''. On the next
+page (``Server Home Page'') click on ``Read Devices''. The current temperature
+readout of the controller should appear. Click on ``1.'' right before ``Omega''
+on the screen. A login screen will appear, enter \texttt{12345678} for
+password. You reach the ``Device Setpoints'' screen.
+
+Change ``Setpoint~\#1'' and press update. The temperature controller should show
+the new setpoint in the lower left side of the display. As long as you keep the
+window open you can change setpoints many times without going through the login
+process.
+
+\subsection{If you want to change other settings}
+
+Click on the ``iSeries and MICRO INFINITY Config'' icon on the desktop. The
+opening screen will look like Figure~\ref{fig:tc1}.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.78\linewidth]{tc-config-open.png}{%
+    Screenshot of the iSeries/MICRO-INFINITY Configuration program. The Setpoints
+    tab is selected, showing text fields for Setpoint 1 and Setpoint 2, both
+    reading 000.0, a drop-down for the display color in the non-alarm state set
+    to Green, and a Set Point Deviation checkbox. A column of buttons down the
+    right-hand side is labeled Hardware, Read, Write, Help and Quit, and a row
+    of tabs along the bottom includes ID code, Setpoints, Input type, Reading,
+    Alarm 1, Alarm 2, LB alarm, Out1, Out2, Ramp/Soak, Analog and Comm.}
+  \caption{The configuration program as it opens.}
+  \label{fig:tc1}
+\end{figure}
+
+Click on ``Read'' and on the next screen click on ``File''. The default settings
+of our temperature controller are stored in the
+\texttt{temperature\_controller.cfg} file (in the ``My Documents'' folder). Click
+on the file and the next screen will be like Figure~\ref{fig:tc2}. If the Model\#
+and the options come up correctly, click OK.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.78\linewidth]{tc-config-file.png}{%
+    Screenshot of the configuration program's file-selection dialogue, listing
+    the stored configuration file for the temperature controller together with
+    the model number and the installed options read back from that file.}
+  \caption{Opening the stored configuration file.}
+  \label{fig:tc2}
+\end{figure}
+
+Next the software needs to establish connection with the temperature controller.
+Click on the ``Comm.'' tab and click on the ``Connect'' button under Connection
+Wizard. The IP address should be \texttt{192.168.1.200}. Next, the screen shown
+in Figure~\ref{fig:tc3} appears. In this window the RS-232 is the default value,
+and you need to change it to RS-485. In a few seconds the connection
+should be established, and you need to push ``Finish''.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.85\linewidth]{tc-comm-wizard.png}{%
+    Screenshot of the Connection Wizard dialogue. It shows the network address
+    field containing the controller IP address and a selection between the RS-232
+    and RS-485 serial standards, with RS-232 selected by default, plus Back, Next
+    and Finish buttons.}
+  \caption{The connection wizard. Change RS-232 to RS-485.}
+  \label{fig:tc3}
+\end{figure}
+
+To select a new setpoint, click on the ``Setpoints'' tab and enter the new value
+to ``Setpoint 1''.
+
+To activate the ramp mode click the ``Ramp/Soak'' tab on the main window. The
+window shown in Figure~\ref{fig:tc4} should appear. Now you can click ``enable''
+for the ramp option. The Ramp option allows you to control the rate of heating in
+the sample chamber. For example if you set the ramp to 1 hour then it will take
+1 hour to get to your setpoint~1, etc. This is important since you
+want to keep your sample thermometer consistent with your cavity thermometer.
+
+\notebox{Always enable soak with ramp}{If you decide to use the ramp option you
+\textbf{MUST} enable the soak option as well. The soak option will guarantee that
+once your temperature is reached and your soak time is complete that the heater
+will turn off.}
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.78\linewidth]{tc-rampsoak.png}{%
+    Screenshot of the Ramp/Soak tab of the configuration program, showing enable
+    checkboxes and time fields for the ramp and soak phases associated with each
+    setpoint.}
+  \caption{The Ramp/Soak tab.}
+  \label{fig:tc4}
+\end{figure}
+
+After that you upload the change to the controller by pressing ``Write'' and
+selecting ``Network'' in the screen shown in Figure~\ref{fig:tc5}. During the
+upload process hit OK several times when the software stops for confirmation.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.78\linewidth]{tc-write-network.png}{%
+    Screenshot of the Write dialogue, offering a choice between writing the
+    configuration to a File and writing it over the Network to the connected
+    controller.}
+  \caption{Writing the configuration back to the controller over the network.}
+  \label{fig:tc5}
+\end{figure}
+
+To access the PID control parameters click on the ``Output 1'' tab. The next
+screen shows the ``Control Type''. Here is the place where you can change to
+``On/Off Control'' (Figure~\ref{fig:tc6}).
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.78\linewidth]{tc-output1-pid.png}{%
+    Screenshot of the Output 1 tab, showing the Control Type selector with
+    entries for PID control and On/Off control, together with the associated
+    proportional, integral and derivative parameter fields.}
+  \caption{The Output~1 tab, where the control type is selected.}
+  \label{fig:tc6}
+\end{figure}
+
+\clearpage
+% =============================================================================
+\section{Data taking with LabVIEW}\label{app:labview}
+% =============================================================================
+
+\begin{enumerate}
+  \item Click on the ``Ferro'' shortcut on the desktop.
+  \item Press the right arrow in the upper left corner to start the program. The
+        communication to the voltmeter and the lock-in should start, but the data
+        is not recorded yet.
+  \item Write the file names where the data should be stored into the fields on
+        the top part of the window. Use this format:
+        \texttt{c:\textbackslash StudentData\textbackslash 2012Fall\textbackslash
+        Group1\textbackslash yourfile.txt}. The directories \texttt{Group1},
+        \texttt{Group2} and \texttt{Group3} correspond to the first, second and
+        third labs in any given semester.
+  \item If you wish to record the data, press ``Save''. Two files can be stored:
+        one is the temperature dependence of the capacitance, and the other is
+        the time dependence of the temperature. It is crucial that you write the
+        file name in your lab notes, where you also record the lock-in settings
+        and any other information you may need to reconstruct the circumstances
+        of the measurement.
+  \item Stop data taking by pressing ``Save'' again. Write in a new file name, so
+        that the next time you save data it is recorded separately. (If you do
+        not change the file name, the new data will be appended to the existing
+        data.)
+  \item To clear the screen, press stop. When you restart the measurement (right
+        arrow in the upper left corner) a blank screen will appear.
+\end{enumerate}
+
+\clearpage
+% =============================================================================
+\section{Physics of phase transitions}\label{app:physics}
+% =============================================================================
+
+\subsection{Introduction to phase transitions}
+
+An interesting, important and useful class of phenomena goes under the name
+\emph{phase transition}~\cite{ref:gittrman,ref:papon}. Phase transitions are
+widespread in nature, and a number of them find useful applications in
+technology. In this lab we will primarily concentrate on phase transitions which
+manifest themselves in electrical properties of solids.
+
+Microscopic theories of different phase transitions involve diverse phenomena
+specific to these transitions. Yet there are some similarities which allow their
+classification and a (somewhat) unified description. The phenomenological theory
+--- i.e.\ a non-microscopic theory, one which mathematically describes given
+phenomena without asking detailed questions about their mechanism --- of phase
+transitions was developed largely by a famous Soviet physicist Lev Landau around
+1937~\cite{ref:gittrman,ref:papon,ref:landau1,ref:landau2}. It is based on
+thermodynamic ideas and on symmetry. While the detailed description of this
+theory exceeds the level at which we can present the subject here, some of the
+Landau ideas are actually quite simple and transparent, and we will present them
+here, specifically in Section~\ref{sec:landau}.
+
+We will start with a general principle of phase transition classification. Then,
+the following sections will detail two phase transitions: the metal--insulator
+transition~\cite{ref:dobro,ref:mottbook,ref:mott1949} and the ferroelectric
+transition~\cite{ref:jona,ref:blakemore,ref:umich} that you will study in this
+lab.
+
+\subsection{Classification of phase transitions}
+
+A phase transition is usually defined as an abrupt change in physical properties
+upon a \emph{continuous change in external parameters}. Examples of external
+parameters are temperature, pressure, magnetic and electric fields. Of these
+temperature is the most common cause of a phase transition, and in this lab you
+will be studying such temperature-induced transitions. The value of the
+temperature, pressure, or other physical quantity at which a phase transition
+occurs is called a \emph{transition point}. If it is temperature, it is usually
+denoted as $T_C$.
+
+A distinction is made between two general classes, or, as they are commonly
+called, \emph{orders} of phase transitions. This distinction follows pioneering
+classification of phase transitions proposed in the 1920s by Paul Ehrenfest. Why do we speak of a transition order? The reason is that Ehrenfest
+classified phase transitions based on the behavior of the thermodynamic free
+energy~\cite{ref:gittrman,ref:papon} (see below) as a function of other
+thermodynamic variables. Under this scheme, phase transitions were labeled by
+the lowest derivative of the free energy that is discontinuous at the transition.
+Thus, according to this scheme, \emph{first-order} phase transitions are defined
+as transitions exhibiting a discontinuity in the first derivative of the free
+energy with respect to some thermodynamic variable, and \emph{second-order} phase
+transitions are continuous in the first derivative of the free energy with
+respect to some thermodynamic variable, but exhibit discontinuity in a
+\emph{second derivative}. Free energy itself is always continuous at the
+transition point, which is required by conservation of energy.
+
+A modern classification is only slightly different from Ehrenfest's. The meaning
+of transition's order in terms of discontinuous free energy derivatives remains,
+while the distinction between first and second-order transitions is formulated as
+follows: in a first-order phase transition, specified amount of heat, called the
+\emph{heat of transformation}, or \emph{latent heat}, is released or absorbed per
+unit mass. In a second-order phase transition, there is no latent heat --- heat
+is neither released nor absorbed --- but instead some physical quantity, called
+an \emph{order parameter} appears; order parameter is equal to zero on one side
+of a transition point (in other words, it does not exist in one of the phases),
+and it gradually increases from zero on the other side. It
+was Lev Landau, in his above-mentioned theory of second-order phase
+transitions~\cite{ref:gittrman,ref:papon,ref:landau1,ref:landau2}, who first
+raised the order parameter to prominence. We will say more on this subject later.
+
+Examples of first-order phase transitions include many of the most familiar ones,
+such as the water--ice transition, or the water--vapor transition; more
+generally --- all the solid/liquid/gas transitions are of first order. An
+interesting and practically important first-order phase transition manifests
+itself in the electrical and optical properties of a solid: it is a
+\emph{metal--insulator transition}~\cite{ref:dobro,ref:mottbook,ref:mott1949},
+or, as it is sometimes called, a semiconductor-to-metal transition. It can be
+found in a fairly large number of solid compounds (but never in pure elements),
+including vanadium dioxide (\VOtwo), the material you will be studying in this
+lab.
+
+Second-order phase transitions also include many of the transitions of great
+interest in physics and its applications. A familiar and important example is a
+\emph{ferromagnetic transition}~\cite{ref:gittrman,ref:papon,ref:blakemore,ref:ashcroft}
+at a Curie point: above the Curie temperature (in iron it is
+$T_C = \SI{770}{\degreeCelsius}$) the material is in a paramagnetic state, with
+randomly oriented magnetic moments; at the Curie point the material forms domains
+with magnetic moments all aligned in the same direction within a domain. This
+phenomenon is called \emph{spontaneous magnetization}. The order parameter we
+mentioned above in this case is the net magnetization inside a domain; it is zero
+at $T_C$ and increases from zero below $T_C$. We note also that zero value of
+order parameter corresponds to a completely disordered state (random orientation
+of magnetic moments), while its finite value corresponds to an appearance of
+order (common direction for all the magnetic moments in a domain). At the same
+time, the material in paramagnetic state is more symmetrical than in the state of
+spontaneous magnetization: rotational symmetry of the macroscopic collection of
+randomly-oriented microscopic magnetic moments in a paramagnetic state is broken
+when material transitions into the oriented state below $T_C$. Thus such a phase
+transition is intimately related to symmetry, the fact which was fully explored
+by Landau in his theory.
+
+We note here that the ferroelectric transition in barium titanate (\BTO) which
+you will study in this lab is similar to the ferromagnetic one, with electric
+dipole moments and electrical polarization taking the place of their magnetic
+counterparts (we will discuss the differences in Section~\ref{sec:ccw}). We also
+note that ideas of spontaneous symmetry breaking migrated from solid state
+physics into cosmology and elementary particle theory, and are presently of
+singular importance in these fields, illuminating a large number of fundamental
+puzzles; for example, the celebrated Higgs mechanism responsible for the
+appearance of mass was first proposed by a famous solid state theorist
+P.~W.~Anderson in 1962, who at the time worked on the aspects of theory of
+superconductivity.
+
+Another example of a second-order phase transition is a \emph{superconducting
+transition}~\cite{ref:ashcroft}, which takes place below a transition temperature
+(also called the critical temperature) $T_C$: at $T > T_C$ one observes a normal,
+resistive metal; at $T = T_C$ the electrical resistance abruptly (in pure metals)
+disappears and a normal metal turns into a superconductor with zero resistance;
+at lower temperatures $T < T_C$ the resistance is identically zero. The order
+parameter in this case is the \emph{superconducting gap}: an energy gap which is
+equal to zero at and above $T_C$ and opens up at lower temperatures. It is the gap
+in the electronic spectrum, of the order of a meV, separating paired electronic
+state (so-called Cooper pairs) from the normal electron spectrum. Note that
+superconducting gap is quite different from the gap in a semiconductor or
+insulator electronic spectrum, of which we will speak in
+Section~\ref{sec:materials}. The entropy of a superconducting state is lower than
+that of a normal metal state, indicating that electron pairing provides for a
+more ordered state.
+
+\subsection{Thermodynamic approach to phase transitions}
+
+In discussing phase transitions, it is instructive to take a thermodynamic
+approach, considering Helmholtz free energy
+\begin{equation}\label{eq:helmholtz}
+  F = U - TS
+\end{equation}
+of a material at the two sides of a phase transition. Here $U$ is internal
+energy, $T$ is temperature, and $S$ is entropy. Sometimes instead of Helmholtz
+free energy $F$, Gibbs free energy $G$ is being considered; it is equal to
+$F + pV$, where $p$ is pressure and $V$ is volume. In a phase transition there are
+generally two phases, one being stable on one side of the transition, another on
+the other side. Thermodynamically, a phase transition occurs at the external
+parameter value (temperature, or other) at which \emph{the free energies of the
+two phases become equal} (which guarantees, as we said above, that the free energy
+is continuous across the transition). One can make some conclusions about the two
+general types of phase transitions by making some general observations concerning
+formula~\eqref{eq:helmholtz}.
+
+\subsubsection{First-order transitions from the thermodynamic point of view;
+               mixed-phase states}
+
+We recall the First Law of Thermodynamics which states that the heat $Q$
+absorbed by a system is equal to the change in internal energy of a system
+$\Delta U$ plus the work done by a system $W$: $Q = \Delta U + W$. If the system
+does not produce any work (i.e.\ if it does not expand or contract against some
+outside pressure), then $Q = \Delta U$. This is generally the case in solid-state
+transitions of interest to us here. This tells us that first-order phase
+transition, which, as we said above, is accompanied by the appearance of latent
+heat $Q$, is possible only if internal energy of the system changes. This energy
+change must be electronic or ionic in nature: either the electron energy spectrum,
+or the electrostatic energy of the ionic lattice, or both, must undergo a change
+at the transition point. For example, there may be an energy gap $E_g$
+opening up on one side of a phase transition, as is the case in \VOtwo. Such a
+rearrangement in the energy spectrum of a solid will be abrupt: in our example,
+the semiconductor energy gap in \VOtwo\ exists on one side of the transition and
+does not exist on the other; in other words, it does not gradually open up
+starting from zero at the transition, as the superconducting gap. The latter, as
+we said, serves as an order parameter in that \emph{second-order} transition.
+Semiconducting gap, in contrast, could not be considered an order parameter.
+
+Electronic energy spectra in \VOtwo\ on the two sides of a transition are shown
+schematically in Figure~\ref{fig:a5f1}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.8\linewidth]{fig-a5-vo2-bands}{%
+    Two band diagrams side by side. On the left, labeled semiconductor at T below
+    T-C, an empty conduction zone sits above a hatched, filled valence zone, and
+    the two are separated by a forbidden energy gap E-g marked with a vertical
+    double-headed arrow. On the right, labeled metal at T above T-C, a block of
+    empty states sits directly on top of a hatched block of filled states with no
+    gap between them. A horizontal dashed line marks the common Fermi level.}
+  \caption{A diagram schematically representing the electron energy spectrum in a
+    first-order phase transition in which an energy gap opens below $T_C$; such a
+    transition is observed in \VOtwo.}
+  \label{fig:a5f1}
+\end{figure}
+
+Further, we see that in formula~\eqref{eq:helmholtz} there are two terms: $U$ and
+$TS$. We already decided that in a first-order transition $U$ must change. But we
+also know that the free energies of the two phases must be equal at $T_C$.
+Therefore the second term, $TS$, must also change at the transition in order to
+compensate for $\Delta U$. Indeed, $S$, the entropy, must change if there is
+latent heat $Q$, being related to it by $\Delta S = Q/T$. Change of entropy
+signifies appearance or disappearance of order (here the word \emph{order} is used
+in a context of order-disorder and not in a context of derivative's order). For
+example, in \VOtwo\ one finds different lattice symmetry in the two phases: one
+phase is tetragonal, another monoclinic (these terms refer to types of crystalline
+atomic arrangements). And indeed one finds a change in entropy which comes
+predominantly from this lattice rearrangement (see below a section on \VOtwo). The
+lattice constant of a unit cell and material's density are also changing in the
+first-order transition. Note that this is different for the second-order
+transition, where \emph{order} does not change at $T_C$, but changes gradually
+away from $T_C$.
+
+Let us continue with general considerations concerning a first-order transition.
+We are considering two phases, phase~1 and phase~2, on the two sides of a
+transition. Suppose we are crossing the transition temperature $T_C$ going from
+phase~1 to phase~2. The free energy, as we said above, is a continuous function
+across the transition, so that $F_1(T_C) = F_2(T_C)$. However, $F(T)$ is not
+constant; each phase has lower $F$ on its ``rightful'' side of a transition. This
+is schematically shown in Figure~\ref{fig:a5f2}, where phase~1 is stable at
+$T < T_C$ and phase~2 is stable at $T > T_C$.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.65\linewidth]{fig-a5-free-energy}{%
+    Graph of free energy F on the vertical axis against temperature T on the
+    horizontal axis. Two smooth curves cross at a single point directly above the
+    marked temperature T-C. The curve labeled F-one starts higher on the left,
+    falls as temperature rises, and lies below the other curve to the right of the
+    crossing; the curve labeled F-two starts lower on the left and rises, lying
+    below F-one to the left of the crossing. A dashed vertical line joins the
+    crossing point to the label T-C on the temperature axis.}
+  \caption{Schematic behavior of the free energy of the two phases across the
+           phase transition.}
+  \label{fig:a5f2}
+\end{figure}
+
+If a given phase --- for example, phase~1, is energetically favored (having lower
+$F$), one might expect it to appear right away at crossing the $T_C$. But consider
+in more detail the mechanism of its appearance: what has to happen for it to
+appear? Some atomic rearrangement and/or lattice symmetry change will be required;
+electronic and ionic energy spectra will have to shift; latent heat will have to
+be released or absorbed. Very importantly, unless the whole volume of the material
+uniformly transitions all at once, domains of phase~1 may form, surrounded by the
+phase~2, and, as a result, there appears the \emph{boundary} between the two
+phases. This boundary may have energy, either positive or negative. In case
+boundary energy is positive, the boundary is said to ``cost'' energy. Appearance
+of a boundary thus is changing somewhat the energy balance dictated by the lower
+free energy of phase~1. There may appear a \emph{local
+energy minimum}, which depends on the local configuration of the phase domains;
+this local minimum may preclude the system from falling into the \emph{global
+minimum} dictated by the lower $F_1$ value. Thus the phase transition may not
+happen exactly at $T_C$, and it may develop in a complex, non-uniform fashion.
+During this process, the temperature of the system will stay constant as heat is
+added: the system is in a \emph{mixed-phase regime} in which some parts of the
+system have completed the transition and others have not.
+
+Such phenomena are well known in first-order phase transitions between solids and
+liquids and liquids and vapor: a liquid may be heated to a temperature above the
+boiling point or \emph{supercooled} to below the freezing point.
+Something similar happens in a first-order phase transition in a solid.
+First-order transitions are often characterized by the formation of
+\emph{metastable} states. Instead of taking place exactly at $T_C$, the transition
+going up in temperature takes place at $T_C + T^{*}$, and going down in
+temperature at $T_C - T^{*}$. Here $T^{*}$ is called the \emph{coercive
+temperature}. This leads to the phenomenon of \emph{hysteresis}. If we fix a
+temperature $T$ somewhere in the interval $T_C - T^{*} < T < T_C + T^{*}$, a
+metastable state, often in the form of domains, may survive for long (sometimes
+indefinitely long) periods of time on the ``wrong'' side of the transition. In
+Section~\ref{sec:mixedstate} you will find a qualitative discussion of the reason
+for the appearance of a coercive temperature and hysteresis.
+
+In this lab you will study one such first-order phase transition, namely the
+semiconductor-to-metal transition in vanadium dioxide (\VOtwo), which also
+exhibits a mixed-phase regime. Additionally, the semiconductor phase of \VOtwo\
+has high resistivity, while its metallic phase has low resistivity. Thus, as we
+explore the mixed-state with electrical resistance measurement, we are
+encountering another interesting type of a transition here, called
+\emph{percolation}~\cite{ref:percolation} transition. We will briefly discuss
+these phenomena when talking about \VOtwo\ in Section~\ref{sec:materials}. In this
+lab, when performing measurements on \VOtwo, you will be able to see how, with
+increasing temperature, resistivity gradually changes from high to low,
+dramatically changing by several orders of magnitude in the process. The material
+goes through the metal--insulator transition, a two-phase mixture occurs, and, as
+a result, it also goes through the percolation transition.
+
+\subsubsection{Second-order transitions from the thermodynamic point of view;
+               elements of Landau theory}\label{sec:landau}
+
+In a second-order transition there is no latent heat, that is, $Q = 0$ and thus,
+from the First Law of Thermodynamics, $\Delta U = 0$. Thus an energy spectrum is
+not expected to modify abruptly at the transition point in a second-order
+transition. At the same time, the general condition $F_1 = F_2$ at $T = T_C$ must
+be satisfied. Looking at formula~\eqref{eq:helmholtz} for $F$, this tells us
+immediately that entropy (order) cannot change at $T_C$, but has to change
+gradually as the temperature deviates from $T_C$. In other words, the order
+parameter must be zero at $T_C$, and will increase away from $T_C$, as we said
+above. This, among other considerations, allowed Landau to construct his theory of
+the second-order phase transitions. Namely, the fact that order parameter is small
+in the vicinity of a transition point allowed him to expand free energy $F$ as a
+Taylor series in order parameter, which we will call $m$, and then, making general
+physical arguments, to extract significant physical results from this
+expansion.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.26\linewidth]{landau.png}{%
+    Black-and-white portrait photograph of the theoretical physicist Lev Landau,
+    facing slightly to one side.}
+  \caption{L.~D.~Landau (1908--1968), Nobel Prize of 1962.}
+  \label{fig:landau}
+\end{figure}
+
+Let us follow his lines of thought, at least in part, here. The Taylor expansion
+of a continuous function $F(T,m)$ in powers of a small parameter $m$ around point
+$m = 0$, written to the 4-th order of $m$, is
+\begin{equation}
+  F(T,m) = F_0(T,0) + \frac{F'(T,0)}{1!}m + \frac{F''(T,0)}{2!}m^{2}
+         + \frac{F'''(T,0)}{3!}m^{3} + \frac{F''''(T,0)}{4!}m^{4} + \dots
+\end{equation}
+Here primes indicate derivatives with respect to $m$; for example
+$F'' = \mathrm{d}^2F/\mathrm{d}m^2$. So far this is just a mathematical formula
+based on continuity of $F$ and smallness of $m$. Landau then argued that $F$
+should be invariant with respect to a change in sign in $m$: changing $m$ to
+$-m$ should keep the energy unchanged. Indeed, in the absence of external field,
+if $m$ is magnetization $M$ or polarization $P$, it seems obvious. This is a
+symmetry argument we mentioned before. This implies that our Taylor expansion must
+not contain odd powers of $m$. Omitting odd terms with $m$ and $m^3$, and calling
+the even-term coefficients
+$F''(T,0)/2! = \alpha(T)$ and $F''''(T,0)/4! = \tfrac{1}{2}\beta(T)$ (the factor
+$1/2$ introduced here following a convention found in most of the literature), we
+obtain
+\begin{equation}\label{eq:landau2}
+  F(T,m) = F_0(T) + \alpha(T)\,m^{2} + \tfrac{1}{2}\beta(T)\,m^{4} + \dots
+\end{equation}
+
+We want to relate behavior of $F(T,m)$ to the observed physical phenomena in the
+vicinity of a phase transition. \emph{A minimum of $F$ with respect to an order
+parameter $m$ physically implies stable (observable) configuration of our system}:
+the value of magnetization or polarization observed in a real system will
+correspond to the value of $m$ at which $F$ has a minimum. We will find that these
+minima are different for $T > T_C$ and for $T < T_C$, on the two sides of a phase
+transition. After finding the minima with respect to $m$, we may be able to see
+how $F$ depends on $m$ in the vicinity of these minima. Once we decide on the form
+of $F(T,m)$ for fixed $T$, we will be in the position to discuss $T$-dependences.
+Further, by taking derivatives of $F(T,m)$, one can construct other quantities,
+such as entropy, specific heat, etc. Such is our ``program'' of how to explore
+physical consequences of expansion~\eqref{eq:landau2}.
+
+To find minima of $F$ with respect to the order parameter $m$, we require that
+$\mathrm{d}F/\mathrm{d}m = 0$ and $\mathrm{d}^2F/\mathrm{d}m^2 > 0$: the usual
+conditions we always use when finding a minimum of a function. The first one,
+$\mathrm{d}F/\mathrm{d}m = 0$, guarantees that we have zero slope, i.e.\ that we
+are at the extrema of a function; the second condition,
+$\mathrm{d}^2F/\mathrm{d}m^2 > 0$, guarantees that this extremum is actually a
+minimum and not a maximum or the inflection point.
+
+Differentiating~\eqref{eq:landau2} we find
+\begin{equation}
+  \frac{\mathrm{d}F}{\mathrm{d}m}
+    = 2\alpha(T)m + 2\beta(T)m^{3}
+    = 2m\left[\alpha(T) + \beta(T)m^{2}\right] = 0,
+\end{equation}
+which gives us three possible solutions for $m$:
+\begin{equation}\label{eq:minima1}
+  m_1 = 0
+  \qquad\text{and}\qquad
+  m_{2,3} = \pm\left[-\frac{\alpha(T)}{\beta(T)}\right]^{1/2}.
+\end{equation}
+
+The second condition for a minimum is
+$\mathrm{d}^2F/\mathrm{d}m^2 = 2\alpha(T) + 6\beta(T)m^2 > 0$. The simplest way to
+satisfy this last inequality is to require that at $T > T_C$,
+$\alpha(T) = a\,(T - T_C)$ with coefficient $a > 0$, and that $\beta(T)$ is a
+positive constant $b > 0$. We note that if we adopt this form for $\alpha(T)$,
+then $\alpha(T_C) = 0$.
+
+So, now the expansion looks like this:
+\begin{equation}\label{eq:landau4}
+  F = F_0(T) + a\,(T - T_C)\,m^{2} + \tfrac{1}{2}b\,m^{4} + \dots
+\end{equation}
+And $F$ has minima at
+\begin{equation}\label{eq:minima2}
+  m_1 = 0
+  \qquad\text{and}\qquad
+  m_{2,3} = \pm\left[\frac{a}{b}\,(T_C - T)\right]^{1/2}.
+\end{equation}
+
+Clearly the expression for $m_{2,3}$, by virtue of containing a square root, works
+only for $T < T_C$ (temperatures below the transition); thus $m_1 = 0$ corresponds
+to $T > T_C$ (temperatures above the transition). As can be seen
+from~\eqref{eq:minima2}, at the transition temperature $m = 0$ in both cases.
+
+Now we will try to explore the physical consequences. Recalling the physical
+meaning of $m$, we see that equilibrium magnetization (or polarization) is zero at
+$T > T_C$: this is clearly the description of a paramagnetic (paraelectric) state,
+in which magnetization from randomly-oriented magnetic moments equals to zero. According to the expansion, at $m = 0$, $F = F_0(T)$. At
+$m \ne 0$, and with positive $T - T_C$ (above the transition),
+expansion~\eqref{eq:landau4} predicts that $F$ will rise from the lowest energy
+level $F_0$ as $F - F_0 = Am^2 + Bm^4$, where $A$ and $B$ are positive
+coefficients. This is shown schematically in Figure~\ref{fig:a5f3}(a), where we
+took $F_0$ to be zero.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.95\linewidth]{fig-a5-landau-wells}{%
+    Three graphs of free energy F against order parameter m. In panel (a), for
+    fixed T above T-C, the curve is a single smooth well with one minimum at m
+    equals zero. In panel (b), for fixed T below T-C, the curve is a symmetric
+    double well with two minima at m-two and m-three, placed symmetrically either
+    side of a local maximum at m equals zero. In panel (c), for a fixed T below
+    T-C but closer to T-C than in panel (b), the same double-well shape appears
+    but the two minima are much shallower and lie much closer to m equals zero,
+    so the curve is almost flat over a wide region around the origin.}
+  \caption{Schematic representation of the dependence of the free energy $F$ on
+    the order parameter $m$ at three fixed temperatures.}
+  \label{fig:a5f3}
+\end{figure}
+
+The minima corresponding to $m_{2,3}$ describe the behavior of $F$ below the
+phase transition: our theory predicts that there will be two such minima,
+symmetrical in $m$ with respect to $m = 0$. Between these two minima, at $m = 0$,
+in virtue of~\eqref{eq:landau4}, we have $F = F_0$ (or zero, since we have chosen
+zero at $F_0$). This is depicted in Figure~\ref{fig:a5f3}(b). Physically this
+means that our system will have two possible stable states with non-zero
+magnetization or polarization. Thus in a ferromagnetic (or ferroelectric) state
+magnetization (polarization) will have a \emph{finite} value. This finite
+value may be positive or negative; it can reverse, still being consistent with our
+theory.
+
+The values of $F$ at these minima can be calculated by substituting $m_1$ and
+$m_{2,3}$ into~\eqref{eq:landau4}. They will depend on temperature $T$, which is
+now less than $T_C$. We see from~\eqref{eq:landau4} that the closer is $T$ to
+$T_C$, the smaller will be the negative term $a(T - T_C)m^2$ in the expansion, and
+thus the shallower will be the two minima below the transition. At the same time,
+with decreasing $T - T_C$, the two minima will move in towards the $m = 0$ value.
+In the limit $T \to T_C$ the two minima will disappear, transforming the
+double-minima curve into a single minimum curve (a). At $T = T_C$, because of the
+$m^4$ term, the curve will have a significant flat region in the vicinity of
+$m = 0$. Physically this must imply that, near the transition point, magnetization
+(polarization) in a ferromagnetic (ferroelectric) state can be very easily
+reversed. In other words, the material at a temperature just below the transition
+point must be very easily polarizable. This suggests that \emph{dielectric
+constant} $\varepsilon$ will be high. We will see that indeed this interesting
+conclusion is experimentally verified, and you will be able to see this very
+clearly in your measurements of \BTO.
+
+So far our conclusions based on the analysis of expansion~\eqref{eq:landau4} have
+been very satisfying: we were able to explain some of the most prominent features
+of a second-order phase transition. We could continue and explore the physical
+consequences for the derivatives of $F$, which will give us entropy and specific
+heat. We will find~\cite{ref:gittrman,ref:papon} that entropy $S$, while being
+continuous at the transition, decreases below the transition, where there is more
+order. We will also find that specific heat experiences a jump at the transition.
+Such a discontinuity in specific heat at the second-order phase transition is well
+documented experimentally.
+
+One can add external field (magnetic field $H$, or electric field $E$) to this
+analysis. In doing so one
+finds~\cite{ref:gittrman,ref:papon} that susceptibility $\chi$, which is defined
+as $\chi_M = \mathrm{d}M/\mathrm{d}H$ for the magnetic case and
+$\chi_E = \mathrm{d}P/\mathrm{d}E$ for the electric
+case~\cite{ref:gittrman,ref:papon,ref:ashcroft}, obeys the Curie--Weiss law (here
+written for the ferroelectric case):
+\begin{equation}\label{eq:landauchi}
+  \chi_E = \frac{1}{2a\,(T_C - T)} \ \text{ for } T < T_C,
+  \qquad
+  \chi_E = \frac{1}{4a\,(T - T_C)} \ \text{ for } T > T_C.
+\end{equation}
+
+This shows that Landau theory predicts that susceptibility becomes infinite at
+$T = T_C$. We also see that it approaches $T = T_C$ in an asymmetric way
+(constants being different by a factor of~2). In an experiment you will perform in
+this lab you will see that this is indeed so, except that theoretical infinity is
+substituted by a sharp peak.
+
+We recall Curie--Weiss law~\cite{ref:gittrman,ref:papon,ref:ashcroft} which states
+that $\chi = C_{CW}/(T - T_C)$ for the paramagnetic (paraelectric) phase, i.e.\
+for $T > T_C$. Here $C_{CW}$ is a Curie--Weiss constant (often called Curie
+constant). We see that Landau theory identifies coefficient $1/(4a)$ with
+$C_{CW}$.
+
+\subsection{Description of the phase transitions and materials you will
+            study}\label{sec:materials}
+
+\subsubsection{Metals, semiconductors and insulators, and their conductivity}
+
+With respect to an ability to transmit electrical charge, materials can be
+divided into conductors and insulators; this was recognized from the eighteenth
+century. Ohm's law, resistance and resistivity were defined and clarified in the
+nineteenth and the beginning of the twentieth century. Today, with respect to
+electrical resistivity $\rho$ (or its inverse $1/\rho = \sigma$, electrical
+conductivity) we distinguish not two but three classes of materials: metals (good
+conductors), dielectrics or insulators (very bad conductors), and semiconductors,
+which are in some sense intermediate between the first two classes. We also
+distinguish them by different ways in which conductivity depends on temperature
+(below). True understanding of what is at the core of these different classes came
+only in the 1930s, when physicists understood electronic spectra (band structure)
+of these materials~\cite{ref:blakemore,ref:ashcroft}. This required creation of
+quantum mechanics, formulation of Pauli's exclusion principle, and replacement of
+classical statistics with Fermi--Dirac statistics. In Figure~\ref{fig:a5f4} we
+show a schematic representation of the electronic bands of a metal, a
+semiconductor and an insulator.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.9\linewidth]{fig-a5-band-classes}{%
+    Three band diagrams side by side against a common vertical axis of electron
+    energy, with a horizontal dashed line marking the Fermi level. For the metal,
+    on the left, the upper conduction band and the lower valence band overlap in
+    energy, and the overlap region is shaded and labeled. For the semiconductor,
+    in the middle, the two bands are separated by a small gap straddling the Fermi
+    level. For the insulator, on the right, the conduction band and the valence
+    band are separated by a much larger gap, marked with a brace labeled
+    bandgap.}
+  \caption{Electronic spectra (band structure) of metals, semiconductors and
+           insulators.}
+  \label{fig:a5f4}
+\end{figure}
+
+The main distinction between them, which influences electrical conductivity and
+its temperature dependence, lies in the presence (in semiconductors and
+insulators) or absence (in metals) of an energy gap in the electronic spectrum.
+The value of the energy gap is called $E_g$. The highest energy band which
+contains states which are completely filled with electrons is called a
+\emph{valence band}; an empty band, separated from it by an energy gap, is called
+a \emph{conduction band}. Electronic states of the type that may conduct current
+(the so-called extended or Bloch states) do not exist in the energy interval
+inside the gap.
+
+The difference between semiconductors and insulators is quantitative rather than
+qualitative: they both have a gap in their spectra, but the gap in a semiconductor
+is smaller than that in an insulator. The rough borderline between these two
+classes lies around $E_g = \SIrange{2}{3}{\electronvolt}$. One can say that
+semiconductor materials are small band-gap insulators. It should be said that, in
+addition to the presence of a relatively small gap, another defining property of a
+semiconductor material is that it can be doped with impurities that alter its
+electronic properties in a controllable way. Here we will be concerned mainly with
+the so-called \emph{intrinsic} semiconductors, which do not have impurity levels
+inside the gap. The most famous semiconductors today are Si and GaAs (and their
+extended families); but there are hundreds of known semiconductors, and many of
+them find useful applications. \VOtwo\ you will study in this lab is one of them.
+
+Let us understand why conduction will be so very different depending on the
+presence or absence of a gap in the electronic energy spectrum. You will need to understand
+this, as we will ask you to find the value of the gap in \VOtwo\ from your data.
+
+In a conductor, application of an electric field $E$ leads to acceleration of
+charge carriers (such as electrons) with mass $m$ and charge $e$: $a = eE/m$. This
+acceleration acts for some average time between collisions $\tau$, leading to the
+appearance of a drift velocity $v_d = a\tau = (eE/m)\tau$. The current density is
+then
+\begin{equation}\label{eq:ohm}
+  j = e n v_d = \frac{e^{2}n\tau}{m}E = \sigma E
+  \qquad\text{(Ohm's law).}
+\end{equation}
+Here $n$ is the number of carriers per unit volume (carrier density), and $\sigma$
+is electrical conductivity which characterizes the material. Its inverse is
+resistivity $\rho$.
+
+It is clear from these familiar considerations (constituting part of what is known
+as Drude model~\cite{ref:blakemore,ref:ashcroft} of electrical conduction) that an
+electron must be able to \emph{change} its energy in order to participate in
+electrical current; indeed, it acquires extra kinetic energy $m v_d^2/2$ from the
+field; this extra energy will eventually be lost in inelastic collisions of an
+electron with phonons (lattice vibrations), other electrons, etc. We know that
+eventually this extra energy is deposited into the conducting material, raising
+its temperature: the familiar $I^2R$ power dissipated in a conductor comes from
+the field (the battery) and ends up as heat in the conducting material. Note that
+energy increase $m v_d^2/2$ is, generally, quite small compared to the total
+kinetic energy of an electron at the highest filled energy level.
+
+So, to repeat: an electron needs to change its energy in order to accelerate under
+the influence of an electric field; this is the prerequisite for electrical
+conduction. But, to change its energy, it has to find un-occupied energy levels at
+that higher energy. This is possible in a metal, where un-occupied states lie
+directly above the occupied ones (at zero temperature we call the highest energy of
+occupied states \emph{Fermi level}; it is shown as a dashed line in
+Figure~\ref{fig:a5f4}; there are empty states right above it). In a semiconductor
+or insulator, in view of the existence of a forbidden energy interval (energy gap)
+this is impossible: there are no available states above the top edge of the valence
+band (see Figure~\ref{fig:a5f4}). On further reflection, however, we see that this
+last statement is strictly true only at $T = 0$. Indeed, at a finite temperature
+$T$ electrons may be excited across the gap. Relative probabilities of such
+processes can be found from Fermi--Dirac distribution functions; approximate (but
+very good) estimates can be done, however, using classical Boltzmann factor
+$\exp(-E_g/kT)$. Such an excitation process creates an electron near the bottom of
+the conduction band above the gap, and a \emph{hole} (which is equivalent to a
+positively charged electron~\cite{ref:papon}) near the top of the valence band.
+These charge carriers (electron and hole) are called \emph{mobile carriers}; they
+can now participate in conducting the current, because they can find un-occupied
+energy levels very close to their respective energies.
+
+The number of mobile electrons and holes depends on the values of $T$ and $E_g$,
+and on how many electrons were available for excitation. In good insulators, i.e.\
+materials with $E_g > \SI{2}{\electronvolt}$, at practical temperatures (limited,
+generally, by the melting point; often we are interested in conductivity at
+$T = \SI{300}{\kelvin}$), their numbers are negligibly small. In other words, the
+resistivity of an insulator is many orders of magnitude higher than in a
+semiconductor or in a metal. For example, resistivity of a very good insulator
+amber (the one that ancient Greeks were rubbing to produce static electricity) at
+\SI{300}{\kelvin} is \SI{5e14}{\ohm\metre}, while resistivity of pure Si is
+\SI{2300}{\ohm\metre}, a difference of eleven orders of magnitude! Metals are
+still orders of magnitude more conductive than semiconductors: resistivity of
+copper at \SI{300}{\kelvin} is only \SI{1.7e-8}{\ohm\metre}. Thus metals and good
+insulators differ by staggering 22 orders of magnitude (!) in resistivity (or
+conductivity).
+
+In addition to very different values of $\rho$, its temperature dependencies are
+very different as well: in good metals resistivity increases with $T$; in copper
+and many other metals this increase is linear at sufficiently high $T$. In
+contrast, resistivity in a semiconductor depends on temperature as
+\begin{equation}\label{eq:gap}
+  \rho = \rho_0\,\exp\!\left(\frac{E_g}{2kT}\right).
+\end{equation}
+Here the factor of~2 comes from the fact that activation energy is counted from
+the Fermi level, or, as it is called in semiconductors, from chemical potential,
+which, in intrinsic semiconductors, lies in the middle of the
+gap~\cite{ref:blakemore,ref:ashcroft}; an electron has to receive energy equal to
+$E_g/2$ rather than $E_g$ to cross the gap. Thus the study of the temperature
+dependence of electrical resistance allows us to find $E_g$. The most convenient
+way of doing this is to plot $\log(\rho)$ vs.\ $1/T$.
+
+\subsubsection{Metal--insulator transition}
+
+One type of a phase transition is that between metal and insulator or metal and
+semiconductor; it is most commonly called \emph{Metal--Insulator
+Transition}~\cite{ref:dobro,ref:mottbook,ref:mott1949} or MIT, even when the
+poorly-conducting phase is a semiconductor.
+
+If we take a piece of metal, such as copper, and heat it up to its melting point,
+the melt will still be a metal. If we boil it (in vacuum) and evaporate the molten
+copper, the copper atoms constituting the vapor will be of course, strictly
+speaking, forming some sort of an insulator in a sense that they will not be
+conducting a current if placed in the electric field. This is not however what we
+call a metal-insulator transition. We are interested in a solid material which
+retains its general structure and composition, but, under the influence of an
+external parameter, for example, temperature undergoes an abrupt transition from a
+poorly-conducting semiconductor or insulator state to a well-conducting, metallic
+state or vice versa. There are some 50 or more compounds (but no pure elements)
+which exhibit MIT. For example, MIT was found in
+Fe\textsubscript{3}O\textsubscript{4}, NiS, NbO\textsubscript{2},
+V\textsubscript{2}O\textsubscript{3}, etc. One such compound you will have a
+chance to study in this lab: it is vanadium dioxide, or \VOtwo. All MIT's are
+first-order transitions, although this fact can be obscured by the presence of a
+disorder~\cite{ref:dobro}.
+
+\subsubsection{Essential physics of one type of MIT: the Mott transition}
+
+The theory of MITs is rather complex. What is more, several different MIT
+mechanisms may be at work in different compounds. Here we can only give a ``taste''
+of a relevant theory by qualitatively describing the transition as envisioned by
+N.~F.~Mott~\cite{ref:mottbook,ref:mott1949}. Other MIT models
+exist~\cite{ref:dobro}.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.22\linewidth]{mott.png}{%
+    Black-and-white portrait photograph of the physicist Sir Nevill Francis Mott
+    in later life, wearing glasses and a suit.}
+  \caption{Sir Nevill Francis Mott (1905--1996), Nobel Prize of 1977.}
+  \label{fig:mott}
+\end{figure}
+
+Sir Nevill Mott, a famous British physicist, in 1949
+discussed~\cite{ref:mottbook,ref:mott1949} the following model: consider $N$
+hydrogen atoms are in a periodic lattice. If the distances between these atoms are
+small, $N$ electrons which they contribute will fill half of the band which
+consists of $2N$ states (the reason there will be $2N$ states in such a band is
+that there are two states for each electron due to electron spin
+one-half: one up and one down~\cite{ref:blakemore,ref:ashcroft}). Thus such a
+hydrogen crystal will be a metal. Now Mott imagined increasing the distance between
+atoms (increasing lattice constant $a$). With increasing $a$, the band's energy
+span will decrease; it will become more and more narrow (consult solid state
+physics texts~\cite{ref:blakemore,ref:ashcroft} to see why), but, within the
+confines of the band theory, such ``stretched out'' hydrogen crystal will still be
+a metal with half-filled band for any, arbitrarily large, separation between
+atoms. This is of
+course nonsensical, because we know that eventually, at large enough atomic
+separations, the crystal must become an insulator.
+
+This leads one to believe that, with increasing $a$, something new has to happen at
+a certain distance between atoms. Mott assumed that, starting from some critical
+value of $a$, electronic states no longer can be described as extended Bloch
+states. Electronic wavefunctions will become localized. Such a crystal will be an
+insulator at $T = 0$: each electron will be localized at its respective atom. Such
+an insulator is called \emph{Mott insulator}.
+
+At sufficiently high $T$, however, such a material can conduct current, turning
+from an insulator into a metal. Indeed, consider two neighboring atomic sites,
+1 and 2; each has an electron on it. If these two electrons have equally-oriented
+spins, the conduction is impossible in view of Pauli principle: an electron~1
+cannot jump to site~2 which is occupied by electron~2 with the same quantum
+numbers. But suppose these electrons have opposite spins (what is called
+antiferromagnetic order). An electron from an atomic site~1 can in principle jump
+to the neighboring site~2, which has an empty energy state for electron~1's
+direction of spin (the other state being occupied by the electron with opposite
+spin which is sitting on site~2). If electron~1 jumps, it will leave behind a
+positively-charged hole on site~1. If such jumps are frequent, with an application
+of an electric field the current will flow, this current being carried by both
+electrons and above-mentioned holes they leave behind (holes moving in the
+direction of the field, and electrons against this direction, as
+usual~\cite{ref:ashcroft}). To make this jump, however, an electron has to overcome
+Coulomb repulsion which exists between the two electrons residing on the same site
+--- it has to have energy at least of the order of this Coulomb repulsion energy.
+In a Mott insulator, this Coulomb repulsion barrier energy serves as an analog of a
+forbidden gap $E_g$ in a band picture of a dielectric. With raising temperature
+more electrons will be excited across this Coulomb gap, and thus the Fermi level
+(kinetic energy) will grow. Once the kinetic energy of electrons will become
+comparable to Coulomb repulsion energy, the current can flow. Thus, at a certain
+sufficiently-high temperature, Mott insulator will undergo a transition to a
+metallic state. Similar transitions can be envisioned as a function of doping,
+which likewise can increase electron concentration and thus kinetic Fermi energy,
+or pressure, which can reduce lattice constant $a$ and, as a result, broaden the
+band and raise Fermi energy again.
+
+Therefore, MIT in this picture takes place essentially as a function of
+free-electron concentration $n$, at a certain critical value $n_C$. External
+parameters which can drive $n$ to this value of $n_C$ can be temperature, pressure,
+doping, etc. Lattice transformations can also play a role too, leading to changes
+in $n$.
+
+The nature of a MIT in our material, \VOtwo, has been debated for many years. The
+latest opinion shared by the majority of workers in the field is that it is
+essentially a Mott transition as described above, and not a result of a lattice
+transformation. Instead, it is believed that lattice transformation itself is the
+secondary effect from an electronic Mott transition.
+
+\subsubsection{MIT in \VOtwo}
+
+The MIT in \VOtwo\ was discovered in 1959, and extensively studied ever since. As
+a function of temperature it takes place at
+$T_C = \SI{340}{\kelvin} = \SI{67}{\degreeCelsius}$ (transition is sharp in single
+crystals~\cite{ref:bergland} but broad in polycrystalline
+samples~\cite{ref:gurvitch}; you will measure it in thin films of \VOtwo\ which
+exhibit a fairly broad transition). It is a first-order transition characterized
+by latent heat, density change, and lattice symmetry change, as well as by a
+dramatic change in resistivity. We have no way of detecting aspects of a
+transition other than resistivity in this lab.
+
+You will measure resistance as a function of temperature. In
+Figure~\ref{fig:a5f5} we show an example of such a measurement taken from
+Ref.~\cite{ref:gurvitch}, performed on a \SI{95}{\nano\metre} film of \VOtwo. Your
+measurement will be different, as different films exhibit a somewhat different
+behavior; for example, the ratio of resistance just below the transition to
+resistance above the transition may be quite different in different samples. The
+overall features, however, are similar.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.8\linewidth]{fig05-vo2-hysteresis.png}{%
+    Graph of sheet resistance in ohms, on a logarithmic vertical axis from ten
+    cubed to ten to the sixth, against temperature in degrees Celsius from 20 to
+    100 on the horizontal axis. Five nearly overlapping hysteresis loops are
+    plotted, one for each temperature ramp rate of 20, 10, 5, 1 and 0.1 degrees
+    Celsius per minute. Each loop falls from about one megohm at room temperature
+    to about 600 ohms above 85 degrees. The cooling branch, marked with a downward
+    arrow, drops steeply near 75 degrees; the heating branch, marked with an
+    upward arrow, drops steeply near 60 degrees, so the loop encloses roughly 15
+    degrees of hysteresis and spans about two and a half decades in resistance. An
+    inset plots the absolute temperature shift, from zero to about 0.65 degrees,
+    against ramp rate from 0 to 20 degrees per minute at a fixed temperature of 75
+    degrees Celsius; the shift rises steadily with ramp rate.}
+  \caption{An example of a hysteresis loop in $R(T)$ measured on a
+    \SI{95}{\nano\metre} film of \VOtwo\ deposited by pulsed laser deposition
+    (PLD), from Ref.~\cite{ref:gurvitch}. The figure shows several loops taken at
+    different rates of temperature increase and decrease (temperature ramp rates);
+    the upper inset gives a symbol key for the different ramps. The lower inset
+    shows temperature shifts $\Delta T$ for different ramps. These are systematic
+    errors in measuring temperature. Although on the logarithmic scale of the
+    picture all these loops essentially overlap, there is a temperature shift of up
+    to \SI{0.6}{\degreeCelsius} for the fastest ramp compared with the slowest.
+    \textbf{Note that you will have to worry about such ramp rates and temperature
+    shifts in your experiment.}}
+  \label{fig:a5f5}
+\end{figure}
+
+The transition, as is typical of all first-order transitions (see
+Section~\ref{sec:landau}), involves formation of a mixed-state, in which there are
+domains of metallic phase and domains of semiconducting phase. This is discussed
+in greater detail in Section~\ref{sec:mixedstate}. The transition develops
+differently depending on the temperature increasing or decreasing --- there is
+substantial hysteresis.
+
+As the temperature increases from room temperature (\SI{25}{\degreeCelsius}),
+resistivity will first decrease because our material is a semiconductor. But at
+some temperature, which is going to be close to the
+$T_C = \SI{67}{\degreeCelsius}$, metallic-phase domains will appear in an
+otherwise semiconducting material, and resistivity will start to decrease
+faster. Examination of
+Figure~\ref{fig:a5f5}, which is plotted on a logarithmic scale in resistance,
+suggests that the first deviation from semiconducting behavior indeed takes place
+at about \SI{67}{\degreeCelsius}. The fraction of metallic domains grows with
+increasing $T$, and at some point a global metallic cluster connects the voltage
+leads on a sample; as a result all remaining semiconducting domains will be
+shorted out, and resistivity will drop to its metallic value. This is the result
+of the percolation transition~\cite{ref:percolation}, which, of course, is made
+possible by the appearance and growth of those metallic domains.
+
+\notebox{Question}{If --- for simplicity --- we would imagine that resistivity of a
+semiconducting phase is infinitely greater than that of a metallic phase, where, at
+what temperature on the curve in Figure~\ref{fig:a5f5}, would be the point at which
+a global metallic cluster is forming? This would be the point of a percolation
+transition. Read at least some of Ref.~\cite{ref:percolation} and briefly discuss
+percolation physics in your report. At what fraction of metal phase is percolation
+transition expected to take place in a 2D (thin film) system?}
+
+If the temperature will be now lowered from about \SI{90}{\degreeCelsius} back to
+\SI{25}{\degreeCelsius}, the process will reverse, but with substantial hysteresis.
+All of this is shown in Figure~\ref{fig:a5f5}. The transition, as can be seen,
+spans about 2.5 orders of magnitude in resistance. This measurement was performed
+on a \VOtwo\ film; in single crystals resistance can change by 5 (!) orders of
+magnitude, and transition is quite sharp, with hysteresis of only about 1--2
+degrees~\cite{ref:bergland}.
+
+\subsubsection{Development of a mixed state and hysteresis in
+               \VOtwo}\label{sec:mixedstate}
+
+\begin{quote}\small
+The text below is taken from Ref.~\cite{ref:gurvitch}, which has been slightly
+edited here. In this text you will find a qualitative explanation for the
+appearance of the coercive temperature $T^{*}$ and of hysteresis, which was
+advanced by the authors of Ref.~\cite{ref:gurvitch}, primarily by Professor Serge
+Luryi (Chair, ECE Department, Stony Brook). Other explanations of the same
+phenomena were given by different authors, and they can be found in the
+literature~\cite{ref:lanskaya}.
+
+The major issue in dispute here is whether each domain exhibits hysteresis on its
+own, or whether hysteresis is a collective property of the whole system, arising,
+as argued here, as a result of the boundary energy ``cost''. Phases S and M refer
+to semiconducting and metallic phases. At the end there is a discussion of a
+phenomenon called \emph{non-hysteretic branches}, which you can observe if you do
+appropriate measurements on your sample in this lab. Talk to the professor in
+charge of this experiment if you want to explore this phenomenon.
+\end{quote}
+
+At a given temperature $T$ inside the major hysteretic loop, some parts of the film
+have $T_C(x,y) < T$ and others $T_C(x,y) > T$. Here $x$, $y$ are coordinates of a
+given location in a film. In the first approximation, the boundary wall between
+the S and M phases, at any given temperature $T$, is determined by the condition
+$T_C(x,y) = T$. In this approximation, the wall is highly irregular and its
+ruggedness corresponds to the scale at which one can define the local $T_C(x,y)$,
+i.e.\ to the characteristic length scale of the nanoscopic phase domains. On
+closer inspection, however, we need a refinement that takes into account the
+\emph{boundary energy}, associated with the phase domain wall itself. The boundary
+energy is positive and to minimize its contribution to the free energy the domain
+walls are relatively smooth.
+
+Let us examine the process of boundary motion. For concreteness, let us consider
+the heating branch. Below the percolation transition, M phase resembles lakes in
+the S phase mainland. With raising temperature the area of the M phase increases,
+lakes grow in size. When a boundary of a given lake is far from the other lakes,
+infinitesimal $\pm\delta T$ changes boundary length by infinitesimal amount, and
+the lake area by $\pm\delta A_M$. In other words, when
+the lakes are sufficiently separated, we envision a continuous, reversible,
+hysteresis-free process of $\mathrm{M}\leftrightarrow\mathrm{S}$ area
+redistribution, with neighboring configurations differing microscopically.
+
+Let us now look at the formation of a link between two neighboring regions, which
+is the elementary step in the topological evolution of a global percolation
+picture. Let us focus on two metallic lakes that are about to merge. Since the
+boundary is smooth, at some temperature the distance between the lakes becomes
+smaller than the radius of curvature of either lake at the point they will
+eventually touch. Therefore, at some $T$ the following two configurations will have
+equal energies: one comprising two disconnected M phase lakes that are near
+touching, but not quite, and the other with a finite link formed
+(Figures~\ref{fig:a5f6}(a) and~\ref{fig:a5f6}(b) respectively).
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.72\linewidth]{fig-a5-lakes}{%
+    Four schematic panels showing a boundary between the semiconducting and
+    metallic phases, with the metallic phase shaded. In panel (a) two shaded
+    regions approach each other from left and right, their smooth curved
+    boundaries almost touching but still separated. In panel (b) the shaded region
+    instead runs across the picture as an upper and a lower band joined by a
+    narrow neck, that is, a link has formed. Panels (c) and (d), drawn for the
+    higher temperature T-zero equals T plus T-star, repeat the same pair of
+    configurations but with the lakes grown: in (c) the two boundaries now touch at
+    a single point, and in (d) the link between the upper and lower shaded bands
+    has become wide.}
+  \caption{Semiconductor--metal boundary; the metallic phase is shaded. The top
+    row, (a) and (b), corresponds to temperature $T$, and the bottom row, (c) and
+    (d), to a higher temperature $T_0 = T + T^{*}$.}
+  \label{fig:a5f6}
+\end{figure}
+
+Both configurations are characterized by equal boundary lengths and therefore have
+equal free energy. The actual transition forming a local link, however, does not
+occur at that temperature because of an immense \emph{kinetic} barrier
+(meaning: it takes significant atomic rearrangement) between these two
+\emph{macroscopically} different configurations. The transition occurs at a higher
+$T_0 = T + T^{*}$, when it is actually forced, i.e.\ when the two phases touch at a
+point. Here $T^{*}$ is the coercive temperature. In this picture the coercive
+temperature arises as a result of having a boundary between different phases; it
+does not pre-exist intrinsically within each domain. We associate the steep slopes
+of the major loop with the quasi-continuous formation of such links, i.e.\ with
+local topological changes, specifically with the merger of metallic lakes on the
+heating branch (HB) and of semiconductor lakes on the cooling branch (CB). Near the
+major loop ends $T_S$ and $T_M$ the global map consists of widely-separated M and S
+lakes, respectively. In these regions we expect to see non-hysteretic behavior, as
+was indeed observed.
+
+\paragraph{Non-hysteretic branches (NHB).}
+Consider now a small \emph{backward} excursion from $T_0$ on the HB. As the
+temperature decreases, some of the M-phase recedes and the S-phase grows, changing
+the geometry of the global two-phase map. However, topologically, the last formed
+M-link does not disappear immediately for the same kinetic reason. One has two S
+regions that need to touch in order to wipe out the M-link. It takes a backward
+excursion of amplitude $\Delta T^{*}$ to establish an S-link and thus disconnect
+the last M-link. So long as we are within $\Delta T^{*}$, i.e.\ stay on the same
+NHB, the area of S and M domains changes continuously, but the topology is stable
+and no new links are formed. Within the range of that stable or frozen topology,
+$\Delta T^{*} = \Delta T_{\mathrm{NHB}}$, the resistivity of NHB will be
+single-valued and its $T$-dependence will be controlled by the percolating
+semiconductor phase. This explains the appearance of non-hysteretic
+branches and why they have semiconducting slopes.
+
+\subsection{\BTO\ and ferroelectricity}
+
+Ferroelectric materials~\cite{ref:gittrman,ref:papon,ref:jona,ref:blakemore,ref:umich}
+exhibit spontaneous electric polarization, the separation of the center of positive
+and negative electric charges. Recall the Landau theory conclusion discussed at the
+end of Section~\ref{sec:landau}, that the free energy will have a double minimum
+below $T_C$: in a ferroelectric state the electric polarization, which is the order
+parameter, is non-zero. This creates an excess positive charge on one side of the
+material, and negative charge on the other side. The polarization can be reversed
+by the application of an appropriate electric field: order parameter can be
+flipped from one minimum to the other with E-field. As we said above,
+ferroelectricity is named in analogy with ferromagnetism, which occurs in such
+materials as iron. The prefix \emph{ferro}, meaning iron, was used to describe the
+property despite the fact that most ferroelectric materials do not contain iron.
+
+In most ferroelectric materials the ferroelectricity disappears at high enough
+temperature, and the material turns into a regular dielectric. This state is called
+the \emph{paraelectric}, in analogy to paramagnets. Most of the known transitions from
+the ferroelectric to the paraelectric state are second-order; the transition
+temperature is called the Curie temperature, in full analogy with the ferromagnetic
+transition. (Note: some ferroelectric materials melt before reaching this
+temperature.) In the paraelectric state these materials have very large dielectric
+constant: the temperature dependent dielectric constant $\varepsilon(T)$ increases
+as the temperature approaches the Curie temperature $T_C$, and shows a divergent
+behavior at $T = T_C$. We also note that near $T_C$ the dielectric constant is
+essentially equal to the susceptibility, a quantity you will find in many references
+on ferroelectricity. The relation between these two quantities is given in the next
+section.
+
+Again, recall our --- or rather, Landau's theory's --- prediction made in
+Section~\ref{sec:landau}: we predicted very large polarizability near $T_C$, on both
+sides of a transition. Large polarizability means that induced charges in a
+dielectric will appear easily, compensating free charges on a capacitor plate ---
+in other words, that relative dielectric constant $k$ will be high.
+
+Ferroelectricity is often accompanied by significant \emph{piezoelectricity}
+(developing electric polarization under mechanical stress) and
+\emph{pyroelectricity} (developing electric polarization when heated). Referring to
+our favorite (by now) Landau theory, we see that this is perfectly understandable:
+the system wants to fall into an energy minimum, and just about any outside stimulus
+will induce it to do so.
+
+Ferroelectric materials have many applications, such as multilayer capacitors, gate
+dielectrics and waveguide modulators. Pyroelectricity is used in infrared detectors
+and other sensors. Piezoelectricity is widely applied in microphones, speakers and
+cigarette lighters, and in scientific applications such as the scanning tunneling
+microscope.
+
+In this lab you will be studying a well-known ferroelectric material, an oxide of Ba
+and Ti, \BTO~\cite{ref:jona,ref:blakemore,ref:doitpoms}. We note that oxides of this
+type are important and well studied in solid state physics and materials science,
+and not only because of their ferroelectric properties. These oxides all have a
+chemical formula of the type ABO\textsubscript{3}, where A is a metal with valency 1
+or 2, either A\textsuperscript{+} or A\textsuperscript{2+}; B is a metal with
+valency 4 or 5, either B\textsuperscript{4+} or B\textsuperscript{5+}; and
+O\textsuperscript{2-} is oxygen. The crystal structure of these materials is called
+the \emph{perovskite} structure, after the naturally occurring mineral
+CaTiO\textsubscript{3}, which itself is called perovskite. Other examples of
+perovskite ferroelectrics include KNbO\textsubscript{3}, PbTiO\textsubscript{3},
+KTaO\textsubscript{3} and
+PbZr\textsubscript{x}Ti\textsubscript{1-x}O\textsubscript{3} (the latter also called
+PZT).
+
+When talking about crystal structure, we often show one chemical-formula unit of
+this structure, called the \emph{unit cell}. The whole macroscopic (\emph{bulk}, as
+it is often called) crystal of a material can be built by stacking unit cells in all
+three spatial dimensions.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.85\linewidth]{fig07-perovskite.png}{%
+    Two ball-and-stick drawings of a cubic unit cell. In the left-hand cell,
+    labeled Perovskites, eight large A atoms sit at the corners of the cube, small
+    O atoms sit at the centers of the faces, and a single large dark B atom sits
+    exactly at the body center. In the right-hand cell, labeled barium titanate,
+    the same arrangement is shown with barium at the corners, oxygen on the faces
+    and titanium at the center, but the central titanium atom and the surrounding
+    oxygen atoms are displaced slightly along the vertical axis in opposite
+    directions, so the cell is no longer symmetric.}
+  \caption{(a) Unit cell of a perovskite structure. (b) Ferroelectric distortion in
+           \BTO.}
+  \label{fig:a5f7}
+\end{figure}
+
+Below a certain temperature $T_C$, some of the perovskites are characterized by the
+appearance of a \emph{lattice distortion} which changes their structure from cubic,
+as in Figure~\ref{fig:a5f7}(a), to a less symmetrical one (the structure which
+appears below $T_C$ in our material is called \emph{tetragonal}), as in
+Figure~\ref{fig:a5f7}(b). Although all of the atoms constituting the unit cell move
+at least somewhat in this distortion, a rough picture of what happens can be
+obtained if you will visualize the central Ti\textsuperscript{4+} ion shifting
+within the unit cell by a small distance shown to be downwards in
+Figure~\ref{fig:a5f7}(b);
+simultaneously, the four O\textsuperscript{2-} ions surrounding
+Ti\textsuperscript{4+} also shift, but in the opposite direction, i.e.\ upwards in
+Figure~\ref{fig:a5f7}(b). All these shifts are quite small in comparison to the
+unit cell side $a$; they are somewhat exaggerated in the picture above.
+
+Note that the symmetry of the unit cell is reduced below the transition; a certain
+part of the total symmetry which existed above the transition is \emph{broken} below
+the transition, as was discussed in Section~\ref{sec:landau}.
+
+When the Ti ion is in the center of the cube, the charges are balanced, and the
+polarization is zero. If the Ti and oxygen ions move as illustrated in
+Figure~\ref{fig:a5f7}(b) and in Figure~\ref{fig:a5f8}, a finite \emph{electric
+dipole moment} $p$ appears in each of the unit cells, and the material becomes
+polarized; this polarization can be reversed with an application of an external
+field, as shown in Figure~\ref{fig:a5f8}.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.9\linewidth]{fig08-batio3-cells.png}{%
+    Two three-dimensional ball-and-stick unit cells of barium titanate drawn side by
+    side, with a key at the right identifying large red spheres as barium, medium
+    purple spheres as oxygen and a small green sphere as titanium. Beside the
+    left-hand cell a heavy black arrow labeled P-minus points downward, and the
+    green titanium atom sits below the center of the cell. Beside the right-hand
+    cell a heavy black arrow labeled P-plus points upward, and the titanium atom
+    sits above the center.}
+  \caption{Unit cells of \BTO\ with the (green) Ti ion in two off-center positions:
+    with $p$ pointing up (called $p^{+}$ here) and with $p$ pointing down (called
+    $p^{-}$ here). Below $T_C$, the dipole moments $p^{+}$ and $p^{-}$ appear
+    spontaneously without an external field. If there is an electric field $E$, for
+    example pointing up, then $p^{+}$ will have lower energy than $p^{-}$.}
+  \label{fig:a5f8}
+\end{figure}
+
+In this lab we will use a temperature-controlled environment to study the dielectric
+constant as the sample undergoes the phase transition, and we will search for signs
+of ``divergence'' in the dielectric constant. We will also attempt to extract some
+microscopic information from these measurements, as described in the main text of
+this write-up and also below.
+
+\notebox{A note on terminology and notation}{The dielectric properties of any
+material depend on the frequency at which the properties are measured. This is
+described by the dielectric function $\varepsilon(\omega)$. In our case the
+properties depend on the temperature as well, and therefore we have a two-variable
+function $\varepsilon(\omega,T)$. We use the term ``temperature-dependent dielectric
+constant'' to represent the low-frequency limit of the dielectric function,
+$\varepsilon(T) = \varepsilon(\omega = 0, T)$. The frequencies applied in our studies
+(\SI{25}{\kilo\hertz}) are actually in this low frequency limit. Furthermore, we
+will distinguish between dielectric function $\varepsilon(T)$ and dielectric
+constant $k(T)$, which is just the relative dielectric function
+$k = \varepsilon(T)/\varepsilon_0$. We may call it a ``constant'', following the
+normal usage, but in our case, when studying a ferroelectric, we will recognize
+that it is a temperature-dependent quantity.}
+
+\subsection{Paraelectric to ferroelectric transition; Curie--Weiss law}
+
+\BTO\ undergoes a second-order paraelectric to ferroelectric phase transition upon
+cooling through $T_C = \SI{120}{\degreeCelsius}$. Above that temperature it has
+cubic structure and no local dipole moment; below it transforms to a new,
+slightly-non-cubic, tetragonal structure in which Ti ion and oxygen ions move in
+opposite directions creating a local dipole moment in each unit cell. In other
+words, each unit cell becomes electrically polarized and, below $T_C$, these local
+dipoles align to form a macroscopic polarization $P$.
+
+As was stated in Section~\ref{sec:landau}, electric susceptibility is defined as
+$\chi_E = \mathrm{d}P/\mathrm{d}E$, or, when $P$ is linear with $E$, as
+$\chi_E = P/E$. We mentioned in Section~\ref{sec:landau} that Landau theory predicts
+that in the vicinity of a phase transition $\chi_E$ is large (in fact, diverging at
+$T = T_C$) and that it follows Curie--Weiss Law
+\begin{equation}\label{eq:cw}
+  \chi_E = \frac{C_{CW}}{T - T_C}.
+\end{equation}
+The relationship between $\chi_E$ and the dielectric constant $\varepsilon$ is given
+by $\varepsilon = \chi_E + 1$~\cite{ref:lockin,ref:accircuits,ref:papon,ref:blakemore}.
+Near the transition $\chi_E$ is large, and so, to a very good approximation,
+$\varepsilon = \chi_E$. Therefore Curie--Weiss law~\eqref{eq:cw} can be re-written
+for the relative dielectric constant as
+\begin{equation}\label{eq:cwk}
+  k = \frac{C_{CW}}{\varepsilon_0\,(T - T_C)}.
+\end{equation}
+
+Again, to clarify the meaning of symbols and to avoid confusion, in this equation
+$k$ is a \emph{relative} dielectric constant, in other words, it is equal to the
+ratio of capacitance with a dielectric to the capacitance with the same geometry but
+with vacuum between the plates, $k = C/C_0$. As was mentioned above, although it is
+called a ``constant'', it is not a constant with respect to temperature. The formula
+for a parallel-plate capacitance with vacuum (or air) between the plates is
+$C_0 = \varepsilon_0 A/d$, where $A$ is one plate's area, and $d$ is the distance
+between the plates. The formula for the capacitance with dielectric is
+$C = \varepsilon A/d = \varepsilon_0 k A/d$. Here $\varepsilon_0$, the permittivity
+of free space, is equal to
+\SI{8.85e-12}{\coulomb\squared\per\newton\per\metre} $=$
+\SI{8.85e-12}{\farad\per\metre}.
+
+In Section~\ref{sec:landau} we saw that Landau theory predicts this law both above
+and below the transition: we had, from~\eqref{eq:landauchi},
+$\chi_E = C_{CW1}/(T_C - T)$ for $T < T_C$ and $\chi_E = C_{CW2}/(T - T_C)$ for
+$T > T_C$, with $C_{CW1} = 1/(2a)$ and $C_{CW2} = 1/(4a)$, $a$ being expansion
+coefficient. This law is indeed observed in the vicinity of ferromagnetic and
+ferroelectric transitions, where experimental data mostly concentrates on
+paramagnetic or paraelectric states at $T > T_C$. You will have a chance to see it in
+your own measurements, and even to test it on both sides of the transition.
+
+\paragraph{Problems.}
+As was already discussed in the main text of this write-up, your sample may have a
+somewhat irregular shape, so you will at best be able to estimate $k$ perhaps within
+a factor of 2. Additionally, you are measuring a ceramic sample, which will tend to
+underestimate intrinsic $k$ in your material, as was discussed in
+Section~\ref{sec:advice}. The latter problem can be avoided or corrected, at least in
+part, by making a correction as described in that section (let us call this a
+\emph{capacitance correction}). You want to use your measured $C$ values to calculate
+the value of $C_{BTO}$, which is the intrinsic capacitance of your material. Thus
+when we will be talking about your capacitance data, we will assume that you made the
+suggested capacitance correction. The $k$ values which you will be using in the $k$
+vs.\ $T$ data should be using this correction.
+
+Keeping in mind these caveats, by fitting your corrected $k$ vs.\ $T$ data to
+formula~\eqref{eq:cwk} you will be able to find (or at least to estimate) the value
+of $C_{CW}$. You may, for example, plot $1/k$ vs.\ $T - T_C$ and find the slope of
+that line, which is $1/C_{CW}$. You will be using your measured $T_C$ here, which is
+easy to identify as the temperature of the sharp cusp in your data.
+
+\notebox{Ramp slowly}{You want to make sure that your temperature ramp is slow enough
+to trust your $T_C$ measurement.}
+
+The temperature interval of your data above $T_C$ will be rather narrow, but you will
+be able to estimate $C_{CW}$. It will be interesting to also fit the data below the
+transition, to see if you can verify the theoretical factor of two difference between
+$C_{CW1}$ and $C_{CW2}$ (see Section~\ref{sec:landau}). As we said above, the largest
+uncertainties in the value of $C_{CW}$ will come from not knowing the capacitor
+geometry well, and from measuring a ceramic sample (although the latter may be in
+part remedied by the capacitance correction), rather than from your fits to a
+Curie--Weiss law.
+
+Why do we want to find $C_{CW}$? Because there is a theoretical connection between
+the value of $C_{CW}$ and microscopic parameters, and we will try to obtain it in the
+next section.
+
+\subsection{Derivation of \texorpdfstring{$C_{CW}$}{C-CW} in terms of a microscopic
+            dipole moment}\label{sec:ccw}
+
+In a ferromagnetic material microscopic magnetic moments $\mu$ (fundamentally,
+spins) are always present; the difference between paramagnetic and ferromagnetic
+state is merely in the organization, alignment or misalignment of these pre-existing
+moments. In a paraelectric material, a unit cell is not carrying its $p$ in the same
+way as an atom carries its spin; in fact the microscopic electric dipole moment $p$
+above the $T_C$ should not exist. The lattice symmetry changes at $T_C$, and above
+$T_C$ we have a cubic cell with Ti in the center, so that microscopic $p = 0$.
+
+Here we wish to make the following comment: Landau's potential above $T_C$
+(Figure~\ref{fig:a5f3}(a)) has only one minimum, and this may suggest that all
+electrical dipoles $p$ and magnetic moments $\mu$ must disappear above $T_C$. Yet we
+know that individual spins do not disappear at $T > T_C$ in a paramagnetic state.
+Thus we realize that the notion of order parameter $m$ (in our case, polarization
+$P$) is macroscopic in nature; it does not tell us anything about the existence or
+non-existence of microscopic $p$'s above the $T_C$. Our conclusion about
+local $p = 0$ in a paraelectric state in \BTO\ is based on the known structure and
+symmetry of its unit cell~\cite{ref:jona,ref:blakemore} and not on Landau's theory.
+
+Another difference between magnetic and electric cases is in that quantum mechanics
+imposes certain requirements on the quantum numbers and energy levels in the magnetic
+case: as is well-known, a degenerate single energy level in $B = 0$ field will split
+into two levels for spin one-half electrons in $B \ne 0$
+field~\cite{ref:papon,ref:landau1}. This may not be the same in case of $p$'s and
+$E$-field: there is no quantum number associated with $p$. Yet we will also use the
+same two-level picture here. In other words, we will assume that microscopic dipole
+$p$ can point either along the $E$ field or against it, as shown in
+Figure~\ref{fig:a5f8}, and will ignore its other possible orientations with respect
+to the direction of $E$.
+
+The analysis of the ferromagnetic case can be found in a number of books, e.g.\ in
+Refs.~\cite{ref:gittrman,ref:papon,ref:blakemore,ref:ashcroft}. Our derivation here
+is similar to these treatments, but somewhat simplified.
+
+Let us therefore consider a material in a ferroelectric state, at $T < T_C$, where we
+can assume that one dipole moment $p$ exists in each unit cell of volume $a^3$; thus
+in \SI{1}{\cubic\metre} there are $N = 1/a^3$ microscopic dipoles $p$. Let us roughly
+estimate the value of a microscopic dipole moment in \BTO. The ``generic'' dipole is
+shown in Figure~\ref{fig:dipole}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.3\linewidth]{fig-a5-dipole}{%
+    Diagram of an electric dipole: a circle containing minus q sits above a circle
+    containing plus q, joined by a straight line. A vertical double-headed arrow
+    beside the line marks the separation x, and the dipole moment is given as p
+    equals q times x.}
+  \caption{A generic electric dipole, $p = qx$.}
+  \label{fig:dipole}
+\end{figure}
+
+It consists of two opposite electric charges, $-q$ and $+q$, separated by a distance
+$x$; the formula is $p = qx$. Whatever ionic displacements happen inside the unit cell
+of a ferroelectric, and whatever charge imbalance they will create locally, the total
+charge cannot change, and the unit cell must remain neutral. Thus our effective
+electrical dipole which represents this polarization, must be neutral as well, with
+$-q$ and $+q$ adding to zero. In this formula we treat $q$ as some effective electric
+charge, which, we recognize, must be of the order of electron charge $e$, or, at
+most, it can be several times larger than $e$. Indeed, we know that in \BTO, Ti ion
+carries charge $+4$, and Ba ion carries charge $+2$, while three oxygen ions carry
+charge $-6$, with the sum of all these charges being, of course, zero. We will
+therefore take $q = 6e$ in our effective dipole.
+
+The second quantity in the dipole formula is $x$, an effective displacement which
+represents charge-weighted displacements of all of the charges in the unit cell. In
+\BTO, in the first, rough approximation, we can think of $x$ as a displacement of a
+Ti\textsuperscript{4+} ion, which in a cubic state resides in the middle of a cell
+and shifts up or down (Figure~\ref{fig:a5f8}) in a ferroelectric state. Therefore,
+the absolute upper limit on the value of $x$ is $a/2$, half size of the unit
+cell. In reality we expect $x$ to be much smaller than this upper limit. The
+lower limit is hard to predict; it can be a small fraction of $a$. So we expect to
+find $0 < x < a/2$. The length of a cubic unit cell side in \BTO\ is
+$a = \SI{0.4}{\nano\metre}$~\cite{ref:jona,ref:blakemore,ref:umich}, which gives us
+$0 < x < \SI{0.2}{\nano\metre}$.
+
+Thus we have a rough upper-limit estimate
+\begin{equation}
+  p_{\max} = q\,x_{\max} = 6e\,x_{\max}
+           \approx (\num{9.6e-19})\times(\num{0.2e-9})
+           \approx \SI{2e-28}{\coulomb\metre}.
+\end{equation}
+
+We also know that in the electric field $E$, potential energy of $p$ is
+$U = -(\mathbf{p}\cdot\mathbf{E})$, i.e.\ it changes from the minimum value $(-pE)$
+for $p$ being parallel to $E$ to the maximum value $(+pE)$ for $p$ being
+anti-parallel to $E$. The thermal energy at room temperature is
+$k_BT = \num{1.38e-23}\times 300 = \SI{4.1e-21}{\joule}$. We see that it will take
+electric field of \SI{2e7}{\volt\per\metre} to make maximum dipole energy equal to
+thermal energy. We conclude that for any reasonable value of electric field $E$,
+$U \ll k_BT$.
+
+Now, near the transition, where macroscopic polarization $P$ (the order parameter) is
+small, in the absence of an external field $E$, all microscopic $p$'s have the same
+(zero) energy. Once the external field $E$ is applied, this energy will split into two
+levels, one above and one below the initial level, the energy difference between these
+two levels being $\Delta U = pE - (-pE) = 2pE$, as shown in
+Figure~\ref{fig:a5levels}.
+
+\begin{figure}[htbp]
+  \centering
+  \tikzfig[width=0.85\linewidth]{fig-a5-level-splitting}{%
+    Energy level diagram. A vertical axis is labeled dipole energy. On the left, a
+    single horizontal level carries all N dipoles at zero field. Moving to the right,
+    this level splits into two: an upper level, whose population is N over two times
+    the exponential of minus delta U over two k-B T, and a lower level, whose
+    population is N over two times the exponential of plus delta U over two k-B T.
+    Small arrows labeled p on each level show the two dipole orientations. A vertical
+    double-headed arrow between the levels is labeled delta U equals 2 p E, and a
+    heavy downward arrow at the right marks the applied electric field E.}
+  \caption{Splitting of the dipole energy level in an applied electric field.}
+  \label{fig:a5levels}
+\end{figure}
+
+We still have $\Delta U \ll k_BT$, which means that there will be approximately $N/2$
+dipoles on each of the two energy levels. Nonetheless, the small $\Delta U$ is
+responsible for the population difference between the two levels: the lower level will
+have
+\begin{equation}
+  N_1 = \frac{N}{2}\exp\!\left(\frac{\Delta U}{2k_BT}\right)
+      \approx \frac{N}{2}\left(1 + \frac{\Delta U}{2k_BT}\right)
+\end{equation}
+dipoles, while the upper level will have
+\begin{equation}
+  N_2 = \frac{N}{2}\exp\!\left(-\frac{\Delta U}{2k_BT}\right)
+      \approx \frac{N}{2}\left(1 - \frac{\Delta U}{2k_BT}\right)
+\end{equation}
+dipoles, so that $N_1 > N_2$. The total number of dipoles is of course still
+$N_1 + N_2 = N$. The relatively small difference $N_1 - N_2$ is what is responsible
+for macroscopic polarization $P$. So we have
+\begin{equation}
+  N_1 - N_2 = \frac{N}{2}\,\frac{\Delta U}{k_BT}
+            = \frac{N}{2}\,\frac{2pE}{k_BT}
+            = \frac{NpE}{k_BT},
+\end{equation}
+Macroscopic polarization is
+\begin{equation}
+  P = p\,(N_1 - N_2) = \frac{N p^{2} E}{k_B T}.
+\end{equation}
+Finally we will get for susceptibility $\chi_E = P/E$, and for relative dielectric
+constant,
+\begin{equation}
+  \chi_E = \frac{N p^{2}/k_B}{T},
+  \qquad
+  k = \frac{N p^{2}/\varepsilon_0 k_B}{T}.
+\end{equation}
+
+The one difference between the last formula and formula~\eqref{eq:cwk} is in the
+temperature dependence: while in~\eqref{eq:cwk} we had $1/(T - T_C)$ (or, below the
+transition, $T_C - T$), here we got simply $1/T$. But we did not develop in this
+section a full theory of a phase transition; we just assumed that transition takes
+place at some temperature; in fact, we could assume that it took place at zero
+temperature; then $T - T_C$ would be the same as $T_C$. So we should not be very
+surprised that we did not get $1/(T - T_C)$; the correct temperature dependence was
+addressed in Landau theory in Section~\ref{sec:landau}. You can also find a
+derivation of these formulas with the correct $1/(T - T_C)$ dependence in
+Ref.~\cite{ref:papon}.
+
+So we see that we should identify the numerator with $C_{CW}$; by doing so we obtain
+\begin{equation}\label{eq:ccw}
+  C_{CW} = \frac{N p^{2}}{\varepsilon_0 k_B},
+\end{equation}
+or, in terms of a microscopic dipole moment $p$,
+\begin{equation}\label{eq:pfromccw}
+  p = \sqrt{\frac{\varepsilon_0 k_B C_{CW}}{N}},
+\end{equation}
+where $N = 1/a^3$ and $C_{CW}$ is a measured quantity which can be obtained from
+fitting your $k$ vs.\ $T$ data to the Curie--Weiss Law.
+
+\notebox{As an exercise, check the dimensionality of $C_{CW}$ in~\eqref{eq:ccw}}{It
+should come out to be K (kelvin), so that $k$ in formula~\eqref{eq:cwk} will indeed
+be a \emph{relative} quantity without units.}
+
+\notebox{What you should calculate}{You should find $C_{CW}$ derived from your data
+(again, we assume that you applied the capacitance correction), substitute it in
+formula~\eqref{eq:pfromccw}, and calculate $p$, and then compare it to our
+upper-limit estimate $p_{\max}$ for this quantity. Once you will know $p$, you can
+calculate $x$, the effective dipole displacement. This last value can be compared to
+the literature: indeed, transition-induced displacements of various atoms in the unit
+cell have been studied by X-rays. You should also find in the literature the value of
+$C_{CW}$ for single-crystalline \BTO, and, using it in formula~\eqref{eq:pfromccw},
+calculate again $p$ and $x$. This time the values will be more realistic, as you will
+be using the correct, intrinsic value of $C_{CW}$. Compare the results with your own,
+comment on discrepancies.}
+
+\clearpage
+% =============================================================================
+\begin{thebibliography}{99}
+\addcontentsline{toc}{section}{References}
+% =============================================================================
+
+\bibitem{ref:lockin}
+  \emph{Lock-in amplifier}, Wikipedia.
+  \url{http://en.wikipedia.org/wiki/Lock-in_amplifier}
+  --- about lock-in amplifiers; at the end of this article you will find
+  references to more lock-in tutorials.
+
+\bibitem{ref:accircuits}
+  \emph{AC circuits}, School of Physics, University of New South Wales.
+  \url{http://www.animations.physics.unsw.edu.au/jw/AC.html}
+  --- a tutorial on AC circuits, with animations.
+
+\bibitem{ref:pid}
+  \emph{PID controller}, Wikipedia.
+  \url{http://en.wikipedia.org/wiki/PID_controller}
+  --- about temperature control.
+
+\bibitem{ref:gittrman}
+  M.~Gitterman and V.~Halpern,
+  \emph{Phase Transitions: A Brief Account with Modern Applications},
+  World Scientific (2004).
+
+\bibitem{ref:papon}
+  P.~Papon, J.~Leblond and P.~H.~E.~Meijer,
+  \emph{The Physics of Phase Transitions}, Springer (2001).
+
+\bibitem{ref:landau1}
+  \emph{Landau theory of phase transitions}, lecture notes, University of
+  Helsinki.
+  \url{http://theory.physics.helsinki.fi/~stafyi/SPI06chap10.pdf}
+
+\bibitem{ref:landau2}
+  \emph{Second order phase transitions}, P.~Hadley, TU Graz.
+  \url{http://lamp.tu-graz.ac.at/~hadley/ss2/landau/second_order.php}
+
+\bibitem{ref:dobro}
+  V.~Dobrosavljevi\'c, \emph{Introduction to Metal--Insulator Transitions}
+  (2011), arXiv:1112.6166v1.
+
+\bibitem{ref:mottbook}
+  N.~F.~Mott, \emph{Metal--Insulator Transitions},
+  Taylor \& Francis Ltd. (1974), ISBN 0-85066-079-3.
+
+\bibitem{ref:mott1949}
+  N.~F.~Mott, \emph{Proc. Phys. Soc. (London)} \textbf{A62}, 416 (1949).
+
+\bibitem{ref:jona}
+  F.~Jona and G.~Shirane, \emph{Ferroelectric Crystals},
+  Pergamon Press / The Macmillan Co. (1962).
+  A copy of the relevant pages is provided in the lab.
+
+\bibitem{ref:blakemore}
+  J.~S.~Blakemore, \emph{Solid State Physics}, 2nd edition,
+  W.~B.~Saunders Co. (1974), Chapter~5, ``Dielectric and magnetic properties of
+  solids''.
+
+\bibitem{ref:umich}
+  \emph{Phase transitions in ferroelectrics}, Advanced Lab, University of
+  Michigan.
+  \url{http://instructor.physics.lsa.umich.edu/adv-labs/Ferroelectrics/phase_transitions.pdf}
+
+\bibitem{ref:ashcroft}
+  N.~W.~Ashcroft and N.~D.~Mermin, \emph{Solid State Physics},
+  Thomson Learning, Toronto (1976).
+
+\bibitem{ref:percolation}
+  \emph{Percolation}, Chapter~13 of course notes, Clark University.
+  \url{http://physics.clarku.edu/courses/125/gtcdraft/chap13.pdf}
+
+\bibitem{ref:bergland}
+  C.~N.~Berglund and H.~J.~Guggenheim,
+  ``Electronic properties of \VOtwo\ near the semiconductor--metal transition'',
+  \emph{Phys. Rev.} \textbf{185}(3), 1022--1033 (1969).
+
+\bibitem{ref:gurvitch}
+  M.~Gurvitch, S.~Luryi, A.~Polyakov and A.~Shabalov,
+  ``Nonhysteretic phenomena in the metal--semiconductor phase-transition loop of
+  \VOtwo\ films for bolometric sensor applications'',
+  \emph{IEEE Transactions on Nanotechnology} \textbf{9}, 647--652 (2010).
+
+\bibitem{ref:lanskaya}
+  For example, see T.~G.~Lanskaya, I.~A.~Merkulov and F.~A.~Chudnovskii,
+  ``Hysteresis effects at the semiconductor--metal phase transition in vanadium
+  oxides'', \emph{Sov. Phys. Solid State} \textbf{20}(2), 193 (1978), and a
+  number of more recent papers treating hysteresis in \VOtwo.
+
+\bibitem{ref:doitpoms}
+  \emph{Ferroelectric materials: phase changes}, DoITPoMS, University of
+  Cambridge.
+  \url{http://www.doitpoms.ac.uk/tlplib/ferroelectrics/phase_changes.php}
+  --- about the structure of \BTO, with very nice graphics and illustrations.
+
+\end{thebibliography}
+
+\bigskip
+\noindent\rule{\linewidth}{0.4pt}
+
+\medskip
+\noindent\small
+Sections relating to ferroelectricity in \BTO\ were created by Laszlo Mihaly and
+in part by Michael Gurvitch; sections relating to phase-transition theory and the
+metal--insulator transition in \VOtwo\ were created by Michael Gurvitch, both in
+2012. Thanks to Xu Du, Matthew Dawber, Alexander Shabalov and Carlos Marques for
+contributions to the design and realization of the measurement and for useful
+comments.
+
+\end{document}

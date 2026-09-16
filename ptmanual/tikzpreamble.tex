@@ -1,0 +1,29 @@
+% ---------------------------------------------------------------------------
+% tikzpreamble.tex -- shared by main.tex and by every standalone in tikz/
+% ---------------------------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usepackage{circuitikz}
+\usetikzlibrary{arrows.meta,calc,positioning,decorations.pathmorphing,decorations.pathreplacing,
+                decorations.markings,patterns,angles,quotes,fit,
+                shapes.geometric,shapes.misc,backgrounds,intersections}
+
+\ctikzset{bipoles/length=0.85cm}
+\ctikzset{resistors/scale=0.85}
+\ctikzset{capacitors/scale=0.9}
+
+\tikzset{
+  wire/.style      = {line width=0.7pt},
+  dashedwire/.style= {line width=0.7pt, densely dashed},
+  term/.style      = {circle, draw, line width=0.6pt, fill=white,
+                      inner sep=0pt, minimum size=4.5pt},
+  node dot/.style  = {circle, fill=black, inner sep=0pt, minimum size=4pt},
+  boxlabel/.style  = {font=\sffamily\small},
+  annot/.style     = {font=\small, align=left},
+  phasor/.style    = {-{Stealth[length=3.2mm,width=2.2mm]}, line width=1.1pt},
+  thinphasor/.style= {-{Stealth[length=2.6mm,width=1.8mm]}, line width=0.7pt},
+  axis line/.style = {-{Stealth[length=2.6mm,width=1.8mm]}, line width=0.6pt},
+  guide/.style     = {densely dashed, line width=0.4pt, gray},
+}
+\usepackage{siunitx}

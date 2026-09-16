@@ -1,0 +1,35 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}[every node/.style={font=\small}]
+  \def\R{2.4}
+  \draw[densely dashed,gray] (0,0) circle (\R);
+  \draw[line width=0.4pt,gray] (-\R,0) -- (\R,0);
+  \draw[line width=0.4pt,gray] (0,-\R) -- (0,\R);
+
+  \coordinate (O) at (0,0);
+  \coordinate (P) at (32:\R);
+  \draw[phasor] (O) -- (P) node[anchor=south west,inner sep=2pt] {$V_0$};
+
+  % projection
+  \draw[guide] (P) -- (32:\R |- O);
+  \draw[line width=1.4pt] (O) -- (32:\R |- O);
+
+  % angle
+  \draw[line width=0.5pt] (0.6,0) arc[start angle=0,end angle=32,radius=0.6];
+  \node[font=\footnotesize] at (15:1.12) {$\omega t+\gamma$};
+
+  % rotation arrow
+  \draw[-{Stealth[length=3mm]},line width=0.7pt]
+       (2.05,1.85) arc[start angle=45,end angle=95,radius=2.9];
+  \node[annot,anchor=west] at (2.6,2.0)
+       {The phasor rotates\\ counterclockwise with $\omega$};
+
+  % callout
+  \draw[-{Stealth[length=2.6mm]},line width=0.5pt]
+       (2.5,-1.55) -- (1.3,-0.12);
+  \node[annot,anchor=north west,text width=7.2cm] at (2.4,-1.4)
+       {$V=V_0\cos(\omega t+\gamma)$: projection of $V_0$ onto the
+        horizontal direction (the real signal at the moment $t$)};
+\end{tikzpicture}
+\end{document}

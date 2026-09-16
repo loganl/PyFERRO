@@ -1,0 +1,8 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}
+  \draw[wire] (0,0) to[R=$R$] (2.2,0) to[C=$C$] (4.4,0) -- (4.4,-1.3)
+              to[sV=$V_0$] (0,-1.3) -- (0,0);
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,23 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}[every node/.style={font=\small}]
+  \draw[line width=0.5pt] (0,-1.6) -- (0,1.7);
+  \draw[line width=0.5pt] (-1.2,0) -- (5.2,0);
+  \node[anchor=south west,font=\footnotesize] at (0.15,0.6) {Out-of-phase};
+  \node[anchor=south east,font=\footnotesize] at (4.95,0.6) {In-phase};
+
+  \coordinate (O)  at (0,0);
+  \coordinate (VC) at (-14:4.0);            % V_C = V (measured)
+  \coordinate (Vx) at (4.0*cos{-14},0);
+
+  \draw[phasor] (O) -- (VC);
+  \node[anchor=north west,font=\footnotesize] at (VC) {$V_C=V$};
+  \draw[guide] (VC) -- (VC |- O);
+  \draw[guide] (VC) -- (VC -| O);
+  \node[anchor=south east,font=\footnotesize] at ($(VC|-O)+(0,0.05)$) {$V_1$};
+  \node[anchor=north east,font=\footnotesize] at ($(VC-|O)+(-0.05,0)$) {$V_2$};
+  \draw[line width=0.5pt] (0.95,0) arc[start angle=0,end angle=-14,radius=0.95];
+  \node[font=\footnotesize] at (-7:1.25) {$\alpha$};
+\end{tikzpicture}
+\end{document}

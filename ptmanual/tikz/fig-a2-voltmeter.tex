@@ -1,0 +1,24 @@
+\documentclass[border=6pt]{standalone}
+\input{../tikzpreamble}
+\begin{document}
+\begin{tikzpicture}
+  % voltmeter box
+  \draw[densely dashed,line width=0.5pt] (1.0,1.05) rectangle (6.6,3.05);
+  \node[font=\footnotesize,anchor=south] at (3.8,3.1) {Voltmeter};
+  \draw[wire] (1.6,2.05) to[R=$R_{\mathrm{imp}}$] (3.7,2.05)
+              to[rmeterwa, t=G] (5.3,2.05) -- (6.2,2.05) -- (6.2,0);
+  \draw[wire] (1.6,2.05) -- (1.6,0);
+
+  % sample branch
+  \draw[wire] (-0.6,0) -- (1.6,0) to[R=$R_x$] (4.6,0) -- (6.2,0) -- (7.2,0);
+  \node[node dot,minimum size=3.2pt] at (1.6,0) {};
+  \node[node dot,minimum size=3.2pt] at (6.2,0) {};
+
+  \draw[-{Stealth[length=2.4mm]},line width=0.7pt] (1.6,0.55) -- (1.6,1.05);
+  \node[font=\footnotesize,anchor=east] at (1.5,0.62) {$I_G$};
+  \draw[-{Stealth[length=2.4mm]},line width=0.7pt] (0.1,0) -- (0.55,0);
+  \node[font=\footnotesize,anchor=south] at (0.1,0.08) {$I$};
+  \draw[-{Stealth[length=2.4mm]},line width=0.7pt] (2.0,0) -- (2.45,0);
+  \node[font=\footnotesize,anchor=south] at (2.15,0.08) {$I-I_G$};
+\end{tikzpicture}
+\end{document}
