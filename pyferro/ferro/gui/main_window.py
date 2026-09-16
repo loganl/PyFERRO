@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QDesktopServices, QKeySequence
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QKeySequence, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
 
 from .. import __version__, config
 from ..acquisition import Acquisition
+from ..datafile import check_writable
 from .setup_panel import SetupPanel
 from .widgets import Readout, StatusLight, format_si, run_task
 
@@ -44,13 +45,38 @@ QMainWindow, QWidget { font-size: 13px; }
 #readout { background: #f6f7f9; border: 1px solid #dde1e6; border-radius: 8px; }
 #readout[alert="true"] { background: #fdecea; border-color: #d64545; }
 #readoutTitle { color: #5f6368; font-size: 11px; text-transform: uppercase; }
-#readoutValue { font-size: 24px; font-weight: 600; font-family: Menlo, Consolas, monospace; }
+#readoutValue { color: #1a1a1a; font-size: 24px; font-weight: 600;
+                font-family: Menlo, Consolas, monospace; }
+#readout[alert="true"] #readoutValue { color: #8c1d18; }
 #readoutSub { color: #5f6368; font-size: 11px; }
 #simBanner { background: #d69e2e; color: white; font-weight: 600; padding: 4px; }
 #recBanner { color: #d64545; font-weight: 600; }
+QPlainTextEdit { background: #ffffff; color: #1a1a1a; }
 QPushButton#startBtn, QPushButton#recordBtn, QPushButton#stopBtn { padding: 8px 16px; font-weight: 600; }
 QPushButton#recordBtn:checked { background: #d64545; color: white; }
 """
+
+
+def light_palette() -> QPalette:
+    """An explicit light palette.
+
+    The tiles, the log and the pyqtgraph plots are all light, so the window must not
+    take its text colours from a dark system theme - that produced white text on the
+    white readout tiles.
+    """
+    p = QPalette()
+    for role, colour in (
+        (QPalette.Window, "#ffffff"), (QPalette.WindowText, "#1a1a1a"),
+        (QPalette.Base, "#ffffff"), (QPalette.AlternateBase, "#f6f7f9"),
+        (QPalette.Text, "#1a1a1a"), (QPalette.Button, "#f0f1f3"),
+        (QPalette.ButtonText, "#1a1a1a"), (QPalette.PlaceholderText, "#8a8f98"),
+        (QPalette.ToolTipBase, "#ffffff"), (QPalette.ToolTipText, "#1a1a1a"),
+        (QPalette.Highlight, "#2b6cb0"), (QPalette.HighlightedText, "#ffffff"),
+    ):
+        p.setColor(role, QColor(colour))
+    for role in (QPalette.Text, QPalette.ButtonText, QPalette.WindowText):
+        p.setColor(QPalette.Disabled, role, QColor("#9aa0a6"))
+    return p
 
 HEAT_PEN = pg.mkPen("#d64545", width=1.5)
 COOL_PEN = pg.mkPen("#2b6cb0", width=1.5)
@@ -111,6 +137,7 @@ class MainWindow(QMainWindow):
         self._rows_written = 0
         self._stopping = False
         self.setWindowTitle(f"PyFERRO {__version__} — phase-transition data acquisition")
+        self.setPalette(light_palette())
         self.setStyleSheet(STYLE)
         self.resize(1400, 900)
         self._build()
@@ -269,6 +296,9 @@ class MainWindow(QMainWindow):
         self.temp_source = QComboBox()
         self.temp_source.addItem("CND3 controller (RS-485 probe)", "pid")
         self.temp_source.addItem("Multimeter Pt100 (GPIB)", "dmm")
+        self.temp_source.setToolTip("Which thermometer fills the T_C column. Can be changed "
+                                    "while monitoring; locked while recording so that one file "
+                                    "keeps one temperature source.")
         form.addRow("Temperature from", self.temp_source)
         self.max_temp = QDoubleSpinBox()
         self.max_temp.setRange(30, 400)
@@ -300,6 +330,7 @@ class MainWindow(QMainWindow):
         self.interval.valueChanged.connect(lambda v: setattr(self.cfg.run, "interval_s", v))
         self.min_dt.valueChanged.connect(lambda v: setattr(self.cfg.run, "min_delta_t", v))
         self.max_temp.valueChanged.connect(lambda v: setattr(self.cfg.run, "max_temp_c", v))
+        self.temp_source.currentIndexChanged.connect(self._temp_source_changed)
 
     def _load_run(self, cfg: config.AppConfig) -> None:
         r = cfg.run
@@ -349,7 +380,6 @@ class MainWindow(QMainWindow):
         self.acq = Acquisition(cfg, on_sample=self.bridge.sample.emit, on_log=self.bridge.log.emit,
                                on_status=self.bridge.status.emit, on_recording=self.bridge.recording.emit)
         self.setup.set_locked(True)
-        self.temp_source.setEnabled(False)
         self.acq.start(record=record)
         self._update_buttons()
 
@@ -375,12 +405,9 @@ class MainWindow(QMainWindow):
             return False
         folder = Path(self.out_dir.text().strip() or config.default_data_dir())
         try:
-            folder.mkdir(parents=True, exist_ok=True)
-            probe = folder / ".ferro_write_test"
-            probe.write_text("ok")
-            probe.unlink()
+            check_writable(folder)
         except OSError as exc:
-            QMessageBox.warning(self, "Cannot save here", f"The folder {folder} is not writable:\n{exc}")
+            QMessageBox.warning(self, "Cannot save here", str(exc))
             return False
         return True
 
@@ -397,10 +424,19 @@ class MainWindow(QMainWindow):
         acq = self.acq
         run_task(acq.stop, lambda _: self._stopped(), lambda msg: (self.log("error", msg), self._stopped()))
 
+    def _temp_source_changed(self) -> None:
+        source = self.temp_source.currentData()
+        self.cfg.run.temp_source = source
+        if source == "dmm" and not self.cfg.dmm.enabled:
+            self.cfg.dmm.enabled = True
+            self.setup.dmm_enabled.setChecked(True)
+        if self.running:
+            self.log("info", f"Temperature now taken from the "
+                             f"{'CND3 controller' if source == 'pid' else 'multimeter Pt100'}")
+
     def _stopped(self) -> None:
         self._stopping = False
         self.setup.set_locked(False)
-        self.temp_source.setEnabled(True)
         for light in self.lights.values():
             light.set_state("off")
         self._update_buttons()
@@ -424,6 +460,8 @@ class MainWindow(QMainWindow):
         self.record_btn.setChecked(recording and running)
         self.record_btn.setText("●  Recording — click to stop" if recording and running else "●  Record")
         self.record_btn.blockSignals(False)
+        # The source may change while monitoring, but not once a file is open.
+        self.temp_source.setEnabled(not (recording and running))
 
     # --- data from acquisition -----------------------------------------------------------
     def _on_recording(self, path) -> None:

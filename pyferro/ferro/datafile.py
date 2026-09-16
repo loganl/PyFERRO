@@ -14,10 +14,12 @@ row being written.  Existing files are never overwritten.
 
 from __future__ import annotations
 
+import errno
 import json
 import math
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -42,6 +44,41 @@ FLAG_LOCKIN_OVERLOAD = 1
 FLAG_LOCKIN_ERROR = 2
 FLAG_PID_ERROR = 4
 FLAG_DMM_ERROR = 8
+
+
+def check_writable(folder: str | Path) -> None:
+    """Raise OSError if a data file could not be created in ``folder``.
+
+    The probe file is uniquely named (so two copies of the program cannot collide)
+    and a failure to delete it afterwards is ignored: recording must not be blocked
+    by a folder that allows writing but not cleanup.
+    """
+    folder = Path(folder)
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise OSError(f"Cannot create the folder {folder}: {exc}{_permission_hint(exc)}") from exc
+
+    probe = folder / f".ferro_write_test_{os.getpid()}"
+    try:
+        probe.write_text("ok")
+    except OSError as exc:
+        raise OSError(f"Cannot write into {folder}: {exc}{_permission_hint(exc)}") from exc
+    finally:
+        try:
+            probe.unlink()
+        except OSError:
+            pass
+
+
+def _permission_hint(exc: OSError) -> str:
+    if exc.errno not in (errno.EPERM, errno.EACCES):
+        return ""
+    if sys.platform == "darwin":
+        return ("\n\nmacOS is blocking access. Either choose a folder outside "
+                "Documents/Desktop/Downloads, or grant the program access in "
+                "System Settings → Privacy & Security → Files and Folders.")
+    return "\n\nChoose a different folder, or check that the drive is connected and not read-only."
 
 
 def safe_name(text: str) -> str:

@@ -7,6 +7,22 @@ to the code that produced it. The number is written in exactly one place,
 `__version__` in `ferro/__init__.py`; see "Versioning and releases" in
 [README.md](README.md).
 
+## Unreleased
+
+### Fixed
+- Recording on macOS: the default save folder is now `~/FerroData`. `~/Documents` is
+  protected by macOS privacy, and recording there failed with "Operation not permitted".
+- The save-folder check no longer refuses a folder that allows writing but not deleting,
+  uses a uniquely named probe file, and its message names the macOS privacy setting.
+- Dark mode: the readout tiles and the log kept their text colour from the system theme,
+  giving white text on the light tiles. The window now uses an explicit light palette,
+  matching the white plots.
+
+### Changed
+- *Temperature from* can be changed while monitoring and is locked only while recording,
+  so a single file keeps one temperature source. The multimeter is opened on demand when
+  it is selected during a run.
+
 ## 1.0.0 — 2026-09-16
 
 First Python release, replacing the LabVIEW routine `FERRO v.2.vi`.

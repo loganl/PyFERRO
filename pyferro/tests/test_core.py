@@ -1,6 +1,7 @@
 import json
 import math
 import time
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -8,7 +9,7 @@ import pytest
 from ferro import config
 from ferro.acquisition import Acquisition
 from ferro.analysis import DirectionTracker
-from ferro.datafile import COLUMNS, DataWriter, unique_path
+from ferro.datafile import COLUMNS, DataWriter, check_writable, unique_path
 from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temperature
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.lockin5302 import Lockin5302, counts_to_volts, parse_ints
@@ -113,6 +114,38 @@ def test_datafile_roundtrip(tmp_path):
     assert math.isnan(data[1, 0])
     assert "# sample: BTO" in path.read_text()
     assert unique_path(tmp_path, "BTO 1V/37kHz", when=None) != path or not path.exists()
+
+
+def test_check_writable_accepts_a_normal_folder(tmp_path):
+    target = tmp_path / "new" / "FerroData"
+    check_writable(target)
+    assert target.is_dir()
+    assert not list(target.iterdir()), "the probe file must be cleaned up"
+
+
+def test_check_writable_survives_a_folder_that_forbids_deleting(tmp_path, monkeypatch):
+    """Writing works but unlink fails: recording must still be allowed."""
+    monkeypatch.setattr(Path, "unlink", lambda self, *a, **k: (_ for _ in ()).throw(PermissionError(1, "Operation not permitted")))
+    check_writable(tmp_path)
+
+
+def test_check_writable_reports_a_read_only_folder(tmp_path):
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0o500)
+    try:
+        with pytest.raises(OSError, match="Cannot write into"):
+            check_writable(locked)
+    finally:
+        locked.chmod(0o700)
+
+
+def test_default_data_dir_avoids_documents_on_macos(monkeypatch):
+    monkeypatch.setattr(config.sys, "platform", "darwin")
+    assert "Documents" not in config.default_data_dir()
+    monkeypatch.setattr(config.sys, "platform", "win32")
+    assert config.default_data_dir().endswith("FerroData")
+    assert "Documents" in config.default_data_dir()
 
 
 def test_datafile_never_overwrites(tmp_path):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
@@ -14,6 +15,11 @@ def config_path() -> Path:
 
 
 def default_data_dir() -> str:
+    # macOS protects ~/Documents with its privacy system (TCC): a process without
+    # that permission gets "Operation not permitted" when it tries to record.
+    # The plain home folder is not protected, so use it there.
+    if sys.platform == "darwin":
+        return str(Path.home() / "FerroData")
     return str(Path.home() / "Documents" / "FerroData")
 
 

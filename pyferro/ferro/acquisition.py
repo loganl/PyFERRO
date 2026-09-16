@@ -220,6 +220,9 @@ class Acquisition:
             row["flags"] |= FLAG_PID_ERROR
 
         row["T_dmm_C"] = NAN
+        if "dmm" not in self.slots and (self.cfg.dmm.enabled or self.cfg.run.temp_source == "dmm"):
+            # The multimeter was switched on (or selected) after the run started.
+            self.slots["dmm"] = InstrumentSlot("Multimeter", lambda: open_dmm(self.cfg))
         if "dmm" in self.slots:
             t_dmm = self._read("dmm", lambda d: d.read_celsius())
             if t_dmm is None:
