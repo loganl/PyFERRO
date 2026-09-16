@@ -7,7 +7,7 @@ to the code that produced it. The number is written in exactly one place,
 `__version__` in `ferro/__init__.py`; see "Versioning and releases" in
 [README.md](README.md).
 
-## Unreleased
+## 1.0.1 — 2026-09-16
 
 ### Fixed
 - Recording on macOS: the default save folder is now `~/FerroData`. `~/Documents` is
