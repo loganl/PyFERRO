@@ -7,6 +7,20 @@ to the code that produced it. The number is written in exactly one place,
 `__version__` in `ferro/__init__.py`; see "Versioning and releases" in
 [README.md](README.md).
 
+## Unreleased
+
+### Fixed
+- Plot colours no longer misrepresent the ramp. Points recorded before the ramp
+  direction is established, and any hold at setpoint, were carried forward as the
+  previous direction — so the start of every run was drawn as "heating" whatever it was
+  doing. Steady readings now have their own neutral curve, matching the `direction`
+  column in the data file.
+- The heating and cooling branches cover the same temperature range, so the cooling
+  curve was drawn over the heating one and hid it. Cooling is now dashed and slightly
+  transparent, leaving both readable where they overlap.
+- Temperature vs time is coloured by ramp direction as well — the one plot where the
+  branches cannot overlap.
+
 ## 1.0.1 — 2026-09-16
 
 ### Fixed

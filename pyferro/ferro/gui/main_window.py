@@ -14,7 +14,8 @@ from pathlib import Path
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QDesktopServices, QGuiApplication, QKeySequence, QPalette
+from PySide6.QtGui import (QAction, QColor, QDesktopServices, QGuiApplication, QKeySequence,
+                           QPalette)
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -133,7 +134,6 @@ class PlotBuffer:
     def clear(self) -> None:
         self.data = {k: np.empty(4096) for k in self.keys}
         self.n = 0
-        self._moving = 1
 
     def append(self, row: dict) -> None:
         if self.n >= MAX_POINTS:  # keep the newest half
@@ -143,12 +143,11 @@ class PlotBuffer:
         if self.n == len(self.data["time_s"]):
             for k in self.keys:
                 self.data[k] = np.concatenate([self.data[k], np.empty_like(self.data[k])])
-        d = row.get("direction", 0)
-        if d:
-            self._moving = d
-        values = {**row, "direction": self._moving}
+        # The direction is stored exactly as measured: 0 means the ramp direction is not
+        # established yet (the first readings) or the temperature is holding. Carrying the
+        # last direction forward would paint those points as a ramp they were not part of.
         for k in self.keys:
-            v = values.get(k, math.nan)
+            v = row.get(k, math.nan)
             self.data[k][self.n] = math.nan if v is None else v
         self.n += 1
 
@@ -171,9 +170,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"PyFERRO {__version__} — phase-transition data acquisition")
         self.theme = THEMES[detect_theme()]
         self.setStyleSheet(style_sheet(self.theme))
-        self.heat_pen = pg.mkPen(self.theme["heat"], width=1.5)
-        self.cool_pen = pg.mkPen(self.theme["cool"], width=1.5)
-        self.flat_pen = pg.mkPen(self.theme["flat"], width=1.5)
+        # The heating and cooling branches cover the same temperature range, so a solid
+        # cooling curve simply hides the heating one. Dashed and slightly transparent
+        # keeps both readable where they overlap.
+        self.heat_pen = pg.mkPen(self.theme["heat"], width=1.6)
+        cool = QColor(self.theme["cool"])
+        cool.setAlpha(215)
+        self.cool_pen = pg.mkPen(cool, width=1.6, style=Qt.DashLine)
+        self.flat_pen = pg.mkPen(self.theme["flat"], width=1.4)
         self.resize(1400, 900)
         self._build()
         self._connect()
@@ -261,10 +265,13 @@ class MainWindow(QMainWindow):
             p.setLabel("left", name, units="V")  # pyqtgraph picks µV / mV automatically
             p.setLabel("bottom", "T (°C)")
         self.p_x.addLegend(offset=(-10, 10))
-        self.c_time = self.p_time.plot(pen=self.flat_pen)
+        self.c_time = (self.p_time.plot(pen=self.heat_pen), self.p_time.plot(pen=self.cool_pen),
+                       self.p_time.plot(pen=self.flat_pen))
         self.c_x = (self.p_x.plot(pen=self.heat_pen, name="heating"),
-                    self.p_x.plot(pen=self.cool_pen, name="cooling"))
-        self.c_y = (self.p_y.plot(pen=self.heat_pen), self.p_y.plot(pen=self.cool_pen))
+                    self.p_x.plot(pen=self.cool_pen, name="cooling"),
+                    self.p_x.plot(pen=self.flat_pen, name="steady / not yet known"))
+        self.c_y = (self.p_y.plot(pen=self.heat_pen), self.p_y.plot(pen=self.cool_pen),
+                    self.p_y.plot(pen=self.flat_pen))
         tl.addWidget(self.plots, 1)
         right.addWidget(top)
 
@@ -567,11 +574,13 @@ class MainWindow(QMainWindow):
         b = self.buffer
         t_min = b.view("time_s") / 60.0
         temp = b.view("T_C")
-        self.c_time.setData(t_min, temp, connect="finite")
         d = b.view("direction")
+        for curve, sign in zip(self.c_time, (1, -1, 0)):  # time plot: branches never overlap
+            mask = d == sign
+            curve.setData(t_min, np.where(mask, temp, np.nan), connect="finite")
         for curves, key in ((self.c_x, "X_V"), (self.c_y, "Y_V")):
             y = b.view(key)
-            for curve, sign in zip(curves, (1, -1)):
+            for curve, sign in zip(curves, (1, -1, 0)):
                 mask = d == sign
                 curve.setData(np.where(mask, temp, np.nan), np.where(mask, y, np.nan), connect="finite")
 
