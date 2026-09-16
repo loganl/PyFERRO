@@ -284,10 +284,21 @@ the zip name, the window title and every data-file header show it, `pixi.toml` h
 version field, and the release is tagged `v<version>`. `tests/test_version.py` fails if a
 second copy appears or the tag disagrees.
 
+To release: edit `__version__`, add a `## 1.1.0 — <date>` section to `CHANGELOG.md`,
+commit, then run the release script — it checks, tests, tags, pushes and builds:
+
 ```bash
-# edit __version__, add a CHANGELOG entry
-pixi run -e test test
 git commit -am "PyFERRO 1.1.0"
+./packaging/release.sh --dry-run   # prints every step, changes nothing
+./packaging/release.sh             # add --publish to attach the zip to a GitHub release
+```
+
+It refuses to continue on a dirty tree, off `main`, behind `origin`, when the tag
+already exists, when the changelog has no section for the version, or when a test fails.
+The equivalent by hand:
+
+```bash
+pixi run -e test test
 git tag -a v1.1.0 -m "PyFERRO 1.1.0"
 git push && git push --tags
 ./packaging/build_offline.sh
