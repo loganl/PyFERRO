@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pyqtgraph as pg
 from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QKeySequence, QPalette
+from PySide6.QtGui import QAction, QDesktopServices, QGuiApplication, QKeySequence, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -40,47 +40,66 @@ from ..datafile import check_writable
 from .setup_panel import SetupPanel
 from .widgets import Readout, StatusLight, format_si, run_task
 
-STYLE = """
-QMainWindow, QWidget { font-size: 13px; }
-#readout { background: #f6f7f9; border: 1px solid #dde1e6; border-radius: 8px; }
-#readout[alert="true"] { background: #fdecea; border-color: #d64545; }
-#readoutTitle { color: #5f6368; font-size: 11px; text-transform: uppercase; }
-#readoutValue { color: #1a1a1a; font-size: 24px; font-weight: 600;
-                font-family: Menlo, Consolas, monospace; }
-#readout[alert="true"] #readoutValue { color: #8c1d18; }
-#readoutSub { color: #5f6368; font-size: 11px; }
-#simBanner { background: #d69e2e; color: white; font-weight: 600; padding: 4px; }
-#recBanner { color: #d64545; font-weight: 600; }
-QPlainTextEdit { background: #ffffff; color: #1a1a1a; }
-QPushButton#startBtn, QPushButton#recordBtn, QPushButton#stopBtn { padding: 8px 16px; font-weight: 600; }
-QPushButton#recordBtn:checked { background: #d64545; color: white; }
+THEMES = {
+    "light": {
+        "tile_bg": "#f6f7f9", "tile_border": "#dde1e6", "tile_text": "#1a1a1a",
+        "tile_sub": "#5f6368", "alert_bg": "#fdecea", "alert_border": "#d64545",
+        "alert_text": "#8c1d18", "log_bg": "#ffffff", "log_text": "#1a1a1a",
+        "log_stamp": "#888888", "log_warning": "#b7791f", "log_error": "#d64545",
+        "plot_bg": "#ffffff", "plot_fg": "#333333", "rec": "#d64545",
+        "heat": "#d64545", "cool": "#2b6cb0", "flat": "#5f6368",
+    },
+    "dark": {
+        "tile_bg": "#2a2d31", "tile_border": "#3c4046", "tile_text": "#f2f3f5",
+        "tile_sub": "#a8adb4", "alert_bg": "#4a1f1c", "alert_border": "#ef5350",
+        "alert_text": "#ffb4ab", "log_bg": "#1e2124", "log_text": "#e6e8ea",
+        "log_stamp": "#8a9098", "log_warning": "#e0b252", "log_error": "#ff6b6b",
+        "plot_bg": "#1e2124", "plot_fg": "#d0d3d6", "rec": "#ff6b6b",
+        "heat": "#ef5350", "cool": "#64b5f6", "flat": "#9aa0a6",
+    },
+}
+
+
+def detect_theme() -> str:
+    """"dark" or "light", following the system theme."""
+    try:
+        scheme = QGuiApplication.styleHints().colorScheme()
+        if scheme == Qt.ColorScheme.Dark:
+            return "dark"
+        if scheme == Qt.ColorScheme.Light:
+            return "light"
+    except (AttributeError, RuntimeError):  # older Qt without colorScheme()
+        pass
+    app = QApplication.instance()
+    if app is not None and app.palette().color(QPalette.Window).lightness() < 128:
+        return "dark"
+    return "light"
+
+
+def style_sheet(c: dict) -> str:
+    """The parts that must not inherit their colour from the system theme.
+
+    The readout tiles and the log panel paint their own background, so their text
+    colour has to be set alongside it - otherwise a dark theme puts white text on a
+    light tile, and a light theme puts dark text on a dark one.
+    """
+    return f"""
+QMainWindow, QWidget {{ font-size: 13px; }}
+#readout {{ background: {c['tile_bg']}; border: 1px solid {c['tile_border']}; border-radius: 8px; }}
+#readout[alert="true"] {{ background: {c['alert_bg']}; border-color: {c['alert_border']}; }}
+#readoutTitle {{ color: {c['tile_sub']}; font-size: 11px; text-transform: uppercase; }}
+#readoutValue {{ color: {c['tile_text']}; font-size: 24px; font-weight: 600;
+                font-family: Menlo, Consolas, monospace; }}
+#readout[alert="true"] #readoutValue {{ color: {c['alert_text']}; }}
+#readoutSub {{ color: {c['tile_sub']}; font-size: 11px; }}
+#simBanner {{ background: #d69e2e; color: #1a1a1a; font-weight: 600; padding: 4px; }}
+#recBanner {{ color: {c['rec']}; font-weight: 600; }}
+QPlainTextEdit {{ background: {c['log_bg']}; color: {c['log_text']}; }}
+QPushButton#startBtn, QPushButton#recordBtn, QPushButton#stopBtn {{ padding: 8px 16px; font-weight: 600; }}
+QPushButton#recordBtn:checked {{ background: {c['rec']}; color: #ffffff; }}
 """
 
 
-def light_palette() -> QPalette:
-    """An explicit light palette.
-
-    The tiles, the log and the pyqtgraph plots are all light, so the window must not
-    take its text colours from a dark system theme - that produced white text on the
-    white readout tiles.
-    """
-    p = QPalette()
-    for role, colour in (
-        (QPalette.Window, "#ffffff"), (QPalette.WindowText, "#1a1a1a"),
-        (QPalette.Base, "#ffffff"), (QPalette.AlternateBase, "#f6f7f9"),
-        (QPalette.Text, "#1a1a1a"), (QPalette.Button, "#f0f1f3"),
-        (QPalette.ButtonText, "#1a1a1a"), (QPalette.PlaceholderText, "#8a8f98"),
-        (QPalette.ToolTipBase, "#ffffff"), (QPalette.ToolTipText, "#1a1a1a"),
-        (QPalette.Highlight, "#2b6cb0"), (QPalette.HighlightedText, "#ffffff"),
-    ):
-        p.setColor(role, QColor(colour))
-    for role in (QPalette.Text, QPalette.ButtonText, QPalette.WindowText):
-        p.setColor(QPalette.Disabled, role, QColor("#9aa0a6"))
-    return p
-
-HEAT_PEN = pg.mkPen("#d64545", width=1.5)
-COOL_PEN = pg.mkPen("#2b6cb0", width=1.5)
-FLAT_PEN = pg.mkPen("#5f6368", width=1.5)
 MAX_POINTS = 500_000
 
 
@@ -137,8 +156,11 @@ class MainWindow(QMainWindow):
         self._rows_written = 0
         self._stopping = False
         self.setWindowTitle(f"PyFERRO {__version__} — phase-transition data acquisition")
-        self.setPalette(light_palette())
-        self.setStyleSheet(STYLE)
+        self.theme = THEMES[detect_theme()]
+        self.setStyleSheet(style_sheet(self.theme))
+        self.heat_pen = pg.mkPen(self.theme["heat"], width=1.5)
+        self.cool_pen = pg.mkPen(self.theme["cool"], width=1.5)
+        self.flat_pen = pg.mkPen(self.theme["flat"], width=1.5)
         self.resize(1400, 900)
         self._build()
         self._connect()
@@ -207,7 +229,8 @@ class MainWindow(QMainWindow):
             tiles.addWidget(tile)
         tl.addLayout(tiles)
 
-        pg.setConfigOptions(antialias=True, background="w", foreground="#333")
+        pg.setConfigOptions(antialias=True, background=self.theme["plot_bg"],
+                            foreground=self.theme["plot_fg"])
         self.plots = pg.GraphicsLayoutWidget()
         self.p_time = self.plots.addPlot(row=0, col=0, colspan=2, title="Temperature vs time")
         self.p_x = self.plots.addPlot(row=1, col=0, title="X vs temperature")
@@ -222,9 +245,10 @@ class MainWindow(QMainWindow):
             p.setLabel("left", name, units="V")  # pyqtgraph picks µV / mV automatically
             p.setLabel("bottom", "T (°C)")
         self.p_x.addLegend(offset=(-10, 10))
-        self.c_time = self.p_time.plot(pen=FLAT_PEN)
-        self.c_x = (self.p_x.plot(pen=HEAT_PEN, name="heating"), self.p_x.plot(pen=COOL_PEN, name="cooling"))
-        self.c_y = (self.p_y.plot(pen=HEAT_PEN), self.p_y.plot(pen=COOL_PEN))
+        self.c_time = self.p_time.plot(pen=self.flat_pen)
+        self.c_x = (self.p_x.plot(pen=self.heat_pen, name="heating"),
+                    self.p_x.plot(pen=self.cool_pen, name="cooling"))
+        self.c_y = (self.p_y.plot(pen=self.heat_pen), self.p_y.plot(pen=self.cool_pen))
         tl.addWidget(self.plots, 1)
         right.addWidget(top)
 
@@ -525,9 +549,11 @@ class MainWindow(QMainWindow):
 
     def log(self, level: str, message: str) -> None:
         stamp = datetime.now().strftime("%H:%M:%S")
-        color = {"error": "#d64545", "warning": "#b7791f"}.get(level, "#333333")
+        color = {"error": self.theme["log_error"], "warning": self.theme["log_warning"]}.get(
+            level, self.theme["log_text"])
         safe = message.replace("&", "&amp;").replace("<", "&lt;").replace("\n", "<br>")
-        self.log_view.appendHtml(f'<span style="color:#888">{stamp}</span> <span style="color:{color}">{safe}</span>')
+        self.log_view.appendHtml(f'<span style="color:{self.theme["log_stamp"]}">{stamp}</span> '
+                                 f'<span style="color:{color}">{safe}</span>')
         if level == "error" and self.isVisible() and "chamber limit" in message:
             QApplication.beep()
 
@@ -554,10 +580,9 @@ def run(simulate: bool = False) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("PyFERRO")
     app.setStyle("Fusion")
-    # Fusion plus an explicit light palette, so a dark system theme cannot leave
-    # panels dark while the tiles, the log and the plots stay light.
-    app.setPalette(light_palette())
-    app.setStyleSheet(STYLE)
+    # Fusion keeps the system palette, so the window follows the light/dark theme;
+    # style_sheet() colours the parts that paint their own background.
+    app.setStyleSheet(style_sheet(THEMES[detect_theme()]))
     cfg = config.load()
     if simulate:
         cfg.simulate = True

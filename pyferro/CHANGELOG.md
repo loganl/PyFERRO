@@ -15,9 +15,8 @@ to the code that produced it. The number is written in exactly one place,
 - The save-folder check no longer refuses a folder that allows writing but not deleting,
   uses a uniquely named probe file, and its message names the macOS privacy setting.
 - Dark mode: the readout tiles and the log kept their text colour from the system theme,
-  giving white text on the light tiles. The program now applies an explicit light palette
-  to the whole application, matching the white plots, and the tiles and log set their own
-  colours.
+  giving white text on the light tiles. The window now follows the system theme, and the
+  tiles, the log panel and the plots use a matching light or dark colour set.
 
 ### Changed
 - *Temperature from* can be changed while monitoring and is locked only while recording,
