@@ -191,7 +191,10 @@ def test_recording_copies_the_session_log_next_to_the_data(tmp_path, monkeypatch
     data = next((tmp_path / "data").glob("log_test_*.txt"))
     sidecar = data.with_suffix(".log")
     assert sidecar.exists(), "the session log should be copied beside the data file"
-    assert "before recording started" in sidecar.read_text()
+    text = sidecar.read_text()
+    assert "before recording started" in text
+    # The core must log to the session file itself, not only through the GUI.
+    assert "Acquisition started" in text and "Recording to" in text
     assert f"# session_log: {sessionlog.path()}" in data.read_text()
 
 

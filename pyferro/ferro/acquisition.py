@@ -126,7 +126,11 @@ class Acquisition:
         on_recording: Callable[[str | None], None] = lambda path: None,
     ) -> None:
         self.cfg = cfg
-        self.on_sample, self.on_log, self.on_status, self.on_recording = on_sample, on_log, on_status, on_recording
+        self.on_sample, self.on_status, self.on_recording = on_sample, on_status, on_recording
+        # Core messages go to the session log directly, not only through the GUI, so a run
+        # driven without a window (tests, scripts) still leaves a complete record.
+        self.on_log = lambda level, message: (on_log(level, message),
+                                              sessionlog.write(level, message))
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._record_request: bool | None = None

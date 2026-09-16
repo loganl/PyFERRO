@@ -363,7 +363,7 @@ class MainWindow(QMainWindow):
         self.setup.log.connect(self.log)
         self.setup.simulate.toggled.connect(lambda on: self.sim_banner.setVisible(on))
         self.bridge.sample.connect(self._on_sample)
-        self.bridge.log.connect(self.log)
+        self.bridge.log.connect(lambda level, msg: self.log(level, msg, to_file=False))
         self.bridge.status.connect(lambda k, s, m: self.lights[k].set_state(s, m))
         self.bridge.recording.connect(self._on_recording)
         # settings that are safe to change live
@@ -585,14 +585,17 @@ class MainWindow(QMainWindow):
         else:
             self.rec_label.setText("")
 
-    def log(self, level: str, message: str) -> None:
+    def log(self, level: str, message: str, to_file: bool = True) -> None:
+        """Show a message. ``to_file`` is False for messages the acquisition core has
+        already written to the session log itself."""
         stamp = datetime.now().strftime("%H:%M:%S")
         color = {"error": self.theme["log_error"], "warning": self.theme["log_warning"]}.get(
             level, self.theme["log_text"])
         safe = message.replace("&", "&amp;").replace("<", "&lt;").replace("\n", "<br>")
         self.log_view.appendHtml(f'<span style="color:{self.theme["log_stamp"]}">{stamp}</span> '
                                  f'<span style="color:{color}">{safe}</span>')
-        sessionlog.write(level, message)  # the panel is transient; the file is not
+        if to_file:  # the panel is transient; the file is not
+            sessionlog.write(level, message)
         if level == "error" and self.isVisible() and "chamber limit" in message:
             QApplication.beep()
 
