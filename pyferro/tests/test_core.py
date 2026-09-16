@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from ferro import config
+from ferro import config, sessionlog
 from ferro.acquisition import Acquisition
 from ferro.analysis import DirectionTracker
 from ferro.datafile import COLUMNS, DataWriter, check_writable, unique_path
@@ -146,6 +146,53 @@ def test_default_data_dir_avoids_documents_on_macos(monkeypatch):
     monkeypatch.setattr(config.sys, "platform", "win32")
     assert config.default_data_dir().endswith("FerroData")
     assert "Documents" in config.default_data_dir()
+
+
+def test_session_log_writes_and_keeps_the_newest_files(tmp_path, monkeypatch):
+    monkeypatch.setattr(sessionlog, "_current", None)
+    folder = tmp_path / "logs"
+    for i in range(sessionlog.KEEP_FILES + 5):  # older logs must be pruned
+        (folder).mkdir(parents=True, exist_ok=True)
+        (folder / f"pyferro_2020010{i % 9}_00000{i % 9}.log").write_text("old")
+    log = sessionlog.start(folder)
+    log.write("warning", "CND3: No valid reply\nsecond line")
+    assert "CND3: No valid reply" in log.path.read_text()
+    assert "WARNING" in log.path.read_text()
+    assert len(list(folder.glob("pyferro_*.log"))) <= sessionlog.KEEP_FILES + 1
+    assert sessionlog.path() == str(log.path)
+
+
+def test_session_log_never_raises_when_it_cannot_be_written(tmp_path, monkeypatch):
+    monkeypatch.setattr(sessionlog, "_current", None)
+    blocker = tmp_path / "file.txt"
+    blocker.write_text("not a folder")
+    log = sessionlog.start(blocker / "logs")  # mkdir under a file fails
+    assert log.path is None
+    log.write("error", "must not raise")      # no-ops
+    sessionlog.write("error", "also fine")
+    assert log.copy_to(tmp_path / "copy.log") is False
+    assert sessionlog.path() is None
+
+
+def test_recording_copies_the_session_log_next_to_the_data(tmp_path, monkeypatch):
+    monkeypatch.setattr(sessionlog, "_current", None)
+    sessionlog.start(tmp_path / "logs")
+    sessionlog.write("info", "Test controller: CND3 V1.00 before recording started")
+
+    cfg = config.AppConfig(simulate=True)
+    cfg.run.output_dir = str(tmp_path / "data")
+    cfg.run.interval_s = 0.1
+    cfg.run.sample = "log test"
+    acq = Acquisition(cfg)
+    acq.start(record=True)
+    time.sleep(0.6)
+    acq.stop()
+
+    data = next((tmp_path / "data").glob("log_test_*.txt"))
+    sidecar = data.with_suffix(".log")
+    assert sidecar.exists(), "the session log should be copied beside the data file"
+    assert "before recording started" in sidecar.read_text()
+    assert f"# session_log: {sessionlog.path()}" in data.read_text()
 
 
 def test_datafile_never_overwrites(tmp_path):

@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, config
+from .. import __version__, config, sessionlog
 from ..acquisition import Acquisition
 from ..datafile import check_writable
 from .setup_panel import SetupPanel
@@ -172,6 +172,8 @@ class MainWindow(QMainWindow):
         self._clock = QTimer(self, interval=1000, timeout=self._tick)
         self._clock.start()
         self.log("info", f"PyFERRO {__version__} ready. Settings: {config.config_path()}")
+        if sessionlog.path():
+            self.log("info", f"Session log: {sessionlog.path()}")
 
     # --- layout ---------------------------------------------------------------------
     def _build(self) -> None:
@@ -554,6 +556,7 @@ class MainWindow(QMainWindow):
         safe = message.replace("&", "&amp;").replace("<", "&lt;").replace("\n", "<br>")
         self.log_view.appendHtml(f'<span style="color:{self.theme["log_stamp"]}">{stamp}</span> '
                                  f'<span style="color:{color}">{safe}</span>')
+        sessionlog.write(level, message)  # the panel is transient; the file is not
         if level == "error" and self.isVisible() and "chamber limit" in message:
             QApplication.beep()
 
@@ -577,6 +580,7 @@ def run(simulate: bool = False) -> int:
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("phy445.ferro")
         except Exception:
             pass
+    sessionlog.start()  # before anything can fail, so set-up problems are recorded
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("PyFERRO")
     app.setStyle("Fusion")

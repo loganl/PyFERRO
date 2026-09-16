@@ -19,7 +19,7 @@ import traceback
 from dataclasses import dataclass
 from typing import Callable
 
-from . import __version__
+from . import __version__, sessionlog
 from .analysis import DirectionTracker
 from .config import AppConfig
 from .datafile import (
@@ -290,6 +290,7 @@ class Acquisition:
             "interval_s": run.interval_s,
             "min_delta_T_C": run.min_delta_t,
             "simulation": self.cfg.simulate,
+            "session_log": sessionlog.path() or "not written",
         }
         for key, label in (("lockin", "lockin"), ("pid", "controller")):
             slot = self.slots[key]
@@ -323,4 +324,9 @@ class Acquisition:
             finally:
                 self.writer = None
             self.on_log("info", f"Saved {rows} rows to {path}")
+            # Keep the explanation with the data: the whole session so far, including
+            # everything logged before recording started.
+            log = sessionlog.current()
+            if log is not None and log.copy_to(path.with_suffix(".log")):
+                self.on_log("info", f"Session log copied to {path.with_suffix('.log')}")
             self.on_recording(None)

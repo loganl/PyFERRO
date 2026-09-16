@@ -132,6 +132,15 @@ heating = df[df.direction == 1]
 *Old LabVIEW file format* writes only T, X, Y with no header (readable by `plot.vi`);
 the metadata then goes to a `.json` file of the same name.
 
+**Session log.** Everything the log panel shows is also written to
+`~/.ferro/logs/pyferro_<start>.log`, from the moment the program starts — so the
+messages that explain a run (an instrument that never answered, an auto-detect that
+found nothing) survive even though they happened before recording began. Each data file
+names it in its header (`# session_log:`) and gets a copy beside it as `<name>.log` when
+the recording closes, so the data and its explanation travel together. The twenty newest
+logs are kept; a log that cannot be written is skipped silently and never interrupts a
+measurement.
+
 ## 5. Troubleshooting
 
 | Symptom | Cause and fix |

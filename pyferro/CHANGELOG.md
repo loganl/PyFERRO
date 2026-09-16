@@ -18,6 +18,12 @@ to the code that produced it. The number is written in exactly one place,
   giving white text on the light tiles. The window now follows the system theme, and the
   tiles, the log panel and the plots use a matching light or dark colour set.
 
+### Added
+- A session log, written from start-up to `~/.ferro/logs/pyferro_<start>.log`, holding
+  every message the log panel shows — including set-up problems from before recording
+  began. Each data file names it in its header (`# session_log:`) and gets a copy beside
+  it (`<name>.log`) when the recording closes. The twenty newest logs are kept.
+
 ### Changed
 - *Temperature from* can be changed while monitoring and is locked only while recording,
   so a single file keeps one temperature source. The multimeter is opened on demand when
