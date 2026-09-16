@@ -554,6 +554,9 @@ def run(simulate: bool = False) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("PyFERRO")
     app.setStyle("Fusion")
+    # Fusion plus an explicit light palette, so a dark system theme cannot leave
+    # panels dark while the tiles, the log and the plots stay light.
+    app.setPalette(light_palette())
     app.setStyleSheet(STYLE)
     cfg = config.load()
     if simulate:
