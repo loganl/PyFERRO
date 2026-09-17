@@ -35,7 +35,8 @@ from .instruments.lockin5302 import SENSITIVITY_LABELS, TIME_CONSTANT_LABELS
 from .instruments.hp34401a import HP34401A
 from .instruments.lockin5302 import Lockin5302
 from .instruments import simulated
-from .transports import SerialTransport, TransportError, VisaTransport, probe_terminations
+from .transports import (TERMINATIONS, SerialTransport, TransportError, VisaTransport,
+                         probe_terminations)
 
 NAN = float("nan")
 REOPEN_AFTER_FAILURES = 3
@@ -43,8 +44,14 @@ REOPEN_BACKOFF_S = 5.0
 POLL_SETTINGS_S = 60.0  # how often to re-read settings that are not read every sample
 
 
+# Terminator pairs that have worked, by resource: a reconnect should not pay for
+# the whole search again.
+_DETECTED_TERMINATIONS: dict[str, tuple] = {}
+
+
 # --- instrument factories (also used by the GUI "Test" buttons) ------------
-def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None) -> Lockin5302:
+def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None,
+                should_stop: Callable[[], bool] | None = None) -> Lockin5302:
     c = cfg.lockin
     if cfg.simulate:
         return Lockin5302(simulated.SimLockinTransport(simulated.shared_sample()))
@@ -53,16 +60,27 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
             raise TransportError("No RS-232 port selected for the lock-in")
         return Lockin5302(SerialTransport(c.serial_port, baudrate=c.baudrate, timeout_s=c.timeout_s))
 
-    # The 5302's GPIB terminator depends on its rear-panel switches, and the wrong
-    # guess times out exactly like a dead instrument. Try each in turn, cheapest
-    # first, and keep the one that answers ID with 5302.
+    # The 5302's terminator is set on its own front panel and the wrong guess times
+    # out exactly like a dead instrument, so try each pair until ID answers 5302.
+    # Probe with a short timeout: a silent instrument otherwise costs the full
+    # timeout eight times over, on the acquisition thread, which is what a Stop
+    # press has to wait for. Whatever worked is tried first next time, so a
+    # reconnect mid-run costs one attempt rather than eight.
+    order = list(TERMINATIONS)
+    known = _DETECTED_TERMINATIONS.get(c.resource)
+    if known in order:
+        order.insert(0, order.pop(order.index(known)))
+    probe_timeout = min(c.timeout_s, 1.0)
+
     def open_one(write_t, read_t):
-        return VisaTransport(c.resource, timeout_s=c.timeout_s,
+        return VisaTransport(c.resource, timeout_s=probe_timeout,
                              write_termination=write_t, read_termination=read_t)
 
     transport, label = probe_terminations(
-        open_one, lambda t: Lockin5302(t).check(), name=f"Lock-in {c.resource}")
-    transport.detected = label
+        open_one, lambda t: Lockin5302(t).check(), name=f"Lock-in {c.resource}",
+        terminations=order, should_stop=should_stop)
+    _DETECTED_TERMINATIONS[c.resource] = transport.terminators
+    transport.set_timeout(c.timeout_s)
     if on_log:
         on_log("info", f"Lock-in {c.resource}: answered with {label}")
     return Lockin5302(transport)
@@ -151,7 +169,7 @@ class Acquisition:
         self.writer: DataWriter | None = None
         self.tracker = DirectionTracker()
         self.slots = {
-            "lockin": InstrumentSlot("Lock-in", lambda: open_lockin(cfg, self.on_log)),
+            "lockin": InstrumentSlot("Lock-in", lambda: open_lockin(cfg, self.on_log, self._stop.is_set)),
             "pid": InstrumentSlot("CND3", lambda: open_pid(cfg)),
         }
         if cfg.dmm.enabled or cfg.run.temp_source == "dmm":

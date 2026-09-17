@@ -75,21 +75,32 @@ def termination_label(write_termination: str, read_termination: str | None) -> s
     return f"write {_TERM_NAMES[write_termination]}, read {_TERM_NAMES[read_termination]}"
 
 
-def probe_terminations(open_one, verify, name: str = "instrument", terminations=None):
+def probe_terminations(open_one, verify, name: str = "instrument", terminations=None,
+                       should_stop=None):
     """Open ``name`` with each terminator pair until ``verify`` accepts the result.
 
     ``open_one(write_termination, read_termination)`` returns a transport and
     ``verify(transport)`` raises if the instrument does not answer properly.
-    Returns ``(transport, label)``; raises TransportError naming everything tried,
-    so a genuine wiring fault does not read as a terminator problem.
+    Returns ``(transport, label)``; the winning pair is left on the transport as
+    ``terminators`` so a caller can try it first next time. Raises TransportError
+    naming everything tried, so a genuine wiring fault does not read as a
+    terminator problem.
+
+    ``should_stop()`` is checked before each attempt. A silent instrument costs a
+    timeout per pair, which is far longer than anyone expects to wait for a Stop
+    button, so this has to be interruptible.
     """
     attempts = []
     for write_t, read_t in terminations or TERMINATIONS:
+        if should_stop is not None and should_stop():
+            raise TransportError(f"{name}: gave up looking for a terminator (stopping)")
         label = termination_label(write_t, read_t)
         transport = None
         try:
             transport = open_one(write_t, read_t)
             verify(transport)
+            transport.terminators = (write_t, read_t)
+            transport.detected = label
             return transport, label
         except Exception as exc:
             attempts.append(f"  {label}: {exc}")
@@ -177,6 +188,12 @@ class VisaTransport(Transport):
             except Exception as exc:
                 raise TransportError(
                     f"{self.name}: query {cmd!r} failed: {exc}{self._status_hint()}") from exc
+
+    def set_timeout(self, timeout_s: float) -> None:
+        try:
+            self._inst.timeout = int(timeout_s * 1000)
+        except Exception:
+            pass
 
     def read(self) -> str:
         """Read one more response line (e.g. the second value of a compound reply)."""

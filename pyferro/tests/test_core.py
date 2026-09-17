@@ -417,3 +417,34 @@ def test_status_byte_explains_a_rejected_command():
     faults = describe_status(0b00011000)
     assert "reference unlock" in faults and "overload" in faults
     assert describe_status(0b10000000) == ""  # data available is not a fault
+
+
+def test_probe_terminations_gives_up_when_asked_to_stop():
+    """A silent instrument costs a timeout per pair; Stop must not wait for all of them."""
+    opened = []
+
+    class FakeTransport:
+        def close(self):
+            pass
+
+    def open_one(write_t, read_t):
+        opened.append((write_t, read_t))
+        return FakeTransport()
+
+    def verify(t):
+        raise TransportError("timeout")
+
+    stopping = iter([False, False, True, True, True, True, True, True, True])
+    with pytest.raises(TransportError, match="stopping"):
+        probe_terminations(open_one, verify, name="Lock-in", should_stop=lambda: next(stopping))
+    assert len(opened) == 2, "should abort at the third pair, not work through all eight"
+
+
+def test_probe_terminations_records_the_pair_that_worked():
+    class FakeTransport:
+        def close(self):
+            pass
+
+    transport, _ = probe_terminations(lambda w, r: FakeTransport(), lambda t: None, name="Lock-in")
+    assert transport.terminators == TERMINATIONS[0]
+    assert transport.detected == "write CR, read CR"
