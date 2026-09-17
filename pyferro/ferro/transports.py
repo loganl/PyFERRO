@@ -191,6 +191,10 @@ class VisaTransport(Transport):
         # swallow a command sent immediately afterwards, which then looks like a dead
         # instrument rather than a lost byte.
         time.sleep(settle_s)
+        # Whatever a previous program left unread would be handed to us as our own
+        # first reply, one command out of step from the start. On this rig ibic found
+        # two ID responses stacked up from earlier attempts.
+        self._recover(limit=4)
 
     def _pause(self) -> None:
         """Let the instrument finish before the next command.
@@ -203,13 +207,13 @@ class VisaTransport(Transport):
         if self._gap:
             time.sleep(self._gap)
 
-    def _recover(self) -> None:
-        """After a failure, clear a reply that may still be on its way."""
+    def _recover(self, limit: int = 2) -> None:
+        """Clear replies that may still be queued, so the next read is this one's."""
         saved = None
         try:
             saved = self._inst.timeout
             self._inst.timeout = 200
-            drain_replies(self._inst.read)
+            drain_replies(self._inst.read, limit)
         except Exception:
             pass
         finally:
