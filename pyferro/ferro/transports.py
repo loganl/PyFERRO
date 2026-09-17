@@ -141,6 +141,7 @@ class VisaTransport(Transport):
         write_termination: str = "\r",
         read_termination: str = "\r",
         backend: str = "",
+        settle_s: float = 0.15,
     ) -> None:
         import pyvisa
 
@@ -166,6 +167,10 @@ class VisaTransport(Transport):
             self._inst.clear()
         except Exception:
             pass
+        # Device Clear resets the instrument's communications processor. The 5302 can
+        # swallow a command sent immediately afterwards, which then looks like a dead
+        # instrument rather than a lost byte.
+        time.sleep(settle_s)
 
     def write(self, cmd: str) -> None:
         with self._lock:

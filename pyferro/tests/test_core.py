@@ -448,3 +448,16 @@ def test_probe_terminations_records_the_pair_that_worked():
     transport, _ = probe_terminations(lambda w, r: FakeTransport(), lambda t: None, name="Lock-in")
     assert transport.terminators == TERMINATIONS[0]
     assert transport.detected == "write CR, read CR"
+
+
+def test_falling_behind_names_the_instrument_that_is_holding_things_up():
+    acq = Acquisition(config.AppConfig(simulate=True), on_log=lambda lvl, m: None)
+    acq._durations = {"pid": 0.05, "lockin": 2.10}
+    acq.slots["lockin"].state = "error"
+    message = acq._behind_message(0.2)
+    assert "a reading takes 2.1 s but the interval is 0.2 s" in message
+    assert "waiting for the lock-in (not answering)" in message
+
+    # spread evenly across instruments: no one of them is to blame
+    acq._durations = {"pid": 0.5, "lockin": 0.5}
+    assert "waiting for" not in acq._behind_message(0.2)

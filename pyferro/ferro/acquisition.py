@@ -42,6 +42,7 @@ NAN = float("nan")
 REOPEN_AFTER_FAILURES = 3
 REOPEN_BACKOFF_S = 5.0
 POLL_SETTINGS_S = 60.0  # how often to re-read settings that are not read every sample
+BEHIND_WARN_S = 30.0  # how often to say the loop cannot keep up with the interval
 
 
 # Terminator pairs that have worked, by resource: a reconnect should not pay for
@@ -76,8 +77,14 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
         return VisaTransport(c.resource, timeout_s=probe_timeout,
                              write_termination=write_t, read_termination=read_t)
 
+    def answers_id(transport):
+        try:
+            return Lockin5302(transport).check()
+        except Exception:
+            return Lockin5302(transport).check()  # one retry: the first command can be lost
+
     transport, label = probe_terminations(
-        open_one, lambda t: Lockin5302(t).check(), name=f"Lock-in {c.resource}",
+        open_one, answers_id, name=f"Lock-in {c.resource}",
         terminations=order, should_stop=should_stop)
     _DETECTED_TERMINATIONS[c.resource] = transport.terminators
     transport.set_timeout(c.timeout_s)
@@ -163,6 +170,7 @@ class Acquisition:
         self.on_log = lambda level, message: (on_log(level, message),
                                               sessionlog.write(level, message))
         self._stop = threading.Event()
+        self._durations: dict[str, float] = {}  # last read time per instrument
         self._thread: threading.Thread | None = None
         self._record_request: bool | None = None
         self._req_lock = threading.Lock()
@@ -251,6 +259,7 @@ class Acquisition:
 
     def _read(self, key: str, fn: Callable[[object], object]):
         slot = self.slots[key]
+        started = time.monotonic()
         try:
             value = fn(slot.get())
             if slot.state == "error":  # back after a gap: say so, and say how long
@@ -269,6 +278,8 @@ class Acquisition:
                 self.on_log("info", f"{slot.name}: closing and reopening the connection "
                                     f"in {REOPEN_BACKOFF_S:.0f} s")
             return None
+        finally:
+            self._durations[key] = time.monotonic() - started
 
     def _run(self) -> None:
         self._t0 = time.monotonic()
@@ -276,6 +287,7 @@ class Acquisition:
         for line in self.connections().values():
             self.on_log("info", f"  {line}")
         next_tick = self._t0
+        warned_behind = 0.0
         try:
             while not self._stop.is_set():
                 try:
@@ -292,12 +304,32 @@ class Acquisition:
                 if delay < 0:  # fell behind (slow instrument) - don't try to catch up
                     next_tick = time.monotonic()
                     delay = 0
+                    # An instrument that is not answering costs its whole timeout on
+                    # every sample, so the loop quietly runs at the speed of the
+                    # slowest one. Say so, rather than leaving it looking like a
+                    # frozen display.
+                    if next_tick - warned_behind > BEHIND_WARN_S:
+                        warned_behind = next_tick
+                        self.on_log("warning", self._behind_message(interval))
                 self._stop.wait(delay)
         finally:
             self._close_writer()
             for slot in self.slots.values():
                 slot.close()
             self.on_log("info", "Acquisition stopped")
+
+    def _behind_message(self, interval: float) -> str:
+        total = sum(self._durations.values())
+        slowest = max(self._durations.items(), key=lambda kv: kv[1], default=(None, 0.0))
+        detail = ""
+        if slowest[0] is not None and slowest[1] > 0.5 * total and total > 0:
+            slot = self.slots.get(slowest[0])
+            name = slot.name if slot else slowest[0]
+            detail = f", almost all of it waiting for the {name.lower()}"
+            if slot is not None and slot.state == "error":
+                detail += " (not answering)"
+        return (f"Falling behind: a reading takes {total:.1f} s but the interval is "
+                f"{interval:g} s{detail}. Readings are as fast as the instruments allow.")
 
     def _sample(self) -> dict:
         row = {"time_s": time.monotonic() - self._t0, "flags": 0}
