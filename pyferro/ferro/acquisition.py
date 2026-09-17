@@ -35,7 +35,7 @@ from .instruments.lockin5302 import SENSITIVITY_LABELS, TIME_CONSTANT_LABELS
 from .instruments.hp34401a import HP34401A
 from .instruments.lockin5302 import Lockin5302
 from .instruments import simulated
-from .transports import SerialTransport, TransportError, VisaTransport
+from .transports import SerialTransport, TransportError, VisaTransport, probe_terminations
 
 NAN = float("nan")
 REOPEN_AFTER_FAILURES = 3
@@ -44,7 +44,7 @@ POLL_SETTINGS_S = 60.0  # how often to re-read settings that are not read every 
 
 
 # --- instrument factories (also used by the GUI "Test" buttons) ------------
-def open_lockin(cfg: AppConfig) -> Lockin5302:
+def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None) -> Lockin5302:
     c = cfg.lockin
     if cfg.simulate:
         return Lockin5302(simulated.SimLockinTransport(simulated.shared_sample()))
@@ -52,7 +52,20 @@ def open_lockin(cfg: AppConfig) -> Lockin5302:
         if not c.serial_port:
             raise TransportError("No RS-232 port selected for the lock-in")
         return Lockin5302(SerialTransport(c.serial_port, baudrate=c.baudrate, timeout_s=c.timeout_s))
-    return Lockin5302(VisaTransport(c.resource, timeout_s=c.timeout_s))
+
+    # The 5302's GPIB terminator depends on its rear-panel switches, and the wrong
+    # guess times out exactly like a dead instrument. Try each in turn, cheapest
+    # first, and keep the one that answers ID with 5302.
+    def open_one(write_t, read_t):
+        return VisaTransport(c.resource, timeout_s=c.timeout_s,
+                             write_termination=write_t, read_termination=read_t)
+
+    transport, label = probe_terminations(
+        open_one, lambda t: Lockin5302(t).check(), name=f"Lock-in {c.resource}")
+    transport.detected = label
+    if on_log:
+        on_log("info", f"Lock-in {c.resource}: answered with {label}")
+    return Lockin5302(transport)
 
 
 def open_pid(cfg: AppConfig) -> CND3:
@@ -138,7 +151,7 @@ class Acquisition:
         self.writer: DataWriter | None = None
         self.tracker = DirectionTracker()
         self.slots = {
-            "lockin": InstrumentSlot("Lock-in", lambda: open_lockin(cfg)),
+            "lockin": InstrumentSlot("Lock-in", lambda: open_lockin(cfg, self.on_log)),
             "pid": InstrumentSlot("CND3", lambda: open_pid(cfg)),
         }
         if cfg.dmm.enabled or cfg.run.temp_source == "dmm":

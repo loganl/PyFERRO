@@ -16,7 +16,7 @@ from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temper
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.lockin5302 import Lockin5302, counts_to_volts, parse_ints
 from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
-from ferro.transports import TransportError
+from ferro.transports import TERMINATIONS, TransportError, probe_terminations
 
 
 # --- lock-in -----------------------------------------------------------------
@@ -367,3 +367,41 @@ def test_simulation_is_never_restored_from_the_settings_file():
     assert "simulate" not in saved
     # even a settings file written by an older version must not switch it back on
     assert config.AppConfig.from_dict({"simulate": True}).simulate is False
+
+
+# --- GPIB terminator probing -----------------------------------------------------------
+def test_probe_terminations_keeps_the_first_that_answers():
+    opened, closed = [], []
+
+    class FakeTransport:
+        def __init__(self, write_t, read_t):
+            self.pair = (write_t, read_t)
+
+        def close(self):
+            closed.append(self.pair)
+
+    def open_one(write_t, read_t):
+        opened.append((write_t, read_t))
+        return FakeTransport(write_t, read_t)
+
+    def verify(t):
+        if t.pair != ("\n", None):
+            raise TransportError("timeout")
+
+    transport, label = probe_terminations(open_one, verify, name="Lock-in")
+    assert transport.pair == ("\n", None)
+    assert label == "write LF, read EOI"
+    assert opened == TERMINATIONS[:4], "should stop at the first that answers"
+    assert closed == TERMINATIONS[:3], "every rejected transport must be closed"
+
+
+def test_probe_terminations_reports_everything_it_tried():
+    def open_one(write_t, read_t):
+        raise TransportError("VI_ERROR_TMO")
+
+    with pytest.raises(TransportError) as caught:
+        probe_terminations(open_one, lambda t: None, name="Lock-in GPIB0::12::INSTR")
+    message = str(caught.value)
+    assert "Lock-in GPIB0::12::INSTR did not answer with any terminator" in message
+    assert "switched to RS-232" in message  # the likeliest real cause
+    assert message.count("VI_ERROR_TMO") == len(TERMINATIONS)

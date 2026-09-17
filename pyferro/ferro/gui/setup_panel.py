@@ -220,13 +220,16 @@ class SetupPanel(QWidget):
             li = open_lockin(cfg)
             try:
                 li.check()
-                return li.settings()
+                found = li.settings()
+                found["link"] = getattr(li.t, "detected", "")
+                return found
             finally:
                 li.close()
 
         self._start(self.li_test, self.li_result, work, lambda s: (
             f"5302 found — sensitivity {s['sensitivity']}, TC {s['time_constant']}, "
-            f"reference {s['frequency_hz']:.4g} Hz" + (", EXPAND on" if s["expand"] else "")))
+            f"reference {s['frequency_hz']:.4g} Hz" + (", EXPAND on" if s["expand"] else "")
+            + (f" [{s['link']}]" if s.get("link") else "")))
 
     def _test_pid(self) -> None:
         cfg = self._snapshot()

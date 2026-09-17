@@ -34,6 +34,54 @@ class Transport:
         pass
 
 
+# GPIB terminators, most likely first. The EG&G 5302 predates SCPI and its
+# manual does not commit to one: depending on the rear-panel switches it ends a
+# reply with CR, LF, CR LF, or nothing at all but the EOI line (read_termination
+# None reads until EOI). Guessing wrong means the command is never recognised and
+# the read times out with VI_ERROR_TMO, which looks exactly like a dead instrument.
+TERMINATIONS = [
+    ("\r", "\r"),
+    ("\r", None),
+    ("\n", "\n"),
+    ("\n", None),
+    ("\r\n", "\r\n"),
+    ("\r\n", None),
+    ("\r", "\n"),
+    ("\n", "\r"),
+]
+_TERM_NAMES = {"\r": "CR", "\n": "LF", "\r\n": "CRLF", None: "EOI"}
+
+
+def termination_label(write_termination: str, read_termination: str | None) -> str:
+    return f"write {_TERM_NAMES[write_termination]}, read {_TERM_NAMES[read_termination]}"
+
+
+def probe_terminations(open_one, verify, name: str = "instrument", terminations=None):
+    """Open ``name`` with each terminator pair until ``verify`` accepts the result.
+
+    ``open_one(write_termination, read_termination)`` returns a transport and
+    ``verify(transport)`` raises if the instrument does not answer properly.
+    Returns ``(transport, label)``; raises TransportError naming everything tried,
+    so a genuine wiring fault does not read as a terminator problem.
+    """
+    attempts = []
+    for write_t, read_t in terminations or TERMINATIONS:
+        label = termination_label(write_t, read_t)
+        transport = None
+        try:
+            transport = open_one(write_t, read_t)
+            verify(transport)
+            return transport, label
+        except Exception as exc:
+            attempts.append(f"  {label}: {exc}")
+            if transport is not None:
+                transport.close()
+    raise TransportError(
+        f"{name} did not answer with any terminator. Check the address, the cable, and that "
+        f"the instrument is not switched to RS-232.\n" + "\n".join(attempts)
+    )
+
+
 def list_visa_resources() -> list[str]:
     """Best-effort list of VISA resources; never raises."""
     for backend in ("", "@py"):
