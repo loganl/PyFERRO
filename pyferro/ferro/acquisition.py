@@ -43,6 +43,7 @@ REOPEN_AFTER_FAILURES = 3
 REOPEN_BACKOFF_S = 5.0
 POLL_SETTINGS_S = 60.0  # how often to re-read settings that are not read every sample
 BEHIND_WARN_S = 30.0  # how often to say the loop cannot keep up with the interval
+LOCKIN_GAP_S = 0.05  # the 5302 loses a command sent while it is still busy
 
 
 # Terminator pairs that have worked, by resource: a reconnect should not pay for
@@ -74,7 +75,7 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
     probe_timeout = min(c.timeout_s, 1.0)
 
     def open_one(write_t, read_t):
-        return VisaTransport(c.resource, timeout_s=probe_timeout, handshake=True,
+        return VisaTransport(c.resource, timeout_s=probe_timeout, gap_s=LOCKIN_GAP_S,
                              write_termination=write_t, read_termination=read_t)
 
     def answers_id(transport):

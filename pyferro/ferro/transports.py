@@ -61,41 +61,21 @@ STATUS_BITS = [
 ]
 
 
-def wait_command_complete(read_stb, timeout_s: float = 1.0,
-                          now=time.monotonic, sleep=time.sleep) -> bool:
-    """Serial-poll until bit 0, command complete, is set (manual section 8.7).
+def drain_replies(read, limit: int = 2) -> int:
+    """Read and discard replies left queued, until there are none or ``limit`` is hit.
 
-    The 5302 signals through its status byte that it has finished with a command
-    and will accept the next one. Sending one before that can lose it, which shows
-    up as a timeout on a perfectly valid command a few exchanges into a run.
-    Returns False if it never settles, or if the poll itself is unavailable - the
-    caller carries on either way rather than turning a slow instrument into an error.
-    """
-    end = now() + timeout_s
-    while now() < end:
-        try:
-            if int(read_stb()) & 1:
-                return True
-        except Exception:
-            return False
-        sleep(0.005)
-    return False
-
-
-def drain_pending(read_stb, read, limit: int = 4) -> int:
-    """Read anything the instrument still has queued (status bit 7, data available).
-
-    A reply left unread makes the *next* command's reply arrive one command late,
-    so a perfectly good SEN or XTC answer comes back as the previous response -
-    which is how a value like 5302 turns up where 0..21 was expected.
+    A query that times out can still have its reply delivered afterwards, and then
+    the *next* command reads it instead of its own - a good SEN or XTC answer comes
+    back as the previous response, which is how a value like 5302 turns up where
+    0..21 was expected. Called only after a failure, so the working path is untouched.
     """
     drained = 0
-    try:
-        while drained < limit and int(read_stb()) & 0x80:
+    while drained < limit:
+        try:
             read()
-            drained += 1
-    except Exception:
-        pass
+        except Exception:
+            break
+        drained += 1
     return drained
 
 
@@ -180,12 +160,12 @@ class VisaTransport(Transport):
         read_termination: str = "\r",
         backend: str = "",
         settle_s: float = 0.15,
-        handshake: bool = False,
+        gap_s: float = 0.0,
     ) -> None:
         import pyvisa
 
         self.name = resource
-        self._handshake = handshake
+        self._gap = gap_s
         self._lock = threading.Lock()
         errors = []
         backends = [backend] if backend else ["", "@py"]
@@ -212,15 +192,24 @@ class VisaTransport(Transport):
         # instrument rather than a lost byte.
         time.sleep(settle_s)
 
-    def _ready(self) -> None:
-        if not self._handshake:
-            return
-        wait_command_complete(self._inst.read_stb)
+    def _pause(self) -> None:
+        """Let the instrument finish before the next command.
+
+        The 5302 loses a command sent while it is still dealing with the previous
+        one, which shows up as a timeout on a perfectly valid command a few
+        exchanges into a run. Serial-polling for command complete, as the manual
+        describes, upset it further - a fixed gap is enough and touches nothing.
+        """
+        if self._gap:
+            time.sleep(self._gap)
+
+    def _recover(self) -> None:
+        """After a failure, clear a reply that may still be on its way."""
         saved = None
-        try:  # a short timeout: draining must never cost a full read timeout
+        try:
             saved = self._inst.timeout
             self._inst.timeout = 200
-            drain_pending(self._inst.read_stb, self._inst.read)
+            drain_replies(self._inst.read)
         except Exception:
             pass
         finally:
@@ -234,8 +223,9 @@ class VisaTransport(Transport):
         with self._lock:
             try:
                 self._inst.write(cmd)
-                self._ready()
+                self._pause()
             except Exception as exc:
+                self._recover()
                 raise TransportError(f"{self.name}: write {cmd!r} failed: {exc}") from exc
 
     def _status_hint(self) -> str:
@@ -249,11 +239,12 @@ class VisaTransport(Transport):
         with self._lock:
             try:
                 reply = self._inst.query(cmd).strip()
-                self._ready()
+                self._pause()
                 return reply
             except Exception as exc:
-                raise TransportError(
-                    f"{self.name}: query {cmd!r} failed: {exc}{self._status_hint()}") from exc
+                hint = self._status_hint()
+                self._recover()
+                raise TransportError(f"{self.name}: query {cmd!r} failed: {exc}{hint}") from exc
 
     def set_timeout(self, timeout_s: float) -> None:
         try:

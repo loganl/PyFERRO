@@ -17,7 +17,7 @@ from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.lockin5302 import (Lockin5302, checked_index, counts_to_volts,
                                           parse_ints)
 from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
-from ferro.transports import TERMINATIONS, TransportError, describe_status, drain_pending, probe_terminations, wait_command_complete
+from ferro.transports import TERMINATIONS, TransportError, describe_status, drain_replies, probe_terminations
 
 
 # --- lock-in -----------------------------------------------------------------
@@ -464,25 +464,6 @@ def test_falling_behind_names_the_instrument_that_is_holding_things_up():
     assert "waiting for" not in acq._behind_message(0.2)
 
 
-# --- 5302 command-complete handshake ---------------------------------------------------
-def test_wait_command_complete_returns_when_bit_0_is_set():
-    polls = iter([0x80, 0x00, 0x81])  # data available, busy, then command complete
-    assert wait_command_complete(lambda: next(polls), sleep=lambda s: None) is True
-
-
-def test_wait_command_complete_gives_up_instead_of_hanging():
-    clock = iter([0.0, 0.1, 0.5, 1.5])
-    assert wait_command_complete(lambda: 0x00, timeout_s=1.0,
-                                 now=lambda: next(clock), sleep=lambda s: None) is False
-
-
-def test_wait_command_complete_survives_an_instrument_that_cannot_be_polled():
-    def no_poll():
-        raise RuntimeError("serial poll not supported")
-
-    assert wait_command_complete(no_poll, sleep=lambda s: None) is False
-
-
 def test_a_setting_index_out_of_range_is_refused_not_indexed():
     """5302 replies arriving one command late used to crash with IndexError."""
     for command, size in [("SEN", 22), ("XTC", 19)]:
@@ -494,13 +475,15 @@ def test_a_setting_index_out_of_range_is_refused_not_indexed():
             checked_index(-1, size, command)
 
 
-def test_drain_pending_clears_a_late_reply():
-    reads = []
-    polls = iter([0x81, 0x81, 0x01])  # data available twice, then nothing queued
-    assert drain_pending(lambda: next(polls), lambda: reads.append("x")) == 2
-    assert len(reads) == 2
+def test_drain_replies_clears_a_late_reply_then_stops():
+    """A query that times out can still deliver its reply, one command too late."""
+    queued = iter(["5302"])
+
+    def read():
+        return next(queued)  # StopIteration once the buffer is empty
+
+    assert drain_replies(read) == 1
 
 
-def test_drain_pending_stops_rather_than_looping_forever():
-    reads = []
-    assert drain_pending(lambda: 0x80, lambda: reads.append("x"), limit=3) == 3
+def test_drain_replies_stops_rather_than_looping_forever():
+    assert drain_replies(lambda: "junk", limit=3) == 3
