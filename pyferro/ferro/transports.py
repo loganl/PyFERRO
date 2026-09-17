@@ -34,21 +34,40 @@ class Transport:
         pass
 
 
-# GPIB terminators, most likely first. The EG&G 5302 predates SCPI and its
-# manual does not commit to one: depending on the rear-panel switches it ends a
-# reply with CR, LF, CR LF, or nothing at all but the EOI line (read_termination
-# None reads until EOI). Guessing wrong means the command is never recognised and
-# the read times out with VI_ERROR_TMO, which looks exactly like a dead instrument.
+# GPIB terminators, most likely first. The 5302 offers CR or CR LF, set from the
+# front panel (SETUP MENU -> COMM-I/O -> GPIB) or with the AT and GP commands, and
+# the input and output terminators are selected independently - so all four pairings
+# occur (manual section 8.5). CR both ways is the GPIB default. read_termination
+# None reads until EOI, for an instrument that is not terminating at all. Guessing
+# wrong means the command is never recognised and the read times out with
+# VI_ERROR_TMO, which looks exactly like a dead instrument.
 TERMINATIONS = [
     ("\r", "\r"),
+    ("\r", "\r\n"),
+    ("\r\n", "\r\n"),
+    ("\r\n", "\r"),
     ("\r", None),
+    ("\r\n", None),
     ("\n", "\n"),
     ("\n", None),
-    ("\r\n", "\r\n"),
-    ("\r\n", None),
-    ("\r", "\n"),
-    ("\n", "\r"),
 ]
+# 5302 status byte (manual section 8.7). A serial poll works even when a command
+# has been rejected, so it turns a bare VI_ERROR_TMO into the actual reason.
+STATUS_BITS = [
+    (1 << 1, "invalid command"),
+    (1 << 2, "command parameter error"),
+    (1 << 3, "reference unlock"),
+    (1 << 4, "overload"),
+]
+
+
+def describe_status(stb: int) -> str:
+    faults = [text for bit, text in STATUS_BITS if stb & bit]
+    if not faults:
+        return ""
+    return " - the instrument reports " + ", ".join(faults)
+
+
 _TERM_NAMES = {"\r": "CR", "\n": "LF", "\r\n": "CRLF", None: "EOI"}
 
 
@@ -144,12 +163,20 @@ class VisaTransport(Transport):
             except Exception as exc:
                 raise TransportError(f"{self.name}: write {cmd!r} failed: {exc}") from exc
 
+    def _status_hint(self) -> str:
+        """Serial-poll the instrument after a failure; silent if that fails too."""
+        try:
+            return describe_status(int(self._inst.read_stb()))
+        except Exception:
+            return ""
+
     def query(self, cmd: str) -> str:
         with self._lock:
             try:
                 return self._inst.query(cmd).strip()
             except Exception as exc:
-                raise TransportError(f"{self.name}: query {cmd!r} failed: {exc}") from exc
+                raise TransportError(
+                    f"{self.name}: query {cmd!r} failed: {exc}{self._status_hint()}") from exc
 
     def read(self) -> str:
         """Read one more response line (e.g. the second value of a compound reply)."""

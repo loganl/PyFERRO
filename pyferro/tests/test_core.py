@@ -16,7 +16,7 @@ from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temper
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.lockin5302 import Lockin5302, counts_to_volts, parse_ints
 from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
-from ferro.transports import TERMINATIONS, TransportError, probe_terminations
+from ferro.transports import TERMINATIONS, TransportError, describe_status, probe_terminations
 
 
 # --- lock-in -----------------------------------------------------------------
@@ -384,15 +384,18 @@ def test_probe_terminations_keeps_the_first_that_answers():
         opened.append((write_t, read_t))
         return FakeTransport(write_t, read_t)
 
+    works = ("\r\n", "\r")  # input CR LF, output CR: the 5302 selects them separately
+    at = TERMINATIONS.index(works)
+
     def verify(t):
-        if t.pair != ("\n", None):
+        if t.pair != works:
             raise TransportError("timeout")
 
     transport, label = probe_terminations(open_one, verify, name="Lock-in")
-    assert transport.pair == ("\n", None)
-    assert label == "write LF, read EOI"
-    assert opened == TERMINATIONS[:4], "should stop at the first that answers"
-    assert closed == TERMINATIONS[:3], "every rejected transport must be closed"
+    assert transport.pair == works
+    assert label == "write CRLF, read CR"
+    assert opened == TERMINATIONS[:at + 1], "should stop at the first that answers"
+    assert closed == TERMINATIONS[:at], "every rejected transport must be closed"
 
 
 def test_probe_terminations_reports_everything_it_tried():
@@ -405,3 +408,12 @@ def test_probe_terminations_reports_everything_it_tried():
     assert "Lock-in GPIB0::12::INSTR did not answer with any terminator" in message
     assert "switched to RS-232" in message  # the likeliest real cause
     assert message.count("VI_ERROR_TMO") == len(TERMINATIONS)
+
+
+def test_status_byte_explains_a_rejected_command():
+    assert describe_status(0b00000001) == ""  # command complete, nothing wrong
+    assert "invalid command" in describe_status(0b00000010)
+    assert "command parameter error" in describe_status(0b00000100)
+    faults = describe_status(0b00011000)
+    assert "reference unlock" in faults and "overload" in faults
+    assert describe_status(0b10000000) == ""  # data available is not a fault
