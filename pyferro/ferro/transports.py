@@ -160,11 +160,14 @@ class VisaTransport(Transport):
         read_termination: str = "\r",
         backend: str = "",
         gap_s: float = 0.0,
+        retries: int = 0,
     ) -> None:
         import pyvisa
 
         self.name = resource
         self._gap = gap_s
+        self.retries = retries  # a marginal GPIB link drops the odd exchange
+        self.retries_used = 0
         self._lock = threading.Lock()
         errors = []
         backends = [backend] if backend else ["", "@py"]
@@ -236,14 +239,18 @@ class VisaTransport(Transport):
 
     def query(self, cmd: str) -> str:
         with self._lock:
-            try:
-                reply = self._inst.query(cmd).strip()
-                self._pause()
-                return reply
-            except Exception as exc:
-                hint = self._status_hint()
-                self._recover()
-                raise TransportError(f"{self.name}: query {cmd!r} failed: {exc}{hint}") from exc
+            for attempt in range(self.retries + 1):
+                try:
+                    reply = self._inst.query(cmd).strip()
+                    self._pause()
+                    return reply
+                except Exception as exc:
+                    hint = self._status_hint()
+                    self._recover()  # clear a reply still on its way before trying again
+                    if attempt == self.retries:
+                        raise TransportError(
+                            f"{self.name}: query {cmd!r} failed: {exc}{hint}") from exc
+                    self.retries_used += 1
 
     def set_timeout(self, timeout_s: float) -> None:
         try:

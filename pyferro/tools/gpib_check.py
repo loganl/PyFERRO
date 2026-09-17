@@ -13,6 +13,7 @@ on the bus" from "the interface is alive but commands are not getting through".
 import sys
 
 RESOURCE = sys.argv[1] if len(sys.argv) > 1 else "GPIB0::12::INSTR"
+REPEATS = 20
 TERMINATORS = [("\r", "\r"), ("\r", "\r\n"), ("\r\n", "\r\n"), ("\r\n", "\r"),
                ("\r", None), ("\r\n", None), ("\n", "\n"), ("\n", None)]
 NAMES = {"\r": "CR", "\n": "LF", "\r\n": "CRLF", None: "EOI"}
@@ -124,42 +125,40 @@ def main() -> int:
             print(f"ID / {label:<22}: timeout")
     inst.close()
 
+    ok = bad = 0
+    reasons = {}
     if answered:
         print()
-        print("Now the same query through the steps the program takes on open, one at a")
-        print("time, because those are the only difference between this script and it:")
-        for clear, settle, drain in [(False, 0.0, False), (True, 0.0, False),
-                                     (True, 0.15, False), (True, 0.15, True)]:
-            label = (f"clear={'y' if clear else 'n'} settle={settle:.2f} "
-                     f"drain={'y' if drain else 'n'}")
+        print(f"Repeating the ID query {REPEATS} times to see how steady the link is:")
+        for _ in range(REPEATS):
             try:
-                d = rm.open_resource(RESOURCE)
-                d.write_termination, d.read_termination = write_t, read_t
-                d.timeout = 2000
-                if clear:
-                    d.clear()
-                if settle:
-                    import time as _t
-                    _t.sleep(settle)
-                if drain:
-                    d.timeout = 200
-                    for _ in range(4):
-                        try:
-                            d.read()
-                        except Exception:
-                            break
-                    d.timeout = 2000
-                reply = d.query("ID").strip()
-                print(f"  {label:<34}: {'PASS' if '5302' in reply else repr(reply)}")
-                d.close()
+                inst2 = rm.open_resource(RESOURCE)
+                inst2.write_termination, inst2.read_termination = write_t, read_t
+                inst2.timeout = 2000
+                if "5302" in inst2.query("ID"):
+                    ok += 1
+                else:
+                    bad += 1
+                    reasons["wrong reply"] = reasons.get("wrong reply", 0) + 1
+                inst2.close()
             except Exception as exc:
-                print(f"  {label:<34}: FAIL ({type(exc).__name__})")
+                bad += 1
+                name = type(exc).__name__
+                reasons[name] = reasons.get(name, 0) + 1
+        detail = ", ".join(f"{n}x {r}" for r, n in sorted(reasons.items())) or "none"
+        print(f"  {ok}/{REPEATS} succeeded   failures: {detail}")
 
     print()
-    if answered:
-        print(f"VERDICT: the lock-in answers. Use {answered}.")
-        print("If a line above says FAIL, that step is what breaks the program; tell me which.")
+    if answered and bad == 0:
+        print(f"VERDICT: the lock-in answers, every time. Use {answered}.")
         return 0
+    if answered:
+        print(f"VERDICT: the lock-in answers, but only {ok} times in {REPEATS}. The link is "
+              "marginal, not broken, and that is a connection rather than a setting: "
+              "screw down both ends of the GPIB cable, try another cable, and plug the "
+              "adapter straight into the PC rather than through a hub. PyFERRO retries, "
+              "so a rate this side of about 9 in 10 is usable meanwhile.")
+        return 1
     if stb is not None:
         print("VERDICT: the GPIB interface is alive (the serial poll worked) but the "
               "instrument never answers ID. Power-cycle the 5302 - its command "

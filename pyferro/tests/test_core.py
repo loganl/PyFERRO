@@ -17,7 +17,8 @@ from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.lockin5302 import (Lockin5302, checked_index, counts_to_volts,
                                           parse_ints)
 from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
-from ferro.transports import TERMINATIONS, TransportError, describe_status, drain_replies, probe_terminations
+from ferro.transports import (TERMINATIONS, TransportError, VisaTransport, describe_status,
+                              drain_replies, probe_terminations)
 
 
 # --- lock-in -----------------------------------------------------------------
@@ -487,3 +488,40 @@ def test_drain_replies_clears_a_late_reply_then_stops():
 
 def test_drain_replies_stops_rather_than_looping_forever():
     assert drain_replies(lambda: "junk", limit=3) == 3
+
+
+def test_a_marginal_link_is_retried_before_it_is_reported():
+    """The rig's GPIB link drops the odd exchange; one lost byte is not a failed run."""
+    import threading
+
+    class FlakyInstrument:
+        def __init__(self, failures):
+            self.failures, self.calls, self.timeout = failures, 0, 2000
+
+        def query(self, cmd):
+            self.calls += 1
+            if self.calls <= self.failures:
+                raise OSError("VI_ERROR_TMO")
+            return "5302\r"
+
+        def read(self):
+            raise OSError("nothing queued")
+
+        def read_stb(self):
+            return 0
+
+    def transport(failures):
+        t = VisaTransport.__new__(VisaTransport)
+        t.name, t._lock, t._gap = "GPIB0::12::INSTR", threading.Lock(), 0.0
+        t.retries, t.retries_used = 2, 0
+        t._inst = FlakyInstrument(failures)
+        return t
+
+    t = transport(2)  # fails twice, succeeds on the third attempt
+    assert t.query("ID") == "5302"
+    assert t.retries_used == 2
+
+    t = transport(3)  # more failures than retries: report it
+    with pytest.raises(TransportError, match="query 'ID' failed"):
+        t.query("ID")
+    assert t._inst.calls == 3, "should not keep trying forever"
