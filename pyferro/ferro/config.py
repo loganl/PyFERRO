@@ -75,7 +75,12 @@ class AppConfig:
     simulate: bool = False
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        # Simulation is a per-launch mode, not a saved preference. Running
+        # --simulate once used to write simulate=true here, and every later run
+        # came up simulated until someone noticed the banner.
+        data = asdict(self)
+        data.pop("simulate", None)
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "AppConfig":
@@ -90,7 +95,7 @@ class AppConfig:
                         setattr(target, f.name, type(default)(values[f.name]))
                     except (TypeError, ValueError):
                         pass
-        cfg.simulate = bool(data.get("simulate", False)) if isinstance(data, dict) else False
+        cfg.simulate = False  # never restored from disk; see to_dict
         return cfg
 
 

@@ -342,3 +342,11 @@ def test_acquisition_survives_missing_instruments(tmp_path):
     assert rows and all(math.isnan(r["X_V"]) and math.isnan(r["T_C"]) for r in rows)
     assert {s[0] for s in statuses} == {"lockin", "pid"}
     assert all(s[1] == "error" for s in statuses)
+
+
+def test_simulation_is_never_restored_from_the_settings_file():
+    """--simulate once must not leave every later run quietly simulated."""
+    saved = config.AppConfig(simulate=True).to_dict()
+    assert "simulate" not in saved
+    # even a settings file written by an older version must not switch it back on
+    assert config.AppConfig.from_dict({"simulate": True}).simulate is False
