@@ -159,7 +159,6 @@ class VisaTransport(Transport):
         write_termination: str = "\r",
         read_termination: str = "\r",
         backend: str = "",
-        settle_s: float = 0.15,
         gap_s: float = 0.0,
     ) -> None:
         import pyvisa
@@ -183,18 +182,14 @@ class VisaTransport(Transport):
                 errors.append(f"{be or 'NI-VISA'}: {exc}")
         if self._inst is None:
             raise TransportError(f"Could not open {resource} ({'; '.join(errors)})")
+        # Device Clear, and then straight into the first command. Measured on the rig
+        # (tools/gpib_check.py bisects this): clearing and querying immediately works,
+        # and pausing in between does not. The clear is also what empties an output
+        # queue left stacked up by a previous program, so no separate drain is needed.
         try:
             self._inst.clear()
         except Exception:
             pass
-        # Device Clear resets the instrument's communications processor. The 5302 can
-        # swallow a command sent immediately afterwards, which then looks like a dead
-        # instrument rather than a lost byte.
-        time.sleep(settle_s)
-        # Whatever a previous program left unread would be handed to us as our own
-        # first reply, one command out of step from the start. On this rig ibic found
-        # two ID responses stacked up from earlier attempts.
-        self._recover(limit=4)
 
     def _pause(self) -> None:
         """Let the instrument finish before the next command.
