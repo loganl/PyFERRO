@@ -18,6 +18,7 @@ minimalmodbus = ">=2.0"
 [tasks]
 start = "python -m ferro"
 simulate = "python -m ferro --simulate"
+gpib = "python tools/gpib_check.py"  # diagnose the lock-in's GPIB link
 
 [feature.test.dependencies]
 pytest = "*"
