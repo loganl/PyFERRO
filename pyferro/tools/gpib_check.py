@@ -21,6 +21,44 @@ STATUS_BITS = [(1, "command complete"), (2, "invalid command"), (4, "parameter e
                (64, "SRQ"), (128, "data available")]
 
 
+def listener_scan(board: str = "GPIB0", addresses=range(1, 31)):
+    """Ask NI-488.2 which addresses have a listener, the way ibic's ibln does.
+
+    This is the lowest-level question there is: it addresses each device and
+    watches the handshake lines, without sending a command. A device that
+    answers here but not to ID has a working interface and a stuck command
+    processor - a different fault, and a different fix.
+
+    Needs no administrator rights, unlike MAX's board properties. Returns None
+    when NI-488.2 is not present (any non-Windows machine, for instance).
+    """
+    try:
+        import ctypes
+    except ImportError:
+        return None
+    dll = None
+    for name in ("ni4882.dll", "gpib-32.dll"):
+        try:
+            dll = ctypes.WinDLL(name)
+            break
+        except Exception:
+            continue
+    if dll is None:
+        return None
+    try:
+        unit = dll.ibfind(board.encode())
+        if unit < 0:
+            return None
+        present, listening = ctypes.c_short(0), []
+        for pad in addresses:
+            if dll.ibln(unit, int(pad), 0, ctypes.byref(present)) >= 0 and present.value:
+                listening.append(int(pad))
+        dll.ibonl(unit, 0)
+        return listening
+    except Exception:
+        return None
+
+
 def main() -> int:
     try:
         import pyvisa
@@ -42,6 +80,16 @@ def main() -> int:
     print(f"target       : {RESOURCE}")
     if found and RESOURCE not in found:
         print("  ! the target is not in the list above - check the address in NI MAX")
+
+    listening = listener_scan()
+    if listening is None:
+        print("bus scan     : (NI-488.2 not available here)")
+    else:
+        print(f"listeners    : {', '.join(f'PAD {a}' for a in listening) if listening else 'NONE'}")
+        if not listening:
+            print("  ! nothing on the bus is accepting addressing. This is the 'no listeners'")
+            print("    condition: reseat both ends of the GPIB cable and tighten the screws,")
+            print("    power-cycle the instrument, and check every device in the chain is on.")
 
     try:
         inst = rm.open_resource(RESOURCE)
