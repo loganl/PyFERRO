@@ -60,6 +60,20 @@ def parse_ints(text: str, expected: int) -> list[int]:
     return values
 
 
+def checked_index(value: int, size: int, command: str) -> int:
+    """Refuse a setting index the instrument cannot really have.
+
+    Out of range means the reply is out of step with the command, not that the
+    instrument has a range we do not know about: SEN is 0-21 and XTC 0-18 in the
+    manual (tables 9-16 and 9-19), and both match the tables above.
+    """
+    if not 0 <= value < size:
+        raise TransportError(
+            f"{command} answered {value}, outside 0..{size - 1}. The replies are out "
+            "of step with the commands - the instrument is answering the previous one.")
+    return value
+
+
 @dataclass
 class LockinReading:
     x_counts: int
@@ -113,7 +127,7 @@ class Lockin5302:
         return ident
 
     def sensitivity_index(self) -> int:
-        return parse_ints(self.t.query("SEN"), 1)[0]
+        return checked_index(parse_ints(self.t.query("SEN"), 1)[0], len(SENSITIVITIES_V), "SEN")
 
     def expand(self) -> bool:
         if not self._expand_supported:
@@ -125,7 +139,7 @@ class Lockin5302:
             return False
 
     def time_constant_index(self) -> int:
-        return parse_ints(self.t.query("XTC"), 1)[0]
+        return checked_index(parse_ints(self.t.query("XTC"), 1)[0], len(TIME_CONSTANTS_S), "XTC")
 
     def frequency_hz(self) -> float:
         return parse_ints(self.t.query("FRQ"), 1)[0] / 1000.0

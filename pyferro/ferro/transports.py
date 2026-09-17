@@ -82,6 +82,23 @@ def wait_command_complete(read_stb, timeout_s: float = 1.0,
     return False
 
 
+def drain_pending(read_stb, read, limit: int = 4) -> int:
+    """Read anything the instrument still has queued (status bit 7, data available).
+
+    A reply left unread makes the *next* command's reply arrive one command late,
+    so a perfectly good SEN or XTC answer comes back as the previous response -
+    which is how a value like 5302 turns up where 0..21 was expected.
+    """
+    drained = 0
+    try:
+        while drained < limit and int(read_stb()) & 0x80:
+            read()
+            drained += 1
+    except Exception:
+        pass
+    return drained
+
+
 def describe_status(stb: int) -> str:
     faults = [text for bit, text in STATUS_BITS if stb & bit]
     if not faults:
@@ -196,8 +213,22 @@ class VisaTransport(Transport):
         time.sleep(settle_s)
 
     def _ready(self) -> None:
-        if self._handshake:
-            wait_command_complete(self._inst.read_stb)
+        if not self._handshake:
+            return
+        wait_command_complete(self._inst.read_stb)
+        saved = None
+        try:  # a short timeout: draining must never cost a full read timeout
+            saved = self._inst.timeout
+            self._inst.timeout = 200
+            drain_pending(self._inst.read_stb, self._inst.read)
+        except Exception:
+            pass
+        finally:
+            if saved is not None:
+                try:
+                    self._inst.timeout = saved
+                except Exception:
+                    pass
 
     def write(self, cmd: str) -> None:
         with self._lock:

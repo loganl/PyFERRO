@@ -14,9 +14,10 @@ from ferro.analysis import DirectionTracker
 from ferro.datafile import COLUMNS, DataWriter, check_writable, unique_path
 from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temperature
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
-from ferro.instruments.lockin5302 import Lockin5302, counts_to_volts, parse_ints
+from ferro.instruments.lockin5302 import (Lockin5302, checked_index, counts_to_volts,
+                                          parse_ints)
 from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
-from ferro.transports import TERMINATIONS, TransportError, describe_status, probe_terminations, wait_command_complete
+from ferro.transports import TERMINATIONS, TransportError, describe_status, drain_pending, probe_terminations, wait_command_complete
 
 
 # --- lock-in -----------------------------------------------------------------
@@ -480,3 +481,26 @@ def test_wait_command_complete_survives_an_instrument_that_cannot_be_polled():
         raise RuntimeError("serial poll not supported")
 
     assert wait_command_complete(no_poll, sleep=lambda s: None) is False
+
+
+def test_a_setting_index_out_of_range_is_refused_not_indexed():
+    """5302 replies arriving one command late used to crash with IndexError."""
+    for command, size in [("SEN", 22), ("XTC", 19)]:
+        assert checked_index(0, size, command) == 0
+        assert checked_index(size - 1, size, command) == size - 1
+        with pytest.raises(TransportError, match="out of step"):
+            checked_index(5302, size, command)  # an ID reply read as a setting
+        with pytest.raises(TransportError, match=f"{command} answered -1"):
+            checked_index(-1, size, command)
+
+
+def test_drain_pending_clears_a_late_reply():
+    reads = []
+    polls = iter([0x81, 0x81, 0x01])  # data available twice, then nothing queued
+    assert drain_pending(lambda: next(polls), lambda: reads.append("x")) == 2
+    assert len(reads) == 2
+
+
+def test_drain_pending_stops_rather_than_looping_forever():
+    reads = []
+    assert drain_pending(lambda: 0x80, lambda: reads.append("x"), limit=3) == 3
