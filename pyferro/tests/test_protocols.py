@@ -7,13 +7,14 @@ The emulators follow the instrument manuals byte for byte:
 
 import os
 import select
-import sys
 import threading
-import tty
 
 import pytest
 
-pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="needs a POSIX pty")
+# The skip has to happen while importing, not as a mark: tty (and termios under it)
+# do not exist on Windows, so a plain "import tty" fails during collection before
+# any skipif is consulted.
+tty = pytest.importorskip("tty", reason="the pty emulators need a POSIX terminal")
 
 from ferro.instruments.cnd3 import CND3, PIDSensorError, autodetect  # noqa: E402
 from ferro.instruments.lockin5302 import Lockin5302  # noqa: E402
