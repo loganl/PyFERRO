@@ -124,9 +124,41 @@ def main() -> int:
             print(f"ID / {label:<22}: timeout")
     inst.close()
 
+    if answered:
+        print()
+        print("Now the same query through the steps the program takes on open, one at a")
+        print("time, because those are the only difference between this script and it:")
+        for clear, settle, drain in [(False, 0.0, False), (True, 0.0, False),
+                                     (True, 0.15, False), (True, 0.15, True)]:
+            label = (f"clear={'y' if clear else 'n'} settle={settle:.2f} "
+                     f"drain={'y' if drain else 'n'}")
+            try:
+                d = rm.open_resource(RESOURCE)
+                d.write_termination, d.read_termination = write_t, read_t
+                d.timeout = 2000
+                if clear:
+                    d.clear()
+                if settle:
+                    import time as _t
+                    _t.sleep(settle)
+                if drain:
+                    d.timeout = 200
+                    for _ in range(4):
+                        try:
+                            d.read()
+                        except Exception:
+                            break
+                    d.timeout = 2000
+                reply = d.query("ID").strip()
+                print(f"  {label:<34}: {'PASS' if '5302' in reply else repr(reply)}")
+                d.close()
+            except Exception as exc:
+                print(f"  {label:<34}: FAIL ({type(exc).__name__})")
+
     print()
     if answered:
         print(f"VERDICT: the lock-in answers. Use {answered}.")
+        print("If a line above says FAIL, that step is what breaks the program; tell me which.")
         return 0
     if stb is not None:
         print("VERDICT: the GPIB interface is alive (the serial poll worked) but the "
