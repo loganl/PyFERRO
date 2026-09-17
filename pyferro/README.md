@@ -153,6 +153,8 @@ measurement.
 | Symptom | Cause and fix |
 |---|---|
 | "PyFERRO is not installed yet" | `INSTALL.bat` not run, or the folder moved. |
+| `The system cannot find the path specified` from `INSTALL.bat` | It was run from inside Explorer's zip viewer, which copies only that one file, or the zip was extracted only part way. Extract the whole zip to a local folder and run it from there. |
+| `VCRUNTIME140.dll was not found` while unpacking | `tools\vcruntime140.dll` is missing next to `pixi-unpack.exe`. The bundle ships it because the unpacker is an MSVC build and a bare Windows install has no Visual C++ runtime; copying the file back beside the exe fixes it without admin rights. |
 | Qt/DLL errors at start-up | Extracted to a network drive or inside the zip viewer; extract to a local disk. |
 | `Could not open GPIB0::12::INSTR` | NI-VISA/NI-488.2 missing, adapter unplugged, or wrong address — check NI MAX. |
 | *Find* lists no VISA instruments | 32-bit-only NI-VISA; install a current one with `visa64.dll`. |

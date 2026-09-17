@@ -19,9 +19,24 @@ pixi-pack pixi.toml --platform win-64 --environment default \
 curl -fsSL -o "$OUT/tools/pixi-unpack.exe" \
     "https://github.com/Quantco/pixi-pack/releases/download/v${PACK_VERSION}/pixi-unpack-x86_64-pc-windows-msvc.exe"
 
+# pixi-unpack.exe is an MSVC build and needs VCRUNTIME140.dll, which a bare Windows
+# install does not have and which normally means an admin-rights redistributable.
+# The same DLLs are in the environment just packed, and Windows searches an
+# executable's own folder first, so put a copy beside the unpacker.
+VC_TMP=$(mktemp -d)
+VC_PKG=$(tar -tf "$OUT/environment-win-64.tar" | grep -m1 'channel/win-64/vc14_runtime-')
+tar -xf "$OUT/environment-win-64.tar" -C "$VC_TMP" "$VC_PKG"
+unzip -o -q "$VC_TMP/$VC_PKG" -d "$VC_TMP"
+tar -xf "$VC_TMP"/pkg-vc14_runtime-*.tar.zst -C "$VC_TMP" vcruntime140.dll vcruntime140_1.dll
+cp "$VC_TMP/vcruntime140.dll" "$VC_TMP/vcruntime140_1.dll" "$OUT/tools/"
+rm -rf "$VC_TMP"
+
 cp -R ferro "$OUT/app/ferro"
 find "$OUT/app" -name __pycache__ -prune -exec rm -rf {} +
-cp packaging/windows/*.bat "$OUT/"
+# cmd.exe mis-parses an LF-only .bat, and these are edited on macOS
+for bat in packaging/windows/*.bat; do
+    sed 's/$/\r/; s/\r\r$/\r/' "$bat" > "$OUT/$(basename "$bat")"
+done
 cp README.md "$OUT/README.md"
 cp -R docs/manuals "$OUT/manuals"
 cp docs/wiring-diagram.pdf "$OUT/wiring-diagram.pdf"

@@ -1,0 +1,3 @@
+# Windows batch files must keep CRLF wherever they are checked out: cmd.exe
+# mis-parses an LF-only .bat, and these are built on macOS.
+*.bat text eol=crlf

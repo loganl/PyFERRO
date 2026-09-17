@@ -7,9 +7,22 @@ to the code that produced it. The number is written in exactly one place,
 `__version__` in `ferro/__init__.py`; see "Versioning and releases" in
 [README.md](README.md).
 
-## Unreleased
+## 1.0.2 — 2026-09-17
 
 ### Fixed
+- The offline installer could not run on a clean Windows machine. Three separate
+  faults, all in the packaging rather than the program:
+  - The Windows launchers shipped with Unix line endings, which `cmd.exe` mis-parses.
+    They are now written with CRLF, `.gitattributes` keeps them that way, and a test
+    fails if a bare newline gets back in.
+  - `pixi-unpack.exe` is an MSVC build and needs `VCRUNTIME140.dll`, which a bare
+    Windows install does not have and which otherwise means an admin-rights
+    redistributable. The bundle now carries that DLL — taken from the same
+    environment it unpacks — next to the unpacker, where Windows looks first.
+  - `INSTALL.bat` reported `The system cannot find the path specified` when it was
+    run from inside Explorer's zip viewer, which copies only that one file. It now
+    checks for each piece it needs and says which is missing, listing what it did
+    find, and catches the network-share case that `cd /d` cannot handle.
 - Plot colours no longer misrepresent the ramp. Points recorded before the ramp
   direction is established, and any hold at setpoint, were carried forward as the
   previous direction — so the start of every run was drawn as "heating" whatever it was

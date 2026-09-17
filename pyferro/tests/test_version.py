@@ -48,3 +48,15 @@ def test_git_tag_matches_when_the_tree_is_on_a_tag():
     if described.returncode != 0:
         pytest.skip("not on an exact tag (normal during development)")
     assert described.stdout.strip() == f"v{ferro.__version__}"
+
+
+def test_windows_launchers_use_crlf():
+    """cmd.exe mis-parses an LF-only .bat, and these are written on macOS."""
+    import pathlib
+
+    bats = sorted((pathlib.Path(__file__).parent.parent / "packaging" / "windows").glob("*.bat"))
+    assert bats, "no launchers found"
+    for bat in bats:
+        data = bat.read_bytes()
+        assert b"\n" in data
+        assert data.replace(b"\r\n", b"").count(b"\n") == 0, f"{bat.name} has bare LF line endings"
