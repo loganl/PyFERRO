@@ -158,6 +158,8 @@ measurement.
 | Qt/DLL errors at start-up | Extracted to a network drive or inside the zip viewer; extract to a local disk. |
 | `Could not open GPIB0::12::INSTR` | NI-VISA/NI-488.2 missing, adapter unplugged, or wrong address — check NI MAX. |
 | *Find* lists no VISA instruments | 32-bit-only NI-VISA; install a current one with `visa64.dll`. |
+| GPIB reads all time out, but the bus enumerates | **Another instrument on the chain is powered off.** GPIB's handshake needs every connected device powered; an unpowered one holds NRFD/NDAC low, which also makes a scan "find" a device that never answers. Switch the multimeter on — even when PyFERRO is not using it — or take it out of the cable chain. |
+| Readings arrive far slower than the interval | An instrument that is not answering costs its whole timeout every sample. The log says which one, every 30 s. |
 | `expected ID 5302, instrument answered …` | Another instrument at that GPIB address. |
 | X/Y values ×10 off | Check the EXPAND (`EX`) indicator; PyFERRO accounts for it, the LabVIEW VI did not. |
 | X/Y tile red "OVERLOAD" | Signal beyond 120 % of full scale — use a less sensitive range. |
