@@ -74,7 +74,7 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
     probe_timeout = min(c.timeout_s, 1.0)
 
     def open_one(write_t, read_t):
-        return VisaTransport(c.resource, timeout_s=probe_timeout,
+        return VisaTransport(c.resource, timeout_s=probe_timeout, handshake=True,
                              write_termination=write_t, read_termination=read_t)
 
     def answers_id(transport):

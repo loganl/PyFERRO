@@ -61,6 +61,27 @@ STATUS_BITS = [
 ]
 
 
+def wait_command_complete(read_stb, timeout_s: float = 1.0,
+                          now=time.monotonic, sleep=time.sleep) -> bool:
+    """Serial-poll until bit 0, command complete, is set (manual section 8.7).
+
+    The 5302 signals through its status byte that it has finished with a command
+    and will accept the next one. Sending one before that can lose it, which shows
+    up as a timeout on a perfectly valid command a few exchanges into a run.
+    Returns False if it never settles, or if the poll itself is unavailable - the
+    caller carries on either way rather than turning a slow instrument into an error.
+    """
+    end = now() + timeout_s
+    while now() < end:
+        try:
+            if int(read_stb()) & 1:
+                return True
+        except Exception:
+            return False
+        sleep(0.005)
+    return False
+
+
 def describe_status(stb: int) -> str:
     faults = [text for bit, text in STATUS_BITS if stb & bit]
     if not faults:
@@ -142,10 +163,12 @@ class VisaTransport(Transport):
         read_termination: str = "\r",
         backend: str = "",
         settle_s: float = 0.15,
+        handshake: bool = False,
     ) -> None:
         import pyvisa
 
         self.name = resource
+        self._handshake = handshake
         self._lock = threading.Lock()
         errors = []
         backends = [backend] if backend else ["", "@py"]
@@ -172,10 +195,15 @@ class VisaTransport(Transport):
         # instrument rather than a lost byte.
         time.sleep(settle_s)
 
+    def _ready(self) -> None:
+        if self._handshake:
+            wait_command_complete(self._inst.read_stb)
+
     def write(self, cmd: str) -> None:
         with self._lock:
             try:
                 self._inst.write(cmd)
+                self._ready()
             except Exception as exc:
                 raise TransportError(f"{self.name}: write {cmd!r} failed: {exc}") from exc
 
@@ -189,7 +217,9 @@ class VisaTransport(Transport):
     def query(self, cmd: str) -> str:
         with self._lock:
             try:
-                return self._inst.query(cmd).strip()
+                reply = self._inst.query(cmd).strip()
+                self._ready()
+                return reply
             except Exception as exc:
                 raise TransportError(
                     f"{self.name}: query {cmd!r} failed: {exc}{self._status_hint()}") from exc

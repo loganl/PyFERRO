@@ -16,7 +16,7 @@ from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temper
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.lockin5302 import Lockin5302, counts_to_volts, parse_ints
 from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
-from ferro.transports import TERMINATIONS, TransportError, describe_status, probe_terminations
+from ferro.transports import TERMINATIONS, TransportError, describe_status, probe_terminations, wait_command_complete
 
 
 # --- lock-in -----------------------------------------------------------------
@@ -461,3 +461,22 @@ def test_falling_behind_names_the_instrument_that_is_holding_things_up():
     # spread evenly across instruments: no one of them is to blame
     acq._durations = {"pid": 0.5, "lockin": 0.5}
     assert "waiting for" not in acq._behind_message(0.2)
+
+
+# --- 5302 command-complete handshake ---------------------------------------------------
+def test_wait_command_complete_returns_when_bit_0_is_set():
+    polls = iter([0x80, 0x00, 0x81])  # data available, busy, then command complete
+    assert wait_command_complete(lambda: next(polls), sleep=lambda s: None) is True
+
+
+def test_wait_command_complete_gives_up_instead_of_hanging():
+    clock = iter([0.0, 0.1, 0.5, 1.5])
+    assert wait_command_complete(lambda: 0x00, timeout_s=1.0,
+                                 now=lambda: next(clock), sleep=lambda s: None) is False
+
+
+def test_wait_command_complete_survives_an_instrument_that_cannot_be_polled():
+    def no_poll():
+        raise RuntimeError("serial poll not supported")
+
+    assert wait_command_complete(no_poll, sleep=lambda s: None) is False
