@@ -1,5 +1,7 @@
+import errno
 import json
 import math
+import sys
 import time
 from pathlib import Path
 
@@ -129,6 +131,10 @@ def test_check_writable_survives_a_folder_that_forbids_deleting(tmp_path, monkey
     check_writable(tmp_path)
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows ignores the read-only attribute on a directory; access is by ACL",
+)
 def test_check_writable_reports_a_read_only_folder(tmp_path):
     locked = tmp_path / "locked"
     locked.mkdir()
@@ -138,6 +144,17 @@ def test_check_writable_reports_a_read_only_folder(tmp_path):
             check_writable(locked)
     finally:
         locked.chmod(0o700)
+
+
+def test_check_writable_reports_a_refused_write(tmp_path, monkeypatch):
+    """The same path as above, on every platform: the folder exists, the write is denied."""
+    def refuse(self, *a, **k):
+        raise PermissionError(errno.EACCES, "Permission denied")
+
+    monkeypatch.setattr(Path, "write_text", refuse)
+    with pytest.raises(OSError, match="Cannot write into") as caught:
+        check_writable(tmp_path)
+    assert "read-only" in str(caught.value) or "Privacy" in str(caught.value)
 
 
 def test_default_data_dir_avoids_documents_on_macos(monkeypatch):
