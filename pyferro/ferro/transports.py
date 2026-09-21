@@ -125,8 +125,9 @@ def probe_terminations(open_one, verify, name: str = "instrument", terminations=
             if transport is not None:
                 transport.close()
     raise TransportError(
-        f"{name} did not answer with any terminator. Check the address, the cable, and that "
-        f"the instrument is not switched to RS-232.\n" + "\n".join(attempts)
+        f"{name} did not answer with any terminator. Check the address, that the cable is "
+        f"screwed down at both ends, and that every instrument on the bus is powered on.\n"
+        + "\n".join(attempts)
     )
 
 

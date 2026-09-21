@@ -161,7 +161,7 @@ measurement.
 | GPIB reads all time out, but the bus enumerates | **Another instrument on the chain is powered off.** GPIB's handshake needs every connected device powered; an unpowered one holds NRFD/NDAC low, which also makes a scan "find" a device that never answers. Switch the multimeter on — even when PyFERRO is not using it — or take it out of the cable chain. |
 | Readings arrive far slower than the interval | An instrument that is not answering costs its whole timeout every sample. The log says which one, every 30 s. |
 | `expected ID 5302, instrument answered …` | Another instrument at that GPIB address. |
-| X/Y values ×10 off | Check the EXPAND (`EX`) indicator; PyFERRO accounts for it, the LabVIEW VI did not. |
+| X values ×10 off | Check the EXPAND (`EX`) indicator; it multiplies X only. PyFERRO accounts for it, the LabVIEW VI did not. |
 | X/Y tile red "OVERLOAD" | Signal beyond 120 % of full scale — use a less sensitive range. |
 | Readings jump between rows | Interval shorter than ~5× the time constant. |
 | `No valid reply from CND3` | Wrong COM port, wires swapped (14 = D+, 13 = D−), communication disabled, or different settings — run *Auto-detect settings*. |
@@ -181,10 +181,10 @@ the code against the example frames printed there.
 
 **EG&G 5302** (manual chapters 8–9): `ID` → `5302`; `XY` → X and Y with **±10000 = full
 scale** (±12000 max); `SEN`/`SEN n` sensitivity index 0–21 (100 nV … 1 V, 1-2-5);
-`XTC`/`XTC n` time-constant index 0–18; `EX` → 1 when Expand X is on (×10);
+`XTC`/`XTC n` time-constant index 0–18; `EX` → 1 when Expand X is on (x channel ×10, y unaffected);
 `FRQ` → reference frequency in mHz.
 
-`V = counts / 10000 × full_scale`, divided by 10 when expand is on. `SEN` and `EX` are
+`V = counts / 10000 × full_scale`, with X (only) divided by 10 when expand is on. `SEN` and `EX` are
 read before every `XY`. `XY` is the compound command `X;Y`, so the two numbers arrive
 either on one line (separated by the `DD` delimiter) or as two terminated lines — the
 driver reads a second line when only one number arrives. GPIB (address 12) or RS-232;

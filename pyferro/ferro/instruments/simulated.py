@@ -81,9 +81,10 @@ class SimLockinTransport(Transport):
             return "25000000"
         if name == "XY":
             x, y = self.sample.signal_v(self.sample.temperature())
-            fs = SENSITIVITIES_V[self.sen] / (10 if self.expand else 1)
-            clip = lambda v: max(-12000, min(12000, round(v / fs * 10000)))
-            return f"{clip(x)},{clip(y)}"
+            fs = SENSITIVITIES_V[self.sen]
+            clip = lambda v, scale: max(-12000, min(12000, round(v / scale * 10000)))
+            # Expand X raises the x channel's gain tenfold; y is unaffected.
+            return f"{clip(x, fs / 10 if self.expand else fs)},{clip(y, fs)}"
         raise TransportError(f"SIM lock-in: unknown command {cmd!r}")
 
 

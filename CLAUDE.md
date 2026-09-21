@@ -62,6 +62,8 @@ writability test, and the git-tag test when HEAD is not on a tag.
 - The TERMINATOR on the instrument's COMM-I/O → GPIB screen is the **input**
   terminator. The output terminator is set separately (manual §8.5), so all four
   CR/CRLF pairings occur. `probe_terminations` finds the working pair.
+- **Expand (`EX`) multiplies the x channel only** (manual §4 and §9). Y keeps its full
+  scale. Never assume expand is off when `EX` fails — lose the sample instead.
 - SEN is 0–21 and XTC 0–18 (manual tables 9-16, 9-19). A reply outside that range means
   replies are out of step with commands, not an unknown range.
 - The status byte (§8.7) names a fault after a rejected command: bit 1 invalid command,

@@ -4,7 +4,7 @@ Command reference: 5302 Instruction Manual (221490-A-MNL-F), chapter 9.
 
 * ``XY``  -> two integers, full scale = +/-10000 (range +/-12000)
 * ``SEN`` -> sensitivity index 0..21 (100 nV .. 1 V, 1-2-5 sequence)
-* ``EX``  -> 1 when Expand X is on (x gain x10)
+* ``EX``  -> 1 when Expand X is on: the x channel's gain x10, y unaffected
 * ``XTC`` -> output time-constant index 0..18
 * ``FRQ`` -> reference frequency in mHz
 * ``ID``  -> "5302"
@@ -105,6 +105,12 @@ class LockinReading:
 
 
 def counts_to_volts(counts: int, sen_index: int, expand: bool = False) -> float:
+    """Scale a reading. ``expand`` applies to the X channel only.
+
+    Expand multiplies the gain of the x demodulator channel by 10 (manual sections
+    4 and 9, command EX); Y keeps its full scale. Pass ``expand`` for X and leave it
+    False for Y.
+    """
     if not 0 <= sen_index < len(SENSITIVITIES_V):
         raise TransportError(f"sensitivity index {sen_index} out of range")
     volts = counts / FULL_SCALE_COUNTS * SENSITIVITIES_V[sen_index]
@@ -114,7 +120,6 @@ def counts_to_volts(counts: int, sen_index: int, expand: bool = False) -> float:
 class Lockin5302:
     def __init__(self, transport: Transport) -> None:
         self.t = transport
-        self._expand_supported = True
 
     # --- identification / settings -------------------------------------
     def identify(self) -> str:
@@ -130,13 +135,10 @@ class Lockin5302:
         return checked_index(parse_ints(self.t.query("SEN"), 1)[0], len(SENSITIVITIES_V), "SEN")
 
     def expand(self) -> bool:
-        if not self._expand_supported:
-            return False
-        try:
-            return parse_ints(self.t.query("EX"), 1)[0] == 1
-        except TransportError:
-            self._expand_supported = False
-            return False
+        # A failure raises like any other, so that sample is recorded as missing.
+        # Assuming "off" instead would scale X ten times too large whenever expand
+        # is on and one exchange happened to drop - silently, in the data.
+        return parse_ints(self.t.query("EX"), 1)[0] == 1
 
     def time_constant_index(self) -> int:
         return checked_index(parse_ints(self.t.query("XTC"), 1)[0], len(TIME_CONSTANTS_S), "XTC")
@@ -181,7 +183,7 @@ class Lockin5302:
             sen_index=sen,
             expand=exp,
             x_v=counts_to_volts(x, sen, exp),
-            y_v=counts_to_volts(y, sen, exp),
+            y_v=counts_to_volts(y, sen),  # expand is X only
         )
 
     def close(self) -> None:

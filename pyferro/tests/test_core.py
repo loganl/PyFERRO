@@ -408,7 +408,7 @@ def test_probe_terminations_reports_everything_it_tried():
         probe_terminations(open_one, lambda t: None, name="Lock-in GPIB0::12::INSTR")
     message = str(caught.value)
     assert "Lock-in GPIB0::12::INSTR did not answer with any terminator" in message
-    assert "switched to RS-232" in message  # the likeliest real cause
+    assert "powered on" in message  # an unpowered device stalls the whole bus
     assert message.count("VI_ERROR_TMO") == len(TERMINATIONS)
 
 
@@ -525,3 +525,78 @@ def test_a_marginal_link_is_retried_before_it_is_reported():
     with pytest.raises(TransportError, match="query 'ID' failed"):
         t.query("ID")
     assert t._inst.calls == 3, "should not keep trying forever"
+
+
+# --- lock-in scaling and connection details --------------------------------------------
+class ScriptedTransport:
+    """Answers each command from a table; a value that is an exception is raised."""
+
+    def __init__(self, replies):
+        self.replies = replies
+
+    def query(self, cmd):
+        reply = self.replies[cmd]
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+    def write(self, cmd):
+        pass
+
+    def close(self):
+        pass
+
+
+def test_expand_scales_x_only():
+    """Manual sections 4 and 9: Expand multiplies the x channel's gain by 10; y is untouched."""
+    li = Lockin5302(ScriptedTransport({"SEN": "15", "EX": "1", "XY": "5000,5000"}))
+    r = li.read()  # 10 mV full scale
+    assert r.x_v == pytest.approx(0.5e-3)  # 5000/10000 * 10 mV / 10
+    assert r.y_v == pytest.approx(5e-3)  # 5000/10000 * 10 mV
+
+
+def test_a_failed_expand_query_loses_the_sample_rather_than_guessing():
+    """Assuming expand off after one dropped exchange would put X out by ten, silently."""
+    replies = {"SEN": "15", "EX": TransportError("VI_ERROR_TMO"), "XY": "5000,5000"}
+    li = Lockin5302(ScriptedTransport(replies))
+    with pytest.raises(TransportError):
+        li.read()
+    replies["EX"] = "1"  # the link recovers: expand must be asked about again
+    assert li.read().expand is True
+
+
+def test_simulated_expand_matches_the_instrument():
+    t = SimLockinTransport(SimulatedSample())
+    t.sen, t.expand = 17, 1
+    li = Lockin5302(t)
+    r = li.read()
+    assert abs(r.y_v) < 0.05 * 1.2, "y must stay on the unexpanded 50 mV scale"
+
+
+def test_the_terminator_probe_runs_without_retries(monkeypatch):
+    """Retries during the probe multiply the cost of every wrong pair and delay Stop."""
+    from ferro import acquisition
+
+    built = []
+
+    class FakeVisa:
+        def __init__(self, resource, **kw):
+            self.kw, self.retries = kw, kw["retries"]
+            built.append(self)
+
+        def query(self, cmd):
+            return "5302"
+
+        def set_timeout(self, timeout_s):
+            self.timeout_s = timeout_s
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(acquisition, "VisaTransport", FakeVisa)
+    monkeypatch.setattr(acquisition, "_DETECTED_TERMINATIONS", {})
+    cfg = config.AppConfig()
+    li = acquisition.open_lockin(cfg)
+    assert all(t.kw["retries"] == 0 for t in built)
+    assert li.t.retries == acquisition.LOCKIN_RETRIES, "retries switch on once connected"
+    assert li.t.timeout_s == cfg.lockin.timeout_s

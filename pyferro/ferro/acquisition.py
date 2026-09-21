@@ -75,8 +75,10 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
         order.insert(0, order.pop(order.index(known)))
     probe_timeout = min(c.timeout_s, 1.0)
 
+    # No retries while probing: a wrong pair has to fail fast, and Stop is only checked
+    # between pairs. Retries go on once the link is known to work.
     def open_one(write_t, read_t):
-        return VisaTransport(c.resource, timeout_s=probe_timeout, gap_s=LOCKIN_GAP_S, retries=LOCKIN_RETRIES,
+        return VisaTransport(c.resource, timeout_s=probe_timeout, gap_s=LOCKIN_GAP_S, retries=0,
                              write_termination=write_t, read_termination=read_t)
 
     def answers_id(transport):
@@ -90,6 +92,7 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
         terminations=order, should_stop=should_stop)
     _DETECTED_TERMINATIONS[c.resource] = transport.terminators
     transport.set_timeout(c.timeout_s)
+    transport.retries = LOCKIN_RETRIES
     if on_log:
         on_log("info", f"Lock-in {c.resource}: answered with {label}")
     return Lockin5302(transport)

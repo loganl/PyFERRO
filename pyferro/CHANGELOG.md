@@ -10,6 +10,15 @@ to the code that produced it. The number is written in exactly one place,
 ## 1.0.2 — 2026-09-17
 
 ### Fixed
+- **Y was scaled wrongly whenever Expand was on.** Expand multiplies the gain of the x
+  channel only (manual sections 4 and 9), but Y was divided by ten as well, so Y read
+  ten times too small. Files recorded with the EX indicator lit have Y wrong by that
+  factor; X was right.
+- A dropped reply to `EX` no longer switches expand detection off for the rest of the
+  connection. That fallback assumed expand was off, which would have read X ten times
+  too large without a warning; the sample is now recorded as missing instead.
+- The lock-in's terminator search no longer retries each attempt, so a silent
+  instrument no longer holds up Stop and the reading loop for about a minute.
 - The offline installer could not run on a clean Windows machine. Three separate
   faults, all in the packaging rather than the program:
   - The Windows launchers shipped with Unix line endings, which `cmd.exe` mis-parses.
