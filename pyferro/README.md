@@ -228,6 +228,9 @@ ferro/datafile.py   the writer
 ferro/analysis.py   ramp-direction tracking
 ```
 
+[`docs/drivers-and-daq.md`](docs/drivers-and-daq.md) walks through the transports, the
+instrument drivers and the acquisition loop in depth, with the real bytes from this rig.
+
 Each loop pass reads the controller, the multimeter if enabled, then the lock-in;
 picks the temperature source; updates direction and segment; emits the row to the GUI;
 writes it when recording; sleeps to the next tick without catching up. Instrument I/O

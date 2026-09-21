@@ -5,7 +5,9 @@ sample's dielectric response while a PID controller ramps its temperature throug
 transition. Replaces `FERRO v.2.vi`, a LabVIEW 2009 routine.
 
 `pyferro/README.md` is the documentation — one file, deliberately. Don't add more doc
-files; extend that one. `pyferro/CHANGELOG.md` records each release.
+files; extend that one. The one exception, added at the user's request, is
+`pyferro/docs/drivers-and-daq.md`: a teaching walkthrough of the transports, drivers
+and acquisition loop. Keep it in step when those change. `pyferro/CHANGELOG.md` records each release.
 
 ## Layout
 
@@ -15,6 +17,7 @@ files; extend that one. `pyferro/CHANGELOG.md` records each release.
 | `pyferro/tools/gpib_check.py` | GPIB diagnostics; `pixi run gpib` |
 | `pyferro/tests/` | drivers, wire-level protocol tests over a pty, GUI tests, version consistency |
 | `pyferro/packaging/` | `build_offline.sh`, `release.sh`, Windows launchers |
+| `pyferro/docs/drivers-and-daq.md` | how transports, drivers and the DAQ loop work |
 | `pyferro/docs/manuals/` | instrument manuals — **read these before guessing at instrument behaviour** |
 | `ptmanual/` | LaTeX lab manual |
 
