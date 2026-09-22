@@ -26,6 +26,14 @@ document and can also be compiled on its own), then runs `lualatex` three times
 on `main.tex` to settle the table of contents, the cross-references and the
 MathML cache.
 
+### In VS Code
+
+`.vscode/settings.json` here gives LaTeX Workshop a recipe that runs this same
+`make`, so Build LaTeX project (or saving `main.tex`) does the figures and all
+three passes. VS Code only reads it when `ptmanual` is a folder of the
+workspace, so either open this folder directly or add it to the workspace
+alongside the repository root.
+
 To rebuild just the figures:
 
 ```bash

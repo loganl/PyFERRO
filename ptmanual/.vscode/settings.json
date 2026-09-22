@@ -1,0 +1,48 @@
+{
+  // LaTeX Workshop: build this manual the same way the Makefile does.
+  //
+  // The default recipe just runs `make`, which compiles any TikZ figure whose
+  // source changed and then runs LuaLaTeX three times -- the third pass is what
+  // settles the table of contents, the cross-references and luamml's MathML
+  // cache.  Use "lualatex x3" when you want to bypass make.
+  "latex-workshop.latex.tools": [
+    {
+      "name": "make",
+      "command": "make",
+      "args": ["-C", "%DIR%"],
+      "env": {}
+    },
+    {
+      "name": "lualatex",
+      "command": "lualatex",
+      "args": [
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-synctex=1",
+        "%DOC%"
+      ],
+      "env": {}
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "make (figures + 3 LuaLaTeX passes)",
+      "tools": ["make"]
+    },
+    {
+      "name": "lualatex x3",
+      "tools": ["lualatex", "lualatex", "lualatex"]
+    }
+  ],
+  "latex-workshop.latex.recipe.default": "first",
+  "latex-workshop.latex.build.forceRecipeUsage": true,
+  "latex-workshop.latex.autoBuild.run": "onSave",
+
+  // A stale MathML cache breaks the next pass, so clean removes it too.
+  "latex-workshop.latex.clean.fileTypes": [
+    "*.aux", "*.bbl", "*.blg", "*.fdb_latexmk", "*.fls", "*.log", "*.out",
+    "*.synctex.gz", "*.toc", "*-luamml-mathml.html"
+  ],
+  "latex-workshop.latex.autoClean.run": "never",
+  "latex-workshop.view.pdf.viewer": "tab"
+}

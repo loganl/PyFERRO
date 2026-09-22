@@ -7,7 +7,7 @@
 #    make distclean  also remove main.pdf and the figure PDFs
 # ---------------------------------------------------------------------------
 
-LATEX      = lualatex -interaction=nonstopmode -halt-on-error
+LATEX      = lualatex -interaction=nonstopmode -halt-on-error -synctex=1
 TIKZ_SRC  := $(wildcard tikz/fig-*.tex)
 TIKZ_PDF  := $(TIKZ_SRC:.tex=.pdf)
 
