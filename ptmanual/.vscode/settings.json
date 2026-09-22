@@ -4,12 +4,20 @@
   // The default recipe just runs `make`, which compiles any TikZ figure whose
   // source changed and then runs LuaLaTeX three times -- the third pass is what
   // settles the table of contents, the cross-references and luamml's MathML
-  // cache.  Use "lualatex x3" when you want to bypass make.
+  // cache.  Where there is no make (a native Windows TeX Live, say), pick the
+  // latexmk recipe: .latexmkrc selects LuaLaTeX and latexmk repeats the passes
+  // itself, but it does not rebuild the figures.
   "latex-workshop.latex.tools": [
     {
       "name": "make",
       "command": "make",
       "args": ["-C", "%DIR%"],
+      "env": {}
+    },
+    {
+      "name": "latexmk",
+      "command": "latexmk",
+      "args": ["-cd", "%DOC%"],
       "env": {}
     },
     {
@@ -28,6 +36,10 @@
     {
       "name": "make (figures + 3 LuaLaTeX passes)",
       "tools": ["make"]
+    },
+    {
+      "name": "latexmk (no make, e.g. on Windows)",
+      "tools": ["latexmk"]
     },
     {
       "name": "lualatex x3",

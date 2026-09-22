@@ -26,6 +26,16 @@ document and can also be compiled on its own), then runs `lualatex` three times
 on `main.tex` to settle the table of contents, the cross-references and the
 MathML cache.
 
+One command, without make (it repeats the passes itself, but does not rebuild
+the figures -- they are committed, so that rarely matters):
+
+```bash
+latexmk
+```
+
+`.latexmkrc` selects LuaLaTeX, so no `-lualatex` is needed. `latexmk -c` cleans
+up afterwards, the MathML cache included.
+
 ### In VS Code
 
 `.vscode/settings.json` here gives LaTeX Workshop a recipe that runs this same
@@ -33,6 +43,13 @@ MathML cache.
 three passes. VS Code only reads it when `ptmanual` is a folder of the
 workspace, so either open this folder directly or add it to the workspace
 alongside the repository root.
+
+On Windows the recipe matters: `make` exists inside WSL but not in a native
+Windows TeX Live, so use the latexmk recipe there. If TeX Live lives in WSL,
+VS Code has to be inside WSL too — install the WSL extension and reopen the
+folder with **Connect to WSL** — otherwise LaTeX Workshop looks for `lualatex`
+on the Windows side and finds nothing. MiKTeX users also need Strawberry Perl,
+which latexmk is written in; TeX Live's own Windows installer bundles it.
 
 To rebuild just the figures:
 
