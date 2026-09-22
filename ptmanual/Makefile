@@ -7,7 +7,7 @@
 #    make distclean  also remove main.pdf and the figure PDFs
 # ---------------------------------------------------------------------------
 
-LATEX      = pdflatex -interaction=nonstopmode -halt-on-error
+LATEX      = lualatex -interaction=nonstopmode -halt-on-error
 TIKZ_SRC  := $(wildcard tikz/fig-*.tex)
 TIKZ_PDF  := $(TIKZ_SRC:.tex=.pdf)
 
@@ -29,6 +29,7 @@ tikz/%.pdf: tikz/%.tex tikzpreamble.tex
 
 clean:
 	rm -f  main.aux main.log main.out main.toc main.fls main.fdb_latexmk
+	rm -f  main-luamml-mathml.html
 	rm -f  tikz/*.aux tikz/*.log
 
 distclean: clean

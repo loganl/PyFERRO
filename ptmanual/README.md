@@ -22,8 +22,9 @@ make
 ```
 
 `make` compiles every `tikz/fig-*.tex` to a PDF (each is a `standalone`
-document and can also be compiled on its own), then runs `pdflatex` three times
-on `main.tex` to settle the table of contents and cross-references.
+document and can also be compiled on its own), then runs `lualatex` three times
+on `main.tex` to settle the table of contents, the cross-references and the
+MathML cache.
 
 To rebuild just the figures:
 
@@ -31,8 +32,38 @@ To rebuild just the figures:
 make figures
 ```
 
-Requires a TeX Live 2024 or newer distribution (for the tagged-PDF engine) with
-`circuitikz`, `siunitx` and `standalone`.
+### What you need
+
+**LuaLaTeX from TeX Live 2024 or newer.** The tagging engine and `luamml` (which
+writes the MathML) are too new for the TeX Live in Debian's and Ubuntu's
+archives, so install TeX Live upstream rather than through `apt`:
+
+```bash
+sudo apt install perl wget fontconfig
+wget https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+tar xzf install-tl-unx.tar.gz && cd install-tl-*
+sudo perl ./install-tl --scheme=full --no-interaction
+```
+
+Then put its binaries on the path (adjust the year and architecture):
+
+```bash
+echo 'export PATH=/usr/local/texlive/2025/bin/x86_64-linux:$PATH' >> ~/.bashrc
+```
+
+`--scheme=full` is about 8 GB. `--scheme=small` plus
+
+```bash
+sudo tlmgr install circuitikz siunitx standalone unicode-math microtype booktabs latexmk
+```
+
+is enough for this document and much smaller.
+
+If you would rather use the distribution's packages, the ones this document
+draws on are `texlive-luatex`, `texlive-latex-recommended`,
+`texlive-latex-extra` (`standalone`, `unicode-math`), `texlive-pictures`
+(`circuitikz`) and `texlive-science` (`siunitx`) — but expect the
+`\DocumentMetadata` line to fail on anything older than TeX Live 2024.
 
 ## Using it on Overleaf
 
@@ -40,7 +71,7 @@ Upload the whole directory (or push this folder as a Git repository and import
 it). Then:
 
 1. Set **`main.tex`** as the main document (Menu → Main document).
-2. Set the compiler to **pdfLaTeX** (Menu → Compiler) and the TeX Live version
+2. Set the compiler to **LuaLaTeX** (Menu → Compiler) and the TeX Live version
    to **2024 or later** (Menu → TeX Live version) — the accessibility features
    need it.
 3. Compile.
@@ -68,6 +99,11 @@ The document is built as a **tagged PDF 2.0 conforming to PDF/UA-2**:
   document and the reading order is explicit.
 - A table of contents, numbered sections and `hyperref` bookmarks give
   keyboard- and screen-reader-friendly navigation.
+- Maths is set with `unicode-math` under LuaLaTeX, so every formula carries
+  real Unicode characters and `luamml` attaches MathML to it. A percent sign
+  must not reach maths directly — `\percent` is redefined as `\text{\%}`,
+  because an unescaped `%` in `luamml`'s cache file comments out the rest of
+  the line and breaks the next compilation pass.
 - The band-structure figure is the only one that uses colour; the bands are
   also distinguished by position and by text labels, so no information is
   carried by colour alone.

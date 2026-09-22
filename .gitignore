@@ -15,6 +15,7 @@ pyferro/dist/
 *.fls
 *.fdb_latexmk
 *.synctex.gz
+*-luamml-mathml.html
 
 # --- local notes, photos and the legacy LabVIEW export ---------------------
 ferroexport/

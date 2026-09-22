@@ -4,7 +4,7 @@
 %  Advanced Laboratory, Dept. of Physics & Astronomy, Stony Brook University
 %
 %  Accessible (tagged, PDF/UA-2) LaTeX edition.
-%  Compile with pdflatex (>= TeX Live 2024).  Run twice for cross-references.
+%  Compile with lualatex (>= TeX Live 2024).  Run twice for cross-references.
 % =============================================================================
 
 % ---- Accessibility / PDF standard -------------------------------------------
@@ -20,10 +20,9 @@
 
 \documentclass[11pt,a4paper]{article}
 
-% ---- Encoding & fonts --------------------------------------------------------
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{lmodern}
+% ---- Fonts -------------------------------------------------------------------
+% LuaLaTeX reads UTF-8 and loads Latin Modern (OpenType) by itself; unicode-math
+% sets the maths in Latin Modern Math, so formulas carry real Unicode characters.
 \usepackage{microtype}
 
 % ---- Page geometry -----------------------------------------------------------
@@ -31,9 +30,14 @@
 
 % ---- Maths -------------------------------------------------------------------
 \usepackage{amsmath}
-\usepackage{amssymb}
+\usepackage{unicode-math}   % after amsmath; replaces amssymb
+\setmathfont{Latin Modern Math}
 \usepackage{siunitx}
 \sisetup{separate-uncertainty, range-units=single}
+% Typeset the percent sign as text.  A bare % inside maths ends up unescaped in
+% luamml's MathML cache file, and commenting out the rest of that line breaks
+% the cache when the next pass reads it back.
+\DeclareSIUnit{\percent}{\text{\%}}
 
 % ---- Graphics, color, floats ------------------------------------------------
 \usepackage{graphicx}
