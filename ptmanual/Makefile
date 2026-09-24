@@ -8,7 +8,7 @@
 #    make distclean  also remove the manual PDFs and the figure PDFs
 # ---------------------------------------------------------------------------
 
-LATEX      = lualatex -interaction=nonstopmode -halt-on-error -synctex=1
+LATEX      = latexmk -lualatex -interaction=nonstopmode -halt-on-error -synctex=1
 TIKZ_SRC  := $(wildcard tikz/fig-*.tex)
 TIKZ_PDF  := $(TIKZ_SRC:.tex=.pdf)
 
@@ -18,15 +18,11 @@ all: main.pdf
 
 main.pdf: main.tex $(TIKZ_PDF) tikzpreamble.tex
 	$(LATEX) main.tex
-	$(LATEX) main.tex
-	$(LATEX) main.tex
 
 # main-tagged.tex inputs main.tex with tagging switched on.
 tagged: main-tagged.pdf
 
 main-tagged.pdf: main-tagged.tex main.tex $(TIKZ_PDF) tikzpreamble.tex
-	$(LATEX) main-tagged.tex
-	$(LATEX) main-tagged.tex
 	$(LATEX) main-tagged.tex
 
 figures: $(TIKZ_PDF)
