@@ -162,11 +162,16 @@ class VisaTransport(Transport):
         backend: str = "",
         gap_s: float = 0.0,
         retries: int = 0,
+        reply_delay_s: float = 0.0,
     ) -> None:
         import pyvisa
 
         self.name = resource
         self._gap = gap_s
+        # Wait between sending a query and asking for its reply. The 5302 has to parse
+        # the command before it can talk; addressed too soon, the reply is late and
+        # lands on the next query ("SEN answered 5302"). See ``query``.
+        self._reply_delay = reply_delay_s
         self.retries = retries  # a marginal GPIB link drops the odd exchange
         self.retries_used = 0
         self._lock = threading.Lock()
@@ -242,7 +247,7 @@ class VisaTransport(Transport):
         with self._lock:
             for attempt in range(self.retries + 1):
                 try:
-                    reply = self._inst.query(cmd).strip()
+                    reply = self._inst.query(cmd, delay=self._reply_delay).strip()
                     self._pause()
                     return reply
                 except Exception as exc:

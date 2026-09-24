@@ -4,6 +4,8 @@
 # `latexmk` on its own is enough -- no -lualatex on the command line.  latexmk
 # repeats the passes until the aux files stop changing, which also settles
 # luamml's MathML cache.
+# With no file name latexmk would build every .tex here, main-tagged.tex too.
+@default_files = ('main.tex');
 $pdf_mode = 4;                       # 4 = lualatex
 $lualatex = 'lualatex -interaction=nonstopmode -halt-on-error -synctex=1 %O %S';
 

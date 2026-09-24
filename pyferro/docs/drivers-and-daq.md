@@ -117,6 +117,11 @@ and tags the winner with `.terminators` so the caller can try that pair first ne
   how often it had to.
 - **`_pause`** is the 50 ms gap: the 5302 loses a command that arrives while it is still
   busy with the last one.
+- **`reply_delay_s`** is a second 50 ms wait, between sending a query and reading its
+  reply (`pyvisa`'s `query(delay=...)`). The instrument must parse the command before it
+  can talk; addressed too soon, its reply is late and the *next* query reads it. On the
+  rig this was the difference between the Test button failing 10 times in 10 and
+  succeeding 15 in 15. The multimeter leaves it at 0.
 - **`_recover` / `drain_replies`** handle a subtle trap. A query that *times out* can
   still have its reply arrive afterwards, and then the *next* query reads that late
   reply instead of its own — which is how `5302` once turned up as a sensitivity index.

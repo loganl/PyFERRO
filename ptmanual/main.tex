@@ -4,21 +4,31 @@
 %  Ferroelectric transition in BaTiO3
 %  Advanced Laboratory, Dept. of Physics & Astronomy, Stony Brook University
 %
-%  Accessible (tagged, PDF/UA-2) LaTeX edition.
+%  Accessible LaTeX edition: main.tex is untagged, main-tagged.tex is tagged PDF/UA-2.
 %  Compile with lualatex (>= TeX Live 2024).  Run twice for cross-references.
 % =============================================================================
 
 % ---- Accessibility / PDF standard -------------------------------------------
-% \DocumentMetadata MUST be the very first line of the file.  It switches on
-% the new LaTeX tagged-PDF engine, declares the document language, and asks for
-% a PDF 2.0 file conforming to PDF/UA-2 (the accessibility standard).
-\DocumentMetadata{
-  tagging     = off,
-  lang        = en-US,
-  pdfversion  = 2.0,
-  pdfstandard = ua-2,
-  testphase   = {phase-III, math, graphic, table, firstaid},
-}
+% \DocumentMetadata MUST come before \documentclass.  It switches on the new LaTeX
+% tagged-PDF engine, declares the document language, and asks for a PDF 2.0 file
+% conforming to PDF/UA-2 (the accessibility standard).
+%
+% This file builds WITHOUT tags: it is faster and the PDF is smaller.
+% main-tagged.tex defines \tagged and inputs this file, which turns on the tags
+% and the PDF/UA-2 claim.  The lines below only assemble the key list -- nothing
+% is typeset or loaded before \DocumentMetadata -- and the list has to be
+% expanded first, because \DocumentMetadata does not expand macros inside it.
+%
+% tagging=off must come AFTER testphase: that key runs tagging=on, so an earlier
+% tagging=off is silently overridden.
+\def\metadatakeys{lang = en-US, pdfversion = 2.0,
+  testphase = {phase-III, math, graphic, table, firstaid}}
+\ifdefined\tagged
+  \edef\metadatakeys{\metadatakeys, pdfstandard = ua-2}
+\else
+  \edef\metadatakeys{\metadatakeys, tagging = off}
+\fi
+\expandafter\DocumentMetadata\expandafter{\metadatakeys}
 
 \documentclass[11pt,a4paper]{article}
 
@@ -1041,7 +1051,6 @@ interesting part of the measurement is happening.
 
 The ``guts'' of the temperature controller~\cite{ref:pid} are shown in
 Figure~\ref{fig:tcguts}. The ``brain'' is an Omega CNi8DH44 unit, connected to a           % wrong
-
 solid-state relay (on the left) and other circuitry, like fuses and connection
 pads. The solid-state relay converts the low-power output of the converter into
 the high power that drives the heater wrapped around the sample chamber (see the
