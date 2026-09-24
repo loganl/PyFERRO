@@ -247,7 +247,7 @@ data will be stored in the computer and need not be in the notebook.
   \item Temperature controller.
   \item Lock-in amplifier to measure the samples.
   \item Keithley four-probe resistance meter to measure temperature.
-  \item Computer (username \texttt{gradlab}, password \texttt{senior}).
+  \item Computer (username \texttt{LabStudent}, password \texttt{PhaseTransition}).
   \item Decade resistance box, additional resistors, capacitors, BNC cables etc.
 \end{itemize}
 
@@ -809,7 +809,7 @@ $\omega$ and $R_0$, we can calculate the capacitance of the sample as
 The standard settings of the EG\&G model 5209 lock-in amplifier are:
 
 \begin{center}
-\begin{tabular}{@{}ll@{}}
+\begin{tabular}{@{}ll@{}}                                                   %change
   \toprule
   \textbf{Setting} & \textbf{Value} \\
   \midrule
@@ -832,7 +832,7 @@ Before measuring the sample, we do a practice run by measuring the capacitance
 of a piece of BNC cable. See Appendix~\ref{app:ac} for the relevant phasor
 diagrams.
 
-\begin{figure}[htbp]
+\begin{figure}[htbp]                                                                      %change
   \centering
   \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
     Photograph of the instrument rack. On top is an EG\&G Princeton Applied
@@ -904,7 +904,7 @@ their own sample and evaluates the data independently. However, \VOtwo\ samples 
 fragile, and a staff member should be asked to mount them in the chamber, at
 least initially.
 
-\begin{figure}[htbp]
+\begin{figure}[htbp]                                                                       %change image and context
   \centering
   \photo[width=0.62\linewidth]{sample-chamber.png}{%
     Photograph looking down into the open sample chamber. A cylindrical aluminum
@@ -928,7 +928,7 @@ remove the stainless steel dewar. You may also remove the aluminum cup, but in
 that case stop taking data, since the temperature readout will not be reliable.
 
 \subsection{Samples and sample preparation}
-
+                                                                                          %sample update
 Samples of \VOtwo\ in a form of thin films (about \SI{100}{\nano\metre} thick)
 have been deposited on Si/SiO\textsubscript{2} substrates in another lab on campus.
 Contacts to them will be attached by staff members. These samples are rather
@@ -944,7 +944,7 @@ larger the area the better. Also remember that you will need to estimate $A$ and
 $d$ numerically, and so the more regular the sample shape, the easier and more
 accurate this estimate will be.
 
-\begin{figure}[htbp]
+\begin{figure}[htbp]                                                                      % change new one
   \centering
   \photo[width=0.62\linewidth]{silver-paint.png}{%
     Photograph of the sample-preparation bench. On the left stands an open glass
@@ -970,7 +970,7 @@ sample. Remember that you are making a capacitor.
 open for an extended period of time; open it for as short an interval as
 possible, just to get the paint onto a piece of wire.}
 
-\begin{figure}[htbp]
+\begin{figure}[htbp]                                                                         % change
   \centering
   \photo[width=0.48\linewidth]{two-pin-connectors.png}{%
     Photograph of three small black two-pin connectors side by side. The one on
@@ -1040,7 +1040,8 @@ interesting part of the measurement is happening.
 \subsection{Temperature control}
 
 The ``guts'' of the temperature controller~\cite{ref:pid} are shown in
-Figure~\ref{fig:tcguts}. The ``brain'' is an Omega CNi8DH44 unit, connected to a
+Figure~\ref{fig:tcguts}. The ``brain'' is an Omega CNi8DH44 unit, connected to a           % wrong
+
 solid-state relay (on the left) and other circuitry, like fuses and connection
 pads. The solid-state relay converts the low-power output of the converter into
 the high power that drives the heater wrapped around the sample chamber (see the
@@ -1052,7 +1053,7 @@ temperature, and this resistor has a resistance of \SI{100}{\ohm} at temperature
 platinum, a \SI{1}{\degreeCelsius} increment of temperature changes the
 resistance by \SI{0.38}{\ohm}.
 
-\begin{figure}[htbp]
+\begin{figure}[htbp]                                                                      % PID picture
   \centering
   \photo[width=0.72\linewidth]{temperature-controller.png}{%
     Photograph of the inside of the open temperature-controller enclosure. A
@@ -1142,7 +1143,7 @@ oscillations will develop. Put the temperature controller into ``PID'' mode.
 Discuss these observations in your lab report.
 
 % =============================================================================
-\section{Suggested protocol for a measurement}
+\section{Suggested protocol for a measurement}                                         % check pyferro/README.md
 % =============================================================================
 
 \begin{enumerate}
@@ -1811,7 +1812,7 @@ able to measure such a sample with the four-probe method.}
 
 \clearpage
 % =============================================================================
-\section{Programming the temperature controller}\label{app:tempcontrol}
+\section{Programming the temperature controller}\label{app:tempcontrol}             %remove
 % =============================================================================
 
 The temperature controller can be programmed from the front panel (see the
@@ -1942,7 +1943,7 @@ screen shows the ``Control Type''. Here is the place where you can change to
 
 \clearpage
 % =============================================================================
-\section{Data taking with LabVIEW}\label{app:labview}
+\section{Data taking with LabVIEW}\label{app:labview}                             %update
 % =============================================================================
 
 \begin{enumerate}
@@ -3408,6 +3409,6 @@ metal--insulator transition in \VOtwo\ were created by Michael Gurvitch, both in
 2012. Thanks to Xu Du, Matthew Dawber, Alexander Shabalov and Carlos Marques for
 contributions to the design and realization of the measurement and for useful
 comments. The 2026 edition of this manual was typeset into \LaTeX \ with Claude
-Opus 4.5 and updated by Logan Levack.
+Opus 4.5 and updated by Logan Levack and Qiyun Ma.
 
 \end{document}
