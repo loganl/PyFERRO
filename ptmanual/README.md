@@ -2,7 +2,8 @@
 
 An accessible LaTeX edition of the Stony Brook Advanced Laboratory write-up
 *Phase Transitions: Metal–Insulator transition in VO₂ and Ferroelectric
-transition in BaTiO₃* (2012 version), converted from `phasetransition_2025.pdf`.
+transition in BaTiO₃* (2012 write-up, 2026 edition), converted from
+`phasetransition_2025.pdf`.
 
 ## Layout
 
@@ -159,4 +160,5 @@ required argument, so a figure cannot be added without one.
 
 Sections on ferroelectricity in BaTiO₃ by Laszlo Mihaly and in part Michael
 Gurvitch; sections on phase-transition theory and the metal–insulator
-transition in VO₂ by Michael Gurvitch, both 2012.
+transition in VO₂ by Michael Gurvitch, both 2012. The 2026 edition was typeset
+into LaTeX with Claude Opus 4.5 and updated by Logan Levack.

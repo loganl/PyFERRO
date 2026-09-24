@@ -73,6 +73,12 @@ it, so it can always be traced back to the code.
 
 ```bash
 cd ptmanual && make        # builds the TikZ figures, then main.pdf
+cd ptmanual && latexmk     # the same without make, for machines that lack it
 ```
 
-Needs a TeX distribution with `tikz`, `circuitikz` and `standalone`.
+It is built with **LuaLaTeX** from **TeX Live 2024 or newer** — the tagged-PDF
+metadata and `luamml` are too new for older releases, and Debian's and Ubuntu's
+packages lag behind. `ptmanual/.latexmkrc` and a `% !TEX program = lualatex` line in
+every source file select the engine, so no flag is needed. The PDFs are committed,
+so reading the manual needs no TeX at all. What to install, editor set-up and the
+Overleaf route are in [`ptmanual/README.md`](ptmanual/README.md).
