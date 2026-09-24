@@ -74,6 +74,7 @@ it, so it can always be traced back to the code.
 ```bash
 cd ptmanual && make        # builds the TikZ figures, then main.pdf
 cd ptmanual && latexmk     # the same without make, for machines that lack it
+cd ptmanual && make tagged # main-tagged.pdf, the tagged PDF/UA-2 edition for screen readers
 ```
 
 It is built with **LuaLaTeX** from **TeX Live 2024 or newer** — the tagged-PDF

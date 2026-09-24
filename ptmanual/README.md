@@ -8,7 +8,8 @@ transition in BaTiO₃* (2012 write-up, 2026 edition), converted from
 ## Layout
 
 ```
-main.tex             the document
+main.tex             the document; builds without tags (faster, smaller PDF)
+main-tagged.tex      builds the same document as a tagged PDF/UA-2 file
 tikzpreamble.tex     TikZ/CircuiTikZ setup shared by main.tex and every figure
 tikz/fig-*.tex       28 standalone TikZ figures (all line art is redrawn)
 tikz/fig-*.pdf       the compiled figures, included by main.tex
@@ -20,8 +21,14 @@ Makefile             build rules
 ## Building locally
 
 ```bash
-make
+make            # main.pdf, without tags
+make tagged     # main-tagged.pdf, the tagged, screen-reader-accessible edition
 ```
+
+Both are the same 59 pages. The untagged one is the default because it compiles
+about twice as fast (roughly 4 s a pass against 7-8 s) and the file is about 14%
+smaller (4.4 MB against 5.1 MB); the tagged one
+is what to hand to a reader using a screen reader (see [Accessibility](#accessibility)).
 
 `make` compiles every `tikz/fig-*.tex` to a PDF (each is a `standalone`
 document and can also be compiled on its own), then runs `lualatex` three times
@@ -32,7 +39,8 @@ One command, without make (it repeats the passes itself, but does not rebuild
 the figures -- they are committed, so that rarely matters):
 
 ```bash
-latexmk
+latexmk                    # main.pdf
+latexmk main-tagged.tex    # main-tagged.pdf
 ```
 
 `.latexmkrc` selects LuaLaTeX with `$pdf_mode = 4`, so no `-lualatex` is needed,
@@ -120,6 +128,8 @@ it). Then:
    need it.
 3. Compile.
 
+For the tagged PDF set **`main-tagged.tex`** as the main document in step 1.
+
 `main.tex` includes the figures as the pre-built `tikz/fig-*.pdf` files, so
 Overleaf does not need to compile them and no `--shell-escape` is required. If
 you edit a figure's `.tex` on Overleaf, either compile that file on its own
@@ -128,11 +138,18 @@ locally with `make figures` and re-upload the PDF.
 
 ## Accessibility
 
-The document is built as a **tagged PDF 2.0 conforming to PDF/UA-2**:
+`main-tagged.pdf` is a **tagged PDF 2.0 conforming to PDF/UA-2**. `main.pdf` is the
+same document without the tags: no structure tree, no alt text, no PDF/UA claim.
+Use the tagged one for anyone who reads with a screen reader.
 
-- `\DocumentMetadata{...}` at the top of `main.tex` turns on the LaTeX tagging
-  engine (`testphase = {phase-III, math, graphic, table, firstaid}`), declares
-  the document language as `en-US`, and requests the PDF/UA-2 standard.
+- `\DocumentMetadata{...}` at the top of `main.tex` declares the document language
+  as `en-US` and loads the tagging engine (`testphase = {phase-III, math, graphic,
+  table, firstaid}`). `main-tagged.tex` defines `\tagged` before inputting
+  `main.tex`, which adds `pdfstandard = ua-2`; without it the file adds
+  `tagging = off` instead. That switch must come *after* `testphase`, because
+  `testphase` itself turns tagging on and would override an earlier `off`, and the
+  key list is assembled in a macro because `\DocumentMetadata` does not expand macros
+  inside it.
 - Every one of the 45 images — both the TikZ figures and the photographs —
   carries **alternative text** describing what it shows, supplied through the
   `alt=` key of `\includegraphics` (see the `\tikzfig` and `\photo` macros in
