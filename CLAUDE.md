@@ -74,10 +74,15 @@ writability test, and the git-tag test when HEAD is not on a tag.
   is expected with no sample connected.
 - **Serial-polling for command complete after every exchange breaks this instrument**,
   even though §8.7 describes it. A 50 ms gap between commands is what works.
+- **Wait 50 ms between writing a query and reading its reply** (`reply_delay_s`, pyvisa's
+  `query(delay=)`). Reading immediately makes the reply late, so it lands on the next
+  query - `SEN answered 5302`, `XTC answered 21`. Measured through the app's own
+  connect + Test path against the real lock-in: **0/10 without, 15/15 with**, and 60/60
+  acquisition samples with no retries. This, not the terminator and not (mainly) the
+  cable, was the timeouts on `ID` (2026-09-24).
 - Raw, the reply to `ID` is `5302\r` - a bare CR, with EOI. "Write CR, read CRLF" also
   answers, but only because EOI ends the read (pyvisa warns the string lacks its
-  terminator). Read CR is correct; do not reorder `TERMINATIONS` for it. A read CR that
-  times out is the link dropping an exchange, not the terminator (2026-09-24).
+  terminator). Read CR is correct; do not reorder `TERMINATIONS` for it.
 - A reply whose query was abandoned stays queued and lands on a later query
   (`b'1\r5302\r'`, or `21` where `ID` was expected). **Device Clear does not flush it.**
   Draining after the clear at open was measured against not draining, with a stale reply
@@ -93,16 +98,19 @@ writability test, and the git-tag test when HEAD is not on a tag.
 
 ## Current state of the hardware bring-up
 
-The controller works. **The lock-in's GPIB link is marginal** — it answers, then drops
-random exchanges. Ruled out: address (PAD 12 confirmed), terminator, NI driver install,
-the powered-off multimeter, and the open sequence (a bisect of it failed on different
-lines each run, i.e. it was measuring the flakiness itself).
+The controller works, and the lock-in now connects and reads through the app (15/15
+Test-button connects, 60/60 samples, 2026-09-24) since the reply delay above went in.
+The link may still be a little marginal: a few connects took 2-5 s (a retry inside),
+and one reply once came back as `55302`, a doubled byte on the bus. Ruled out: address
+(PAD 12 confirmed), terminator, NI driver install, the powered-off multimeter, and the
+open sequence (a bisect of it failed on different lines each run).
 
-Remaining suspects are physical: connector screws, cable, the adapter's USB power (the
-vendor's fix for random lock-ups is an externally powered hub, not no hub), or ageing
-transceivers in the 5302. One reply came back as `55302` - a doubled byte on the bus. The transport retries twice, so the app is usable while
-this is chased. `pixi run gpib` reports a success rate over twenty queries — use that to
-tell whether a reseat or a cable swap actually helped, rather than a single test.
+If it degrades again the remaining suspects are physical: connector screws, cable, the
+adapter's USB power (the vendor's fix for random lock-ups is an externally powered hub,
+not no hub), or ageing transceivers in the 5302. The transport retries twice.
+`pixi run gpib` reports a success rate over twenty queries — use that to tell whether a
+reseat or a cable swap actually helped, rather than a single test. It opens a fresh
+connection per query, like a program start, with the same reply delay as the app.
 
 Don't respond to intermittent failures by rearranging the command sequence. That was
 tried repeatedly and each apparent fix was noise.

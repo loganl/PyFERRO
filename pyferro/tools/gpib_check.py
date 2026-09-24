@@ -116,7 +116,7 @@ def main() -> int:
         try:
             inst.write_termination, inst.read_termination = write_t, read_t
             inst.timeout = 1500
-            reply = inst.query("ID").strip()
+            reply = inst.query("ID", delay=0.05).strip()  # see VisaTransport reply_delay_s
             print(f"ID / {label:<22}: {reply!r}")
             if "5302" in reply:
                 answered = label
@@ -135,7 +135,9 @@ def main() -> int:
                 inst2 = rm.open_resource(RESOURCE)
                 inst2.write_termination, inst2.read_termination = write_t, read_t
                 inst2.timeout = 2000
-                if "5302" in inst2.query("ID"):
+                # The same 50 ms between query and read the program uses (see
+                # VisaTransport reply_delay_s): reading at once loses the reply.
+                if "5302" in inst2.query("ID", delay=0.05):
                     ok += 1
                 else:
                     bad += 1
