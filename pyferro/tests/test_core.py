@@ -496,10 +496,11 @@ def test_a_marginal_link_is_retried_before_it_is_reported():
 
     class FlakyInstrument:
         def __init__(self, failures):
-            self.failures, self.calls, self.timeout = failures, 0, 2000
+            self.failures, self.calls, self.timeout, self.delays = failures, 0, 2000, []
 
-        def query(self, cmd):
+        def query(self, cmd, delay=None):
             self.calls += 1
+            self.delays.append(delay)
             if self.calls <= self.failures:
                 raise OSError("VI_ERROR_TMO")
             return "5302\r"
@@ -513,6 +514,7 @@ def test_a_marginal_link_is_retried_before_it_is_reported():
     def transport(failures):
         t = VisaTransport.__new__(VisaTransport)
         t.name, t._lock, t._gap = "GPIB0::12::INSTR", threading.Lock(), 0.0
+        t._reply_delay = 0.05
         t.retries, t.retries_used = 2, 0
         t._inst = FlakyInstrument(failures)
         return t
@@ -520,6 +522,7 @@ def test_a_marginal_link_is_retried_before_it_is_reported():
     t = transport(2)  # fails twice, succeeds on the third attempt
     assert t.query("ID") == "5302"
     assert t.retries_used == 2
+    assert set(t._inst.delays) == {0.05}, "the reply is asked for only after the 5302 has parsed the query"
 
     t = transport(3)  # more failures than retries: report it
     with pytest.raises(TransportError, match="query 'ID' failed"):
@@ -598,5 +601,7 @@ def test_the_terminator_probe_runs_without_retries(monkeypatch):
     cfg = config.AppConfig()
     li = acquisition.open_lockin(cfg)
     assert all(t.kw["retries"] == 0 for t in built)
+    assert all(t.kw["reply_delay_s"] == acquisition.LOCKIN_GAP_S for t in built), \
+        "the lock-in must be given time to parse a query before it is asked to answer"
     assert li.t.retries == acquisition.LOCKIN_RETRIES, "retries switch on once connected"
     assert li.t.timeout_s == cfg.lockin.timeout_s

@@ -7,6 +7,16 @@ to the code that produced it. The number is written in exactly one place,
 `__version__` in `ferro/__init__.py`; see "Versioning and releases" in
 [README.md](README.md).
 
+## Unreleased
+
+### Fixed
+- **Connecting to the lock-in, and the Test button, timed out.** The app asked for a
+  query's reply the instant it had sent the query; the 5302 had not finished parsing it,
+  so the reply came late and landed on the next query (`SEN answered 5302`), after which
+  every attempt failed. The lock-in is now given 50 ms between the query and the read.
+  Against the real instrument the connect-and-test path went from 0 of 10 to 15 of 15,
+  and 60 of 60 samples were read with no retries.
+
 ## 1.0.2 — 2026-09-17
 
 ### Fixed

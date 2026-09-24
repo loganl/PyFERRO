@@ -116,7 +116,7 @@ def main() -> int:
         try:
             inst.write_termination, inst.read_termination = write_t, read_t
             inst.timeout = 1500
-            reply = inst.query("ID").strip()
+            reply = inst.query("ID", delay=0.05).strip()  # see VisaTransport reply_delay_s
             print(f"ID / {label:<22}: {reply!r}")
             if "5302" in reply:
                 answered = label
@@ -135,7 +135,9 @@ def main() -> int:
                 inst2 = rm.open_resource(RESOURCE)
                 inst2.write_termination, inst2.read_termination = write_t, read_t
                 inst2.timeout = 2000
-                if "5302" in inst2.query("ID"):
+                # The same 50 ms between query and read the program uses (see
+                # VisaTransport reply_delay_s): reading at once loses the reply.
+                if "5302" in inst2.query("ID", delay=0.05):
                     ok += 1
                 else:
                     bad += 1
@@ -155,8 +157,10 @@ def main() -> int:
     if answered:
         print(f"VERDICT: the lock-in answers, but only {ok} times in {REPEATS}. The link is "
               "marginal, not broken, and that is a connection rather than a setting: "
-              "screw down both ends of the GPIB cable, try another cable, and plug the "
-              "adapter straight into the PC rather than through a hub. PyFERRO retries, "
+              "screw down both ends of the GPIB cable, try another cable, and try the "
+              "adapter on a different USB port or an externally powered hub (Princeton "
+              "Applied Research's advice for a GPIB-USB adapter that locks up at random: "
+              "it is powered from USB, and a weak port starves it). PyFERRO retries, "
               "so a rate this side of about 9 in 10 is usable meanwhile.")
         return 1
     if stb is not None:

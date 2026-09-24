@@ -79,6 +79,7 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
     # between pairs. Retries go on once the link is known to work.
     def open_one(write_t, read_t):
         return VisaTransport(c.resource, timeout_s=probe_timeout, gap_s=LOCKIN_GAP_S, retries=0,
+                             reply_delay_s=LOCKIN_GAP_S,
                              write_termination=write_t, read_termination=read_t)
 
     def answers_id(transport):
