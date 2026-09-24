@@ -9,10 +9,11 @@ transition in BaTiO₃* (2012 version), converted from `phasetransition_2025.pdf
 ```
 main.tex             the document
 tikzpreamble.tex     TikZ/CircuiTikZ setup shared by main.tex and every figure
-tikz/fig-*.tex       27 standalone TikZ figures (all line art is redrawn)
+tikz/fig-*.tex       28 standalone TikZ figures (all line art is redrawn)
 tikz/fig-*.pdf       the compiled figures, included by main.tex
 figures/*.png        photographs, screenshots, portraits and the two raster plots
 Makefile             build rules
+.latexmkrc           engine settings for latexmk (tikz/ has its own copy)
 ```
 
 ## Building locally
@@ -33,23 +34,40 @@ the figures -- they are committed, so that rarely matters):
 latexmk
 ```
 
-`.latexmkrc` selects LuaLaTeX, so no `-lualatex` is needed. `latexmk -c` cleans
-up afterwards, the MathML cache included.
+`.latexmkrc` selects LuaLaTeX with `$pdf_mode = 4`, so no `-lualatex` is needed,
+and because latexmk reads a personal `~/.latexmkrc` first and the working
+directory's second, the setting here wins on any machine. `tikz/.latexmkrc`
+repeats it for the figures: latexmk reads the rc file in its working directory
+only, never the parent's. `latexmk -c` cleans up afterwards, the MathML cache
+included.
+
+Every `.tex` file here also opens with
+
+```
+% !TEX program = lualatex
+```
+
+so TeXShop, TeXstudio and TeXworks pick the engine from the file itself.
 
 ### In VS Code
 
-`.vscode/settings.json` here gives LaTeX Workshop a recipe that runs this same
-`make`, so Build LaTeX project (or saving `main.tex`) does the figures and all
-three passes. VS Code only reads it when `ptmanual` is a folder of the
-workspace, so either open this folder directly or add it to the workspace
-alongside the repository root.
+LaTeX Workshop needs one thing chosen by hand. Its default recipe passes
+`-pdf` to latexmk, and a command-line engine flag overrides the rc file, so the
+build would run pdflatex and die on `unicode-math`. Pick the built-in recipe
+**latexmk (latexmkrc)** instead -- it passes nothing but the file name and
+leaves the choice to `.latexmkrc` -- either from Build LaTeX project → Recipe
+or by setting `latex-workshop.latex.recipe.default`. **latexmk (lualatex)**
+works too. The `% !TEX program` line is ignored unless you also set
+`latex-workshop.latex.build.forceRecipeUsage` to `false`, and even then it gets
+a single pass rather than as many as the document needs, so the recipe is the
+better route here. None of this rebuilds the figures; `make` does that.
 
-On Windows the recipe matters: `make` exists inside WSL but not in a native
-Windows TeX Live, so use the latexmk recipe there. If TeX Live lives in WSL,
-VS Code has to be inside WSL too — install the WSL extension and reopen the
-folder with **Connect to WSL** — otherwise LaTeX Workshop looks for `lualatex`
-on the Windows side and finds nothing. MiKTeX users also need Strawberry Perl,
-which latexmk is written in; TeX Live's own Windows installer bundles it.
+On Windows: `make` exists inside WSL but not in a native Windows TeX Live, so
+latexmk is the way there. If TeX Live lives in WSL, VS Code has to be inside
+WSL too — install the WSL extension and reopen the folder with **Connect to
+WSL** — otherwise LaTeX Workshop looks for `lualatex` on the Windows side and
+finds nothing. MiKTeX users also need Strawberry Perl, which latexmk is
+written in; TeX Live's own Windows installer bundles it.
 
 To rebuild just the figures:
 
