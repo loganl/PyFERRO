@@ -155,8 +155,10 @@ def main() -> int:
     if answered:
         print(f"VERDICT: the lock-in answers, but only {ok} times in {REPEATS}. The link is "
               "marginal, not broken, and that is a connection rather than a setting: "
-              "screw down both ends of the GPIB cable, try another cable, and plug the "
-              "adapter straight into the PC rather than through a hub. PyFERRO retries, "
+              "screw down both ends of the GPIB cable, try another cable, and try the "
+              "adapter on a different USB port or an externally powered hub (Princeton "
+              "Applied Research's advice for a GPIB-USB adapter that locks up at random: "
+              "it is powered from USB, and a weak port starves it). PyFERRO retries, "
               "so a rate this side of about 9 in 10 is usable meanwhile.")
         return 1
     if stb is not None:
