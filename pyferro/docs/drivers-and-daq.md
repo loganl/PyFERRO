@@ -247,10 +247,12 @@ What differs is what the manuals say, and each difference shows up somewhere spe
   flow control, so it gets fixed LF terminators and none of the 5302's delays. It answers
   in volts, so there is no scaling. Its overload status byte **latches and clears on
   read**. The driver reads it exactly once per sample, after the data. Two reads (say one
-  for overload, one for unlock) would each clear what the other was looking for.
+  for overload, one for unlock) would each clear what the other was looking for. For the
+  same reason a retried read may have lost the bits, so a sample whose status read
+  needed a retry is flagged as overloaded.
 - **Keithley 199** ([`keithley199.py`](../ferro/instruments/keithley199.py)) has no
   `*IDN?`, like the 5302. The device clear that `VisaTransport` sends on opening resets
-  it, so the driver sets its own function every time. Its readings carry a prefix, and
+  it, so the driver sets its own function, and turns Zero off, every time. Its readings carry a prefix, and
   that prefix is the only place an overload shows: without it, overflow is a
   plausible-looking 9.999999E+9 Ω.
 - **5301A** ([`lockin5301a.py`](../ferro/instruments/lockin5301a.py)) has no manual. It
