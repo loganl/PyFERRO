@@ -224,13 +224,14 @@ B = −5.775×10⁻⁷). A reading far from 100–200 Ω raises an error naming 
 `SENS?` (index 0–26, 2 nV … 1 V), `OEXP? 1/2/3` (offset and expand of X, Y and R),
 `SNAP? 1,2,3,4` (X, Y, R, θ in volts and degrees, X and Y from one instant), then
 `LIAS?`. That status byte latches and is cleared by reading it, so an overload at any
-time since the previous sample sets the overload flag. The manual does not say whether
-`SNAP?` includes the output offset and expand; when either is set, the log says so and
-the header records them, so check the recorded X/Y against the display.
+time since the previous sample sets the overload flag. Reading the byte clears it, so
+if the read needs a retry the sample is flagged as overloaded too. The manual does not say whether
+`SNAP?` includes the output offset and expand; when either is set, at the start or
+later, the log says so and the header records them, so check the recorded X/Y against the display.
 
 **Keithley 199** (manual section 3.9): no `*IDN?`; `U0X` returns a status word starting
 `199`. Connecting sends a device clear, which resets the meter, so the program sets
-ohms, autorange and prefixed readings itself (`F2R0T0B0G0X`). Readings look like
+ohms, autorange, zero off and prefixed readings itself (`F2R0T0B0Z0G0X`). Readings look like
 `NOHM+1.100000E+2`: a leading `O` means overload and is reported as an error rather
 than as its all-9s value, and anything other than `OHM` means someone changed the
 function. The 199 picks 2- or 4-terminal ohms by whether the SENSE leads are

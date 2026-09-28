@@ -17,12 +17,15 @@ to the code that produced it. The number is written in exactly one place,
   into every data file header (`# lockin_model:`, `# temperature_source:`). The SR830
   and Keithley 199 manuals are in `docs/manuals/`.
 - The SR830 is read over GPIB with one query for X, Y, R and θ together. Its overload
-  status latches, so an overload between two samples still flags the later one. It
+  status latches, so an overload between two samples still flags the later one; a
+  status read that needed a retry flags the sample too, since the retry may have missed
+  the latched bits. It
   answers in volts, so there is no scaling. Its output offset and expand are read with
-  every sample and logged when set, because the manual does not say whether the values
+  every sample and logged when set (including when already set at the start), because the manual does not say whether the values
   read include them.
 - The Keithley 199 has no `*IDN?`; its status word identifies it. It is set to ohms on
-  every connection, because opening the connection resets it. An overload is reported
+  every connection, with Zero turned off, because opening the connection resets it to
+  its saved defaults. An overload is reported
   as an error, not recorded as a huge resistance, and a reading in the wrong function
   (someone changed it on the front panel) is refused.
 - **The 5301A driver is unverified.** No manual for the 5301A could be found anywhere,

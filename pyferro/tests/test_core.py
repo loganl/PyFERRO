@@ -136,6 +136,22 @@ def test_sr830_overload_between_samples_is_caught_once():
     assert not li.read().overloaded  # the read cleared it; nothing new happened
 
 
+def test_sr830_status_that_needed_a_retry_is_flagged_as_overload():
+    """Reading LIAS? clears it; if the reply was lost and retried, the bits may be gone."""
+
+    class RetryingTransport(FakeSR830Transport):
+        retries_used = 0
+
+        def query(self, cmd):
+            if cmd == "LIAS?":
+                self.lias = 0  # the lost first attempt cleared the byte
+                self.retries_used += 1
+            return super().query(cmd)
+
+    li = SR830(RetryingTransport())
+    assert li.read().overloaded
+
+
 def test_sr830_offset_or_expand_is_reported():
     li = SR830(FakeSR830Transport(oexp="50.00,1"))
     assert li.read().expand
@@ -176,7 +192,7 @@ class FakeKeithley199Transport:
 def test_keithley199_against_fake_protocol():
     transport = FakeKeithley199Transport()
     dmm = Keithley199(transport, "pt100", 100.0)
-    assert transport.writes == ["F2R0T0B0G0X"]  # ohms, set explicitly after the device clear
+    assert transport.writes == ["F2R0T0B0Z0G0X"]  # ohms, zero off, set after the device clear
     assert dmm.check().startswith("199")
     assert dmm.read_raw() == pytest.approx(110.0)
     assert dmm.read_celsius() == pytest.approx(pt100_to_celsius(110.0))
@@ -186,6 +202,13 @@ def test_keithley199_overflow_is_an_error_not_a_reading():
     """Without the prefix an overflow is all 9s - a large, plausible-looking number."""
     dmm = Keithley199(FakeKeithley199Transport(reading="OOHM+9.999999E+9"))
     with pytest.raises(TransportError, match="overflow"):
+        dmm.read_raw()
+
+
+def test_keithley199_refuses_a_zeroed_reading():
+    """Z (fig. 3-6) is a reading with a baseline subtracted: not the Pt100's resistance."""
+    dmm = Keithley199(FakeKeithley199Transport(reading="ZOHM+1.000000E+1"))
+    with pytest.raises(TransportError):
         dmm.read_raw()
 
 
@@ -538,6 +561,19 @@ def test_lockin_range_and_overload_changes_are_announced():
     assert any("sensitivity changed to 200 mV" in m for m in logs)
     assert any("OVERLOAD" in m for m in logs)
     assert any("overload cleared" in m for m in logs)
+
+
+def test_lockin_expand_already_on_at_the_start_is_announced():
+    from ferro.instruments.sr830 import SR830Reading
+
+    logs = []
+    acq = Acquisition(config.AppConfig(simulate=True), on_log=lambda lvl, m: logs.append(m))
+    reading = SR830Reading(1e-3, 0.0, 1e-3, 0.0, 17, expand=True, overloaded=False)
+    acq._watch_lockin(reading)
+    assert any("offset/expand is on" in m for m in logs)
+    logs.clear()
+    acq._watch_lockin(reading)  # unchanged: said once
+    assert logs == []
 
 
 def test_recovery_after_a_gap_is_announced():

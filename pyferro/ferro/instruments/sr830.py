@@ -18,7 +18,9 @@ detailed entries from 5-1 on.
 * ``SENS`` (0..26) and ``OFLT`` (0..19) are table indices (5-6).
 * The LIA status byte (5-23) latches: a bit stays set until the byte is read, and
   reading it clears every bit. It is read exactly once per sample, after the data,
-  so an overload at any time since the previous sample is caught.
+  so an overload at any time since the previous sample is caught. Because the read
+  clears it, a retried ``LIAS?`` (the transport retries a failed query) may have lost
+  the bits, so a sample whose status needed a retry is flagged as overloaded.
 * Output offset and expand (``OEXP``, 5-8) are output functions. The manual does not
   say whether ``SNAP?`` values include them, so they are read with every sample and
   reported as ``expand``: when it is on, check the recorded X/Y against the display
@@ -172,9 +174,12 @@ class SR830:
         sen = self.sensitivity_index()
         exp = self.expand()
         x, y, r, theta = parse_floats(self.t.query("SNAP?1,2,3,4"), 4)
-        status = parse_floats(self.t.query("LIAS?"), 1)[0]
-        return SR830Reading(x_v=x, y_v=y, r_v=r, theta_deg=theta, sen_index=sen,
-                            expand=exp, overloaded=bool(int(status) & LIA_OVERLOAD))
+        retries_before = getattr(self.t, "retries_used", 0)
+        status = int(parse_floats(self.t.query("LIAS?"), 1)[0])
+        # A lost reply may have cleared the byte before the retry read it: assume the worst.
+        status_lost = getattr(self.t, "retries_used", 0) != retries_before
+        return SR830Reading(x_v=x, y_v=y, r_v=r, theta_deg=theta, sen_index=sen, expand=exp,
+                            overloaded=status_lost or bool(status & LIA_OVERLOAD))
 
     def close(self) -> None:
         self.t.close()

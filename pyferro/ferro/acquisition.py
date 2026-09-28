@@ -449,6 +449,8 @@ class Acquisition:
             if self._last_expand is not None:
                 self.annotate(f"Lock-in {reading.EXPAND_NAME} turned "
                               f"{'on' if reading.expand else 'off'}")
+            elif reading.expand:
+                self.annotate(f"Lock-in {reading.EXPAND_NAME} is on")
             self._last_expand = reading.expand
         if reading.overloaded != self._overloaded:
             self._overloaded = reading.overloaded

@@ -16,8 +16,12 @@ reference: Model 199 Instruction Manual (docs/manuals), section 3.9.
   default conditions (3.8.5-3.8.6), whatever the front panel was showing.
   ``__init__`` therefore sets everything a reading depends on: ohms (``F2``),
   autorange (``R0``), a new reading each time it is addressed to talk (``T0``), readings
-  from the A/D converter rather than the data store (``B0``), and readings with a
-  prefix (``G0``).
+  from the A/D converter rather than the data store (``B0``), zero off (``Z0``), and
+  readings with a prefix (``G0``).
+* Zero (3.9.4) subtracts a stored baseline from every reading and can be saved as a
+  power-up default, which the device clear brings back. A zeroed reading has the prefix
+  Z (fig. 3-6); it would record the Pt100 with an offset taken off, so ``Z0`` turns
+  it off, and a Z prefix is refused rather than read.
 * The prefix is how an overload shows (3.9.12, and the example on page 3-3):
   ``NOHM+1.100000E+2``. The first letter is N for a normal reading and O for an
   overload, whose number is all 9s. Without the prefix (``G1``) an overload would
@@ -34,7 +38,7 @@ from __future__ import annotations
 from ..transports import Transport, TransportError
 from .hp34401a import pt100_to_celsius
 
-SETUP = "F2R0T0B0G0X"  # see module docstring
+SETUP = "F2R0T0B0Z0G0X"  # see module docstring
 
 
 def parse_reading(text: str, function: str = "OHM") -> float:
