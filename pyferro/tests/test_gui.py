@@ -72,3 +72,42 @@ def test_monitor_then_record_creates_separate_files(window, qtbot, tmp_path):
     qtbot.mouseClick(window.stop_btn, Qt.LeftButton)
     qtbot.waitUntil(lambda: not window.running, timeout=15000)
     assert len(list((tmp_path / "data").glob("two_*.txt"))) == 2
+
+
+@pytest.mark.parametrize("model, name", [("5302", "5302"), ("sr830", "SR830"), ("5301a", "5301A")])
+def test_lockin_model_test_button(window, qtbot, model, name):
+    setup = window.setup
+    setup.li_model.setCurrentIndex(setup.li_model.findData(model))
+    qtbot.mouseClick(setup.li_test, Qt.LeftButton)
+    qtbot.waitUntil(lambda: setup.li_result.text().startswith(("✔", "✘")), timeout=10000)
+    assert setup.li_result.text().startswith(f"✔ {name} found"), setup.li_result.text()
+    assert ("UNVERIFIED" in setup.li_result.text()) == (model == "5301a")
+
+
+@pytest.mark.parametrize("model, name", [("34401a", "HP 34401A"), ("k199", "Keithley 199")])
+def test_dmm_model_test_button(window, qtbot, model, name):
+    setup = window.setup
+    setup.dmm_model.setCurrentIndex(setup.dmm_model.findData(model))
+    qtbot.mouseClick(setup.dmm_test, Qt.LeftButton)
+    qtbot.waitUntil(lambda: setup.dmm_result.text().startswith(("✔", "✘")), timeout=10000)
+    assert setup.dmm_result.text().startswith(f"✔ {name} found"), setup.dmm_result.text()
+
+
+def test_other_models_record_and_are_saved(window, qtbot, tmp_path):
+    setup = window.setup
+    setup.li_model.setCurrentIndex(setup.li_model.findData("sr830"))
+    setup.dmm_model.setCurrentIndex(setup.dmm_model.findData("k199"))
+    setup.dmm_enabled.setChecked(True)
+    window.sample.setText("sr830 k199")
+    qtbot.mouseClick(window.record_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: window._rows_written >= 3, timeout=15000)
+    qtbot.mouseClick(window.stop_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: not window.running and not window._stopping, timeout=15000)
+
+    path = next((tmp_path / "data").glob("sr830_k199_*.txt"))
+    text = path.read_text()
+    assert "# lockin_model: SR830" in text and "Keithley 199" in text
+    data = np.loadtxt(path)
+    assert np.isfinite(data[:, :3]).all()
+    saved = config.load()
+    assert (saved.lockin.model, saved.dmm.model) == ("sr830", "k199")

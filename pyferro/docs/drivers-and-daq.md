@@ -17,7 +17,7 @@ from the wires up to the measurement loop, with every example taken from this ri
 |---|---|---|
 | GUI | `gui/main_window.py` | Draws plots and readouts. Never talks to an instrument. |
 | **DAQ** | `acquisition.py` | When to read, what to do when a read fails, what to save. |
-| **Drivers** | `instruments/lockin5302.py`, `cnd3.py`, `hp34401a.py` | What the instrument's answers mean. |
+| **Drivers** | `instruments/lockin5302.py`, `cnd3.py`, `hp34401a.py` (+ other models, §4) | What the instrument's answers mean. |
 | **Transports** | `transports.py`, minimalmodbus | How bytes get there and back. |
 | OS / vendor | NI-VISA → NI-488.2; pyserial → FTDI | Hardware access, from outside this repo. |
 | Wires | GPIB → 5302; RS-485 → CND3 terminals 13/14 | Electrical signals. |
@@ -231,6 +231,34 @@ Source: [`ferro/instruments/hp34401a.py`](../ferro/instruments/hp34401a.py)
 R = R₀(1 + A·T + B·T²) for T: 109.73 Ω → 25.0 °C, 157.33 Ω → 150.0 °C. A sanity window of
 0.5–3 × R₀ catches a meter left in the wrong mode.
 
+### Other models: one shape, several drivers
+
+The rig uses a 5302 and a 34401A, but the Instruments tab can select an SRS SR830 or an
+EG&G 5301A lock-in and a Keithley 199 multimeter. `open_lockin` and `open_dmm` look the
+driver up in `LOCKIN_MODELS` / `DMM_MODELS`, and nothing above them knows which one they
+got, because every lock-in driver has the same methods (`check`, `read`, `settings`,
+`time_constant_index`, `frequency_hz`, `close`) and every reading the same fields
+(`x_v`, `y_v`, `r_v`, `theta_deg`, `sensitivity`, `full_scale_v`, `percent_fs`,
+`expand`, `overloaded`). The multimeters share `check`, `read_raw`, `read_celsius`.
+
+What differs is what the manuals say, and each difference shows up somewhere specific:
+
+- **SR830** ([`sr830.py`](../ferro/instruments/sr830.py)) is IEEE 488.2 and does its own
+  flow control, so it gets fixed LF terminators and none of the 5302's delays. It answers
+  in volts, so there is no scaling. Its overload status byte **latches and clears on
+  read**. The driver reads it exactly once per sample, after the data. Two reads (say one
+  for overload, one for unlock) would each clear what the other was looking for.
+- **Keithley 199** ([`keithley199.py`](../ferro/instruments/keithley199.py)) has no
+  `*IDN?`, like the 5302. The device clear that `VisaTransport` sends on opening resets
+  it, so the driver sets its own function every time. Its readings carry a prefix, and
+  that prefix is the only place an overload shows: without it, overflow is a
+  plausible-looking 9.999999E+9 Ω.
+- **5301A** ([`lockin5301a.py`](../ferro/instruments/lockin5301a.py)) has no manual. It
+  is a `Lockin5302` subclass, opened through the same terminator search with the same
+  50 ms reply delay. Its one change is the out-of-range message: for the 5302 an index
+  outside the table proves the replies are out of step, but for the 5301A it might only
+  mean the tables differ.
+
 ### Simulation
 
 Source: [`ferro/instruments/simulated.py`](../ferro/instruments/simulated.py)
@@ -239,7 +267,8 @@ The fakes sit **below** the drivers. `SimLockinTransport` implements the transpo
 contract and answers `SEN` and `XY` as a 5302 would, so the real parsing and scaling code
 runs. `SimModbusInstrument` stands in for `minimalmodbus.Instrument`, so the real
 `decode_temperature` runs. One shared `SimulatedSample` keeps all three instruments
-agreeing on the temperature.
+agreeing on the temperature. `lockin_transport` and `dmm_transport` pick the fake that
+matches the selected model.
 
 ## 5. DAQ
 
@@ -260,10 +289,12 @@ thread ever opens or closes the data file.
 
 ### Opening instruments
 
-`open_lockin` branches three ways: simulated, serial, or GPIB. The GPIB path runs the
-terminator probe with a short timeout and **no retries**, so a wrong pair fails fast;
-caches the winning pair per resource; then restores the full timeout and turns retries
-on. `open_pid` and `open_dmm` are simpler.
+`open_lockin` picks the driver for the selected model, then branches: simulated, SR830
+(GPIB with LF terminators, nothing to probe), serial, or GPIB. The GPIB path, used by
+the 5302 and the 5301A, runs the terminator probe with a short timeout and **no
+retries**, so a wrong pair fails fast; caches the winning pair per resource; then
+restores the full timeout and turns retries on. `open_pid` and `open_dmm` are simpler;
+`open_dmm` gives the Keithley 199 its CR LF terminators.
 
 ### `InstrumentSlot`: one state machine per instrument
 

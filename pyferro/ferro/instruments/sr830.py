@@ -1,21 +1,28 @@
-"""Stanford Research Systems SR830 DSP lock-in amplifier.
+"""Stanford Research Systems SR830 DSP lock-in amplifier, over GPIB.
 
 Command reference: SR830 DSP Lock-In Amplifier manual (docs/manuals), chapter 5,
-"Remote Programming" -- the abridged command list on its page 1-7/1-8 and the
-detailed entries on 5-3 through 5-24.
+"Remote Programming" -- the abridged command list on pages 1-7 to 1-9 and the
+detailed entries from 5-1 on.
 
-* IEEE 488.2 compliant: ``*IDN?``, ``*RST``, ``*CLS`` etc. work as usual, unlike the
-  EG&G 5302 (see lockin5302.py) which predates SCPI entirely.
-* ``OUTX 1`` must be sent once after opening the GPIB connection, or the instrument
-  keeps answering queries over RS232 instead (manual 5-10). This driver does it in
-  ``__init__``.
-* The GPIB terminator is LF (write) and LF-or-EOI (read) -- manual page 5-4 -- not
-  the 5302's CR. Open the transport with ``write_termination="\\n",
-  read_termination="\\n"``.
-* ``SNAP? 1,2,3,4,9`` reads X, Y, R, theta and the reference frequency as one atomic
-  query (manual 5-15), so a short time constant can't skew X relative to Y the way
-  two separate ``OUTP?`` queries would.
-* ``SENS`` (0..26) and ``OFLT`` (0..19) are table indices, not units -- manual 5-6.
+* IEEE 488.2: ``*IDN?``, ``*CLS`` and so on work as usual, unlike the 5302.
+* Responses go to only one interface. ``OUTX 1`` sends them to GPIB and has to come
+  before any query (5-1, 5-10), so ``__init__`` sends it. The driver is GPIB-only.
+* Terminators (5-1, 5-2): commands end with LF or EOI, responses with LF. Open the
+  transport with ``write_termination="\\n", read_termination="\\n"``.
+* "There is no need to wait between commands" (5-1): the SR830 buffers input and
+  holds off the GPIB handshake itself, so the 5302's gap and reply delay are not used.
+* ``SNAP? 1,2,3,4`` reads X, Y, R and theta in one query (5-15). X and Y are
+  recorded at one instant and R and theta at another, about 10 µs later.
+* Values come back in volts and degrees, so nothing is scaled here. The sensitivity is
+  still read on every sample: overload and "% of full scale" depend on it.
+* ``SENS`` (0..26) and ``OFLT`` (0..19) are table indices (5-6).
+* The LIA status byte (5-23) latches: a bit stays set until the byte is read, and
+  reading it clears every bit. It is read exactly once per sample, after the data,
+  so an overload at any time since the previous sample is caught.
+* Output offset and expand (``OEXP``, 5-8) are output functions. The manual does not
+  say whether ``SNAP?`` values include them, so they are read with every sample and
+  reported as ``expand``: when it is on, check the recorded X/Y against the display
+  before trusting them.
 """
 
 from __future__ import annotations
@@ -24,6 +31,7 @@ import re
 from dataclasses import dataclass
 
 from ..transports import Transport, TransportError
+from .lockin5302 import checked_index
 
 SENSITIVITIES_V = [
     2e-9, 5e-9, 10e-9, 20e-9, 50e-9,
@@ -49,19 +57,19 @@ TIME_CONSTANT_LABELS = [
     "300 ms", "1 s", "3 s", "10 s", "30 s", "100 s", "300 s", "1 ks", "3 ks", "10 ks",
     "30 ks",
 ]
-FILTER_SLOPES_DB_OCT = [6, 12, 18, 24]
+EXPAND_FACTORS = [1, 10, 100]  # OEXP expand code 0, 1, 2
 
-# LIA status byte, manual page 5-23. Bits 0-2 are the overload flags; bit 3 is
-# reference unlock, which (as with the 5302) is expected with no sample connected.
-LIA_RESERVE_OR_INPUT_OVERLOAD = 1 << 0
+# LIA status byte bits (5-23). Bit 3, reference unlock, is expected with no sample.
+LIA_INPUT_OVERLOAD = 1 << 0  # input or reserve
 LIA_FILTER_OVERLOAD = 1 << 1
 LIA_OUTPUT_OVERLOAD = 1 << 2
-LIA_UNLOCKED = 1 << 3
+LIA_OVERLOAD = LIA_INPUT_OVERLOAD | LIA_FILTER_OVERLOAD | LIA_OUTPUT_OVERLOAD
 
-_FLOAT = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
+_FLOAT = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
 
 
 def parse_floats(text: str, expected: int) -> list[float]:
+    """Pull ``expected`` numbers out of a comma-separated response."""
     values = [float(v) for v in _FLOAT.findall(text)]
     if len(values) != expected:
         raise TransportError(f"expected {expected} number(s), got {text!r}")
@@ -74,14 +82,37 @@ class SR830Reading:
     y_v: float
     r_v: float
     theta_deg: float
-    freq_hz: float
+    sen_index: int
+    expand: bool
+    overloaded: bool
+
+    EXPAND_NAME = "output offset/expand"
+
+    @property
+    def sensitivity(self) -> str:
+        return SENSITIVITY_LABELS[self.sen_index]
+
+    @property
+    def full_scale_v(self) -> float:
+        return SENSITIVITIES_V[self.sen_index]
+
+    @property
+    def percent_fs(self) -> float:
+        return 100.0 * max(abs(self.x_v), abs(self.y_v)) / self.full_scale_v
 
 
 class SR830:
+    MODEL = "SR830"
+    SENSITIVITY_LABELS = SENSITIVITY_LABELS
+    TIME_CONSTANT_LABELS = TIME_CONSTANT_LABELS
+    EXPAND_NAME = SR830Reading.EXPAND_NAME
+
     def __init__(self, transport: Transport) -> None:
         self.t = transport
-        # Route responses to GPIB, not RS232 -- see module docstring.
         self.t.write("OUTX1")
+        # Clear the latched status bits, so the first sample does not report an
+        # overload that happened before this program connected.
+        self.t.write("*CLS")
 
     # --- identification / settings -------------------------------------
     def identify(self) -> str:
@@ -90,62 +121,60 @@ class SR830:
     def check(self) -> str:
         ident = self.identify()
         if "SR830" not in ident:
-            raise TransportError(f"expected an SR830 *IDN? reply, instrument answered {ident!r}")
+            raise TransportError(f"expected an SR830, instrument answered {ident!r}")
         return ident
 
     def sensitivity_index(self) -> int:
-        return int(self.t.query("SENS?"))
+        return checked_index(int(parse_floats(self.t.query("SENS?"), 1)[0]),
+                             len(SENSITIVITIES_V), "SENS")
 
     def time_constant_index(self) -> int:
-        return int(self.t.query("OFLT?"))
-
-    def filter_slope_index(self) -> int:
-        return int(self.t.query("OFSL?"))
+        return checked_index(int(parse_floats(self.t.query("OFLT?"), 1)[0]),
+                             len(TIME_CONSTANTS_S), "OFLT")
 
     def frequency_hz(self) -> float:
-        return float(self.t.query("FREQ?"))
+        return parse_floats(self.t.query("FREQ?"), 1)[0]
 
-    def phase_deg(self) -> float:
-        return float(self.t.query("PHAS?"))
+    def offset_expand(self, channel: int) -> tuple[float, int]:
+        """(offset in % of full scale, expand factor) for X (1), Y (2) or R (3)."""
+        offset, code = parse_floats(self.t.query(f"OEXP?{channel}"), 2)
+        return offset, EXPAND_FACTORS[checked_index(int(code), len(EXPAND_FACTORS), "OEXP")]
 
-    def reference_internal(self) -> bool:
-        return self.t.query("FMOD?").strip() == "1"
+    def expand(self) -> bool:
+        """True when any recorded output (X, Y or R) has an offset or an expand."""
+        return any(self.offset_expand(ch) != (0.0, 1) for ch in (1, 2, 3))
 
     def set_sensitivity(self, index: int) -> None:
-        self.t.write(f"SENS{int(index)}")
+        self.t.write(f"SENS {int(index)}")
 
     def set_time_constant(self, index: int) -> None:
-        self.t.write(f"OFLT{int(index)}")
+        self.t.write(f"OFLT {int(index)}")
 
     def settings(self) -> dict:
         sen = self.sensitivity_index()
         tc = self.time_constant_index()
-        return {
+        info = {
             "sensitivity_index": sen,
             "sensitivity": SENSITIVITY_LABELS[sen],
             "time_constant_index": tc,
             "time_constant": TIME_CONSTANT_LABELS[tc],
             "time_constant_s": TIME_CONSTANTS_S[tc],
             "frequency_hz": self.frequency_hz(),
-            "reference_internal": self.reference_internal(),
         }
+        for ch, name in ((1, "x"), (2, "y"), (3, "r")):
+            info[f"{name}_offset_percent"], info[f"{name}_expand"] = self.offset_expand(ch)
+        info["expand"] = any(info[f"{n}_offset_percent"] != 0 or info[f"{n}_expand"] != 1
+                             for n in ("x", "y", "r"))
+        return info
 
-    # --- data ------------------------------------------------------------
+    # --- data ----------------------------------------------------------
     def read(self) -> SR830Reading:
-        # One atomic snapshot of X, Y, R, theta and the reference frequency
-        # (manual 5-15) instead of five separate queries.
-        x, y, r, theta, freq = parse_floats(self.t.query("SNAP?1,2,3,4,9"), 5)
-        return SR830Reading(x_v=x, y_v=y, r_v=r, theta_deg=theta, freq_hz=freq)
-
-    def status_byte(self) -> int:
-        return int(self.t.query("LIAS?"))
-
-    def overloaded(self) -> bool:
-        stb = self.status_byte()
-        return bool(stb & (LIA_RESERVE_OR_INPUT_OVERLOAD | LIA_FILTER_OVERLOAD | LIA_OUTPUT_OVERLOAD))
-
-    def unlocked(self) -> bool:
-        return bool(self.status_byte() & LIA_UNLOCKED)
+        sen = self.sensitivity_index()
+        exp = self.expand()
+        x, y, r, theta = parse_floats(self.t.query("SNAP?1,2,3,4"), 4)
+        status = parse_floats(self.t.query("LIAS?"), 1)[0]
+        return SR830Reading(x_v=x, y_v=y, r_v=r, theta_deg=theta, sen_index=sen,
+                            expand=exp, overloaded=bool(int(status) & LIA_OVERLOAD))
 
     def close(self) -> None:
         self.t.close()

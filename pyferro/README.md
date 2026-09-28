@@ -9,6 +9,10 @@ controller heats and cools the chamber. Replaces the LabVIEW routine `FERRO v.2.
 | Omega CND3 PID controller (holds the Pt100 probe) | Dtech USB → RS-485 (FTDI) | Modbus ASCII, address 1, 9600 7E1 |
 | HP 34401A multimeter (optional) | NI GPIB adapter | `GPIB0::24::INSTR`, Pt100 in 4-wire Ω |
 
+Other models can be chosen on the Instruments tab, for rigs built differently: an SRS
+SR830 or an EG&G 5301A lock-in, and a Keithley 199 multimeter. The 5301A driver is
+**unverified** — see [section 6](#6-instrument-protocols).
+
 PyFERRO only **reads**. It never changes setpoints or heater power, so the controller's
 *COMMUNICATION WRITE* setting stays **OFF**.
 
@@ -69,8 +73,8 @@ PyFERRO warns above that but is not a safety device; the controller and relay ar
 
 ## 3. Taking data
 
-1. **Instruments tab:** pick the Dtech COM port (FTDI ports listed first), press
-   **Test lock-in** and **Test controller**. A green ✔ shows sensitivity, time constant,
+1. **Instruments tab:** check the lock-in **Model** (EG&G 5302 on this rig), pick the
+   Dtech COM port (FTDI ports listed first), press **Test lock-in** and **Test controller**. A green ✔ shows sensitivity, time constant,
    PV/SV, firmware.
 2. **Run tab:** enter a sample/run name (becomes the file name), operator, drive details,
    notes, and the save folder.
@@ -84,7 +88,8 @@ PyFERRO warns above that but is not a safety device; the controller and relay ar
    *CND3 controller* probe (normal) or the *Multimeter Pt100*. Both are recorded
    whenever available — `PV_C` from the controller, `T_dmm_C` from the multimeter.
    To use the multimeter, tick **Also read the multimeter** on the Instruments tab and
-   check its GPIB address (`GPIB0::24::INSTR`) and whether the reading is ohms or °C.
+   check its model, its GPIB address (`GPIB0::24::INSTR`) and whether the reading is
+   ohms or °C.
 
 Status lights: green OK, red not answering (hover for the reason), grey unused. A failed
 reading never stops a run — the value becomes `nan`, a flag is set, and the instrument is
@@ -214,6 +219,29 @@ Limitation: during a ramp `1001H` holds the programmed setpoint; the moving setp
 resistance, converted with IEC 60751 (`R = R₀(1 + AT + BT²)`, A = 3.9083×10⁻³,
 B = −5.775×10⁻⁷). A reading far from 100–200 Ω raises an error naming the likely cause.
 
+**SRS SR830** (manual chapter 5), GPIB only, LF terminators both ways, default address 8:
+`OUTX 1` at connection so answers go to GPIB, `*IDN?` to identify. Each sample reads
+`SENS?` (index 0–26, 2 nV … 1 V), `OEXP? 1/2/3` (offset and expand of X, Y and R),
+`SNAP? 1,2,3,4` (X, Y, R, θ in volts and degrees, X and Y from one instant), then
+`LIAS?`. That status byte latches and is cleared by reading it, so an overload at any
+time since the previous sample sets the overload flag. The manual does not say whether
+`SNAP?` includes the output offset and expand; when either is set, the log says so and
+the header records them, so check the recorded X/Y against the display.
+
+**Keithley 199** (manual section 3.9): no `*IDN?`; `U0X` returns a status word starting
+`199`. Connecting sends a device clear, which resets the meter, so the program sets
+ohms, autorange and prefixed readings itself (`F2R0T0B0G0X`). Readings look like
+`NOHM+1.100000E+2`: a leading `O` means overload and is reported as an error rather
+than as its all-9s value, and anything other than `OHM` means someone changed the
+function. The 199 picks 2- or 4-terminal ohms by whether the SENSE leads are
+connected. It has no °C function, so only the Pt100 reading is offered.
+
+**EG&G 5301A — unverified.** No manual for it could be found. The driver assumes the
+5302's commands and tables (it is the model just before the 5302) and is opened like
+the 5302, with the same 50 ms reply delay. The log, the Test button and every data
+file header say so. Before trusting its data, check that `ID` answers `5301…` and that
+the reported sensitivity and time constant match the front panel.
+
 ## 7. Code layout
 
 ```
@@ -221,7 +249,8 @@ ferro/gui/          main_window.py  window, plots, readouts, log
                     setup_panel.py  instrument settings, Test / Auto-detect
                     widgets.py      status lights, readouts, background tasks
 ferro/acquisition.py   the measurement loop: open, read, log, retry
-ferro/instruments/  lockin5302.py, cnd3.py, hp34401a.py, simulated.py
+ferro/instruments/  lockin5302.py, sr830.py, lockin5301a.py, cnd3.py,
+                    hp34401a.py, keithley199.py, simulated.py
 ferro/transports.py VisaTransport (GPIB), SerialTransport (RS-232 echo + prompt)
 ferro/config.py     settings dataclasses, saved as JSON
 ferro/datafile.py   the writer
@@ -254,13 +283,16 @@ machine (macOS, Linux or Windows).
 |---|---|
 | `tests/test_core.py` | scaling, parsing, register decoding, Pt100, data files, direction tracking, settings, a simulated run |
 | `tests/test_protocols.py` | real serial/Modbus code over a pty against manual-accurate emulators (skipped on Windows) |
-| `tests/test_gui.py` | record/stop cycles, run-name guard, one file per recording, settings persistence |
+| `tests/test_gui.py` | record/stop cycles, run-name guard, one file per recording, settings persistence, the Test button for every model |
 | `tests/test_version.py` | one version everywhere, matching the git tag |
 
 Simulated instruments sit **below** the drivers, so the same parsing and scaling code
 runs: a shared fake sample ramps 25 → 150 → 25 °C at 30 °C/min with a peak at 122 °C,
 the lock-in answers `ID`/`SEN`/`XTC`/`EX`/`FRQ`/`XY` with counts scaled to the current
-range, and the controller exposes the CND3 registers. Simulated runs show an orange
+range, and the controller exposes the CND3 registers. The model chosen on the
+Instruments tab is simulated too: the SR830 answers its own commands in volts, the
+Keithley 199 gives prefixed ohms readings, and the 5301A is the 5302 simulation answering
+`ID` as a 5301A — which exercises the code, not the assumption. Simulated runs show an orange
 banner and `simulation: True` in the file header. Simulation cannot reproduce timing,
 bus noise, wiring faults or GPIB itself — check those with the *Test* buttons and
 `PyFERRO-debug.bat`.

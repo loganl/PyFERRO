@@ -1,1 +1,5 @@
-"""Instrument drivers: EG&G 5302 lock-in, Omega CND3 PID, HP 34401A multimeter."""
+"""Instrument drivers.
+
+Lock-ins: EG&G 5302, SRS SR830, EG&G 5301A (unverified). Controller: Omega CND3.
+Multimeters: HP 34401A, Keithley 199.
+"""

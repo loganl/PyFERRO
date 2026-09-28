@@ -31,9 +31,12 @@ from .datafile import (
     unique_path,
 )
 from .instruments.cnd3 import CND3, PIDError
-from .instruments.lockin5302 import SENSITIVITY_LABELS, TIME_CONSTANT_LABELS
 from .instruments.hp34401a import HP34401A
+from .instruments.keithley199 import Keithley199
+from .instruments.lockin5301a import UNVERIFIED as LOCKIN_5301A_UNVERIFIED
+from .instruments.lockin5301a import Lockin5301A
 from .instruments.lockin5302 import Lockin5302
+from .instruments.sr830 import SR830
 from .instruments import simulated
 from .transports import (TERMINATIONS, SerialTransport, TransportError, VisaTransport,
                          probe_terminations)
@@ -46,6 +49,11 @@ BEHIND_WARN_S = 30.0  # how often to say the loop cannot keep up with the interv
 LOCKIN_GAP_S = 0.05  # the 5302 loses a command sent while it is still busy
 LOCKIN_RETRIES = 2  # the GPIB link on this rig drops the odd exchange
 
+# Config value -> driver. The SR830 and the Keithley 199 are opened with the
+# terminators their manuals give; the 5302 and 5301A with the terminator search.
+LOCKIN_MODELS = {"5302": Lockin5302, "sr830": SR830, "5301a": Lockin5301A}
+DMM_MODELS = {"34401a": HP34401A, "k199": Keithley199}
+
 
 # Terminator pairs that have worked, by resource: a reconnect should not pay for
 # the whole search again.
@@ -54,17 +62,23 @@ _DETECTED_TERMINATIONS: dict[str, tuple] = {}
 
 # --- instrument factories (also used by the GUI "Test" buttons) ------------
 def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None,
-                should_stop: Callable[[], bool] | None = None) -> Lockin5302:
+                should_stop: Callable[[], bool] | None = None):
     c = cfg.lockin
+    driver = LOCKIN_MODELS.get(c.model)
+    if driver is None:
+        raise TransportError(f"Unknown lock-in model {c.model!r}")
     if cfg.simulate:
-        return Lockin5302(simulated.SimLockinTransport(simulated.shared_sample()))
+        return driver(simulated.lockin_transport(c.model, simulated.shared_sample()))
+    if driver is SR830:
+        return _open_sr830(c, on_log)
     if c.interface == "serial":
         if not c.serial_port:
             raise TransportError("No RS-232 port selected for the lock-in")
-        return Lockin5302(SerialTransport(c.serial_port, baudrate=c.baudrate, timeout_s=c.timeout_s))
+        return driver(SerialTransport(c.serial_port, baudrate=c.baudrate, timeout_s=c.timeout_s))
 
     # The 5302's terminator is set on its own front panel and the wrong guess times
-    # out exactly like a dead instrument, so try each pair until ID answers 5302.
+    # out exactly like a dead instrument, so try each pair until ID answers. The
+    # 5301A is assumed to work the same way.
     # Probe with a short timeout: a silent instrument otherwise costs the full
     # timeout eight times over, on the acquisition thread, which is what a Stop
     # press has to wait for. Whatever worked is tried first next time, so a
@@ -84,9 +98,9 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
 
     def answers_id(transport):
         try:
-            return Lockin5302(transport).check()
+            return driver(transport).check()
         except Exception:
-            return Lockin5302(transport).check()  # one retry: the first command can be lost
+            return driver(transport).check()  # one retry: the first command can be lost
 
     transport, label = probe_terminations(
         open_one, answers_id, name=f"Lock-in {c.resource}",
@@ -96,7 +110,25 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
     transport.retries = LOCKIN_RETRIES
     if on_log:
         on_log("info", f"Lock-in {c.resource}: answered with {label}")
-    return Lockin5302(transport)
+    return driver(transport)
+
+
+def _open_sr830(c, on_log) -> SR830:
+    if c.interface == "serial":
+        raise TransportError("The SR830 is supported over GPIB only - choose GPIB as the connection")
+    # LF both ways (manual 5-1, 5-2), and no gap or reply delay: the SR830 buffers
+    # commands and holds off the bus itself.
+    transport = VisaTransport(c.resource, timeout_s=c.timeout_s, retries=LOCKIN_RETRIES,
+                              write_termination="\n", read_termination="\n")
+    try:
+        li = SR830(transport)
+        li.check()
+    except Exception:
+        transport.close()
+        raise
+    if on_log:
+        on_log("info", f"Lock-in {c.resource}: SR830 answered")
+    return li
 
 
 def open_pid(cfg: AppConfig) -> CND3:
@@ -108,11 +140,24 @@ def open_pid(cfg: AppConfig) -> CND3:
     return CND3(c.port, c.address, c.mode, c.baudrate, c.bytesize, c.parity, c.stopbits, c.timeout_s)
 
 
-def open_dmm(cfg: AppConfig) -> HP34401A:
+def open_dmm(cfg: AppConfig):
     c = cfg.dmm
+    driver = DMM_MODELS.get(c.model)
+    if driver is None:
+        raise TransportError(f"Unknown multimeter model {c.model!r}")
     if cfg.simulate:
-        return HP34401A(simulated.SimDMMTransport(simulated.shared_sample()), c.mode, c.r0)
-    return HP34401A(VisaTransport(c.resource, timeout_s=3.0), c.mode, c.r0)
+        return driver(simulated.dmm_transport(c.model, simulated.shared_sample()), c.mode, c.r0)
+    if driver is Keithley199:
+        # CR LF is the 199's terminator after the device clear at open (manual 3.9.15).
+        transport = VisaTransport(c.resource, timeout_s=3.0,
+                                  write_termination="\r\n", read_termination="\r\n")
+    else:
+        transport = VisaTransport(c.resource, timeout_s=3.0)
+    try:
+        return driver(transport, c.mode, c.r0)
+    except Exception:
+        transport.close()
+        raise
 
 
 @dataclass
@@ -231,17 +276,27 @@ class Acquisition:
     def connections(self) -> dict:
         """Which port each instrument is actually using - needed to tell rigs apart."""
         c = self.cfg
+        lockin_model = self._model_name(LOCKIN_MODELS, c.lockin.model)
+        dmm_model = self._model_name(DMM_MODELS, c.dmm.model)
         if c.simulate:
-            return {"lockin": "Lock-in: SIMULATED", "pid": "Controller: SIMULATED"}
-        lockin = (f"Lock-in: {c.lockin.serial_port} (RS-232, {c.lockin.baudrate} baud)"
-                  if c.lockin.interface == "serial" else f"Lock-in: {c.lockin.resource}")
+            out = {"lockin": f"Lock-in: {lockin_model} SIMULATED", "pid": "Controller: SIMULATED"}
+            if c.dmm.enabled or c.run.temp_source == "dmm":
+                out["dmm"] = f"Multimeter: {dmm_model} SIMULATED"
+            return out
+        lockin = (f"Lock-in: {lockin_model} on {c.lockin.serial_port} (RS-232, {c.lockin.baudrate} baud)"
+                  if c.lockin.interface == "serial" else f"Lock-in: {lockin_model} on {c.lockin.resource}")
         pid = (f"Controller: {c.pid.port or 'no port selected'}, Modbus {c.pid.mode.upper()}, "
                f"address {c.pid.address}, {c.pid.baudrate} "
                f"{c.pid.bytesize}{c.pid.parity}{c.pid.stopbits}")
         out = {"lockin": lockin, "pid": pid}
         if c.dmm.enabled or c.run.temp_source == "dmm":
-            out["dmm"] = f"Multimeter: {c.dmm.resource} ({c.dmm.mode})"
+            out["dmm"] = f"Multimeter: {dmm_model} on {c.dmm.resource} ({c.dmm.mode})"
         return out
+
+    @staticmethod
+    def _model_name(models: dict, key: str) -> str:
+        driver = models.get(key)
+        return driver.MODEL if driver else f"unknown model {key!r}"
 
     def annotate(self, text: str, level: str = "info") -> None:
         """Log an event and, while recording, record it in the data file too.
@@ -292,6 +347,8 @@ class Acquisition:
         self.on_log("info", "Acquisition started" + (" (SIMULATION)" if self.cfg.simulate else ""))
         for line in self.connections().values():
             self.on_log("info", f"  {line}")
+        if self.cfg.lockin.model == "5301a":
+            self.on_log("warning", LOCKIN_5301A_UNVERIFIED)
         next_tick = self._t0
         warned_behind = 0.0
         try:
@@ -386,12 +443,12 @@ class Acquisition:
         """Announce range, expand and overload changes: they change what X and Y mean."""
         if self._last_sen != reading.sen_index:
             if self._last_sen is not None:
-                self.annotate(f"Lock-in sensitivity changed to "
-                              f"{SENSITIVITY_LABELS[reading.sen_index]} full scale")
+                self.annotate(f"Lock-in sensitivity changed to {reading.sensitivity} full scale")
             self._last_sen = reading.sen_index
         if self._last_expand != reading.expand:
             if self._last_expand is not None:
-                self.annotate(f"Lock-in expand (x10) turned {'on' if reading.expand else 'off'}")
+                self.annotate(f"Lock-in {reading.EXPAND_NAME} turned "
+                              f"{'on' if reading.expand else 'off'}")
             self._last_expand = reading.expand
         if reading.overloaded != self._overloaded:
             self._overloaded = reading.overloaded
@@ -412,7 +469,7 @@ class Acquisition:
             try:
                 tc, freq = li.time_constant_index(), li.frequency_hz()
                 if self._last_tc is not None and tc != self._last_tc:
-                    self.annotate(f"Lock-in time constant changed to {TIME_CONSTANT_LABELS[tc]}")
+                    self.annotate(f"Lock-in time constant changed to {li.TIME_CONSTANT_LABELS[tc]}")
                 if self._last_freq is not None and abs(freq - self._last_freq) > 0.001 * max(freq, 1):
                     self.annotate(f"Lock-in reference frequency changed to {freq:.4g} Hz")
                 self._last_tc, self._last_freq = tc, freq
@@ -460,13 +517,17 @@ class Acquisition:
             "operator": run.operator,
             "drive": run.drive,
             "notes": run.notes.replace("\n", " | "),
-            "temperature_source": "CND3 controller PV" if run.temp_source == "pid" else "HP34401A Pt100",
+            "temperature_source": ("CND3 controller PV" if run.temp_source == "pid" else
+                                   f"{self._model_name(DMM_MODELS, self.cfg.dmm.model)} Pt100"),
+            "lockin_model": self._model_name(LOCKIN_MODELS, self.cfg.lockin.model),
             "interval_s": run.interval_s,
             "min_delta_T_C": run.min_delta_t,
             "simulation": self.cfg.simulate,
             "session_log": sessionlog.path() or "not written",
             **{f"connection_{k}": v for k, v in self.connections().items()},
         }
+        if self.cfg.lockin.model == "5301a":
+            meta["lockin_warning"] = LOCKIN_5301A_UNVERIFIED
         for key, label in (("lockin", "lockin"), ("pid", "controller")):
             slot = self.slots[key]
             try:

@@ -83,6 +83,12 @@ class LockinReading:
     x_v: float
     y_v: float
 
+    EXPAND_NAME = "expand (x10)"
+
+    @property
+    def sensitivity(self) -> str:
+        return SENSITIVITY_LABELS[self.sen_index]
+
     @property
     def r_v(self) -> float:
         return math.hypot(self.x_v, self.y_v)
@@ -118,6 +124,11 @@ def counts_to_volts(counts: int, sen_index: int, expand: bool = False) -> float:
 
 
 class Lockin5302:
+    MODEL = "5302"
+    SENSITIVITY_LABELS = SENSITIVITY_LABELS
+    TIME_CONSTANT_LABELS = TIME_CONSTANT_LABELS
+    EXPAND_NAME = LockinReading.EXPAND_NAME
+
     def __init__(self, transport: Transport) -> None:
         self.t = transport
 

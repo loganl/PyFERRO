@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 from ..acquisition import open_dmm, open_lockin, open_pid
 from ..config import AppConfig
 from ..instruments.cnd3 import BAUD_RATES, autodetect
+from ..instruments.lockin5301a import UNVERIFIED as LOCKIN_5301A_UNVERIFIED
 from ..transports import list_visa_resources
 from .widgets import PortCombo, run_task
 
@@ -53,8 +54,14 @@ class SetupPanel(QWidget):
         lay.addWidget(self.simulate)
 
         # --- lock-in ----------------------------------------------------------
-        box = QGroupBox("Lock-in amplifier — EG&G 5302")
+        box = QGroupBox("Lock-in amplifier")
         form = QFormLayout(box)
+        self.li_model = QComboBox()
+        self.li_model.addItem("EG&G 5302", "5302")
+        self.li_model.addItem("SRS SR830 (GPIB only)", "sr830")
+        self.li_model.addItem("EG&G 5301A — UNVERIFIED, no manual", "5301a")
+        self.li_model.setItemData(2, LOCKIN_5301A_UNVERIFIED, Qt.ItemDataRole.ToolTipRole)
+        form.addRow("Model", self.li_model)
         self.li_iface = QComboBox()
         self.li_iface.addItem("GPIB (NI adapter)", "visa")
         self.li_iface.addItem("RS-232 serial port", "serial")
@@ -117,10 +124,14 @@ class SetupPanel(QWidget):
         lay.addWidget(box)
 
         # --- DMM ------------------------------------------------------------------
-        box = QGroupBox("Multimeter — HP 34401A (optional second Pt100)")
+        box = QGroupBox("Multimeter (optional second Pt100)")
         form = QFormLayout(box)
         self.dmm_enabled = QCheckBox("Also read the multimeter")
         form.addRow(self.dmm_enabled)
+        self.dmm_model = QComboBox()
+        self.dmm_model.addItem("HP 34401A", "34401a")
+        self.dmm_model.addItem("Keithley 199", "k199")
+        form.addRow("Model", self.dmm_model)
         self.dmm_resource = QComboBox()
         self.dmm_resource.setEditable(True)
         form.addRow("GPIB address", self.dmm_resource)
@@ -154,6 +165,7 @@ class SetupPanel(QWidget):
     def load(self, cfg: AppConfig) -> None:
         self._config = cfg
         self.simulate.setChecked(cfg.simulate)
+        self.li_model.setCurrentIndex(max(0, self.li_model.findData(cfg.lockin.model)))
         self.li_iface.setCurrentIndex(0 if cfg.lockin.interface == "visa" else 1)
         self.li_resource.setEditText(cfg.lockin.resource)
         self.li_serial.set_device(cfg.lockin.serial_port)
@@ -164,12 +176,14 @@ class SetupPanel(QWidget):
         fmt = f"{cfg.pid.bytesize}{cfg.pid.parity}{cfg.pid.stopbits}"
         self.pid_format.setCurrentIndex(max(0, self.pid_format.findText(fmt)))
         self.dmm_enabled.setChecked(cfg.dmm.enabled)
+        self.dmm_model.setCurrentIndex(max(0, self.dmm_model.findData(cfg.dmm.model)))
         self.dmm_resource.setEditText(cfg.dmm.resource)
         self.dmm_mode.setCurrentIndex(0 if cfg.dmm.mode == "pt100" else 1)
         self.dmm_r0.setValue(cfg.dmm.r0)
 
     def apply(self, cfg: AppConfig) -> AppConfig:
         cfg.simulate = self.simulate.isChecked()
+        cfg.lockin.model = self.li_model.currentData()
         cfg.lockin.interface = self.li_iface.currentData()
         cfg.lockin.resource = self.li_resource.currentText().strip()
         cfg.lockin.serial_port = self.li_serial.device()
@@ -180,6 +194,7 @@ class SetupPanel(QWidget):
         fmt = self.pid_format.currentText()
         cfg.pid.bytesize, cfg.pid.parity, cfg.pid.stopbits = int(fmt[0]), fmt[1], int(fmt[2])
         cfg.dmm.enabled = self.dmm_enabled.isChecked()
+        cfg.dmm.model = self.dmm_model.currentData()
         cfg.dmm.resource = self.dmm_resource.currentText().strip()
         cfg.dmm.mode = self.dmm_mode.currentData()
         cfg.dmm.r0 = self.dmm_r0.value()
@@ -221,15 +236,19 @@ class SetupPanel(QWidget):
             try:
                 li.check()
                 found = li.settings()
+                found["model"], found["expand_name"] = li.MODEL, li.EXPAND_NAME
                 found["link"] = getattr(li.t, "detected", "")
                 return found
             finally:
                 li.close()
 
         self._start(self.li_test, self.li_result, work, lambda s: (
-            f"5302 found — sensitivity {s['sensitivity']}, TC {s['time_constant']}, "
-            f"reference {s['frequency_hz']:.4g} Hz" + (", EXPAND on" if s["expand"] else "")
-            + (f" [{s['link']}]" if s.get("link") else "")))
+            f"{s['model']} found — sensitivity {s['sensitivity']}, TC {s['time_constant']}, "
+            f"reference {s['frequency_hz']:.4g} Hz"
+            + (f", {s['expand_name'].upper()} on" if s["expand"] else "")
+            + (f" [{s['link']}]" if s.get("link") else "")
+            + (" — UNVERIFIED driver: check these against the front panel"
+               if cfg.lockin.model == "5301a" else "")))
 
     def _test_pid(self) -> None:
         cfg = self._snapshot()
@@ -254,12 +273,13 @@ class SetupPanel(QWidget):
         def work():
             dmm = open_dmm(cfg)
             try:
-                return dmm.identify(), dmm.read_raw(), dmm.read_celsius()
+                dmm.check()
+                return dmm.MODEL, dmm.read_raw(), dmm.read_celsius()
             finally:
                 dmm.close()
 
         self._start(self.dmm_test, self.dmm_result, work,
-                    lambda r: f"{r[0].split(',')[1] if ',' in r[0] else r[0]} — {r[1]:.4f} → {r[2]:.2f} °C")
+                    lambda r: f"{r[0]} found — {r[1]:.4f} → {r[2]:.2f} °C")
 
     def _detect_pid(self) -> None:
         if self.pid_detect.text().startswith("Stop"):

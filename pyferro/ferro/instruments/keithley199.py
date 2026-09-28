@@ -1,97 +1,90 @@
-"""Keithley 199 System DMM/Scanner.
+"""Keithley 199 System DMM/Scanner reading a Pt100 sample thermometer (optional).
 
-Command reference: Model 199 Instruction Manual (docs/manuals), section 3.9,
-"Programming the Model 199 Over the Bus".
+A drop-in alternative to the HP 34401A (same constructor and methods). Command
+reference: Model 199 Instruction Manual (docs/manuals), section 3.9.
 
-* Predates IEEE 488.2 -- there is no ``*IDN?`` (section 3.9 has no such command; the
-  5302 has exactly this gap too, see lockin5302.py). Identify it with the machine
-  status word instead: ``U0X`` always answers with a string starting "199" (manual
-  fig. 3-8).
-* Device-dependent commands are one ASCII letter plus a numeric option, concatenated
-  into a single string and terminated with ``X`` ("execute"); nothing happens until
-  the ``X`` is sent (section 3.9, note 1: REN must also be true or the instrument
-  ignores the string and shows a bus-error message).
-* Default terminator is CR LF (``Y0``, section 3.9.15). Open the transport with
-  ``write_termination="\\r\\n", read_termination="\\r\\n"``.
-* The scanned manual's own "factory default" table is inconsistent about the
-  power-on trigger mode, and this driver has no real 199 to check it against. Rather
-  than trust an unclear default, ``__init__`` sets the exact state it needs
-  (``F0 T0 B0 G1``: DC volts, continuous-on-talk trigger, A/D-converter readings,
-  bare ASCII float with no prefix) instead of assuming power-on state -- the same
-  reasoning CLAUDE.md gives for never assuming the 5302's Expand state.
-* ``G1`` mode returns a bare ASCII float such as ``-1.234567E+0`` (section 3.9.12);
-  ``G0`` (the alternative) prefixes it with the function mnemonic, e.g.
-  ``NDCV-1234567E+0``, which is more informative for a status message but needs
-  extra parsing for the numeric value alone.
-* Range (``R0``..``R7``) is a table indexed by the active function (manual table 3-9);
-  the scan of that table OCRs too badly to transcribe with confidence, so this driver
-  only exposes the raw index and leaves range selection to the caller. ``R0`` is
-  autorange on every function, and is the only range value this file is confident of.
+* Predates IEEE 488.2: there is no ``*IDN?``, just as the 5302 has none. The machine
+  status word identifies it instead: after ``U0X`` the next reading is a string that
+  starts "199" (fig. 3-8).
+* Commands are a letter plus a number, collected into one string and carried out only
+  when ``X`` arrives (3.9.1). While it works through them the meter holds the GPIB
+  handshake itself (bus hold-off, ``K0``, the default; table 3-12), so it needs none of
+  the 5302's pauses.
+* Terminator: CR LF (``Y0``, the default after a device clear; 3.9.15). Open the
+  transport with ``write_termination="\\r\\n", read_termination="\\r\\n"``.
+* Opening a VISA connection sends a device clear, which returns the 199 to its saved
+  default conditions (3.8.5-3.8.6), whatever the front panel was showing.
+  ``__init__`` therefore sets everything a reading depends on: ohms (``F2``),
+  autorange (``R0``), a new reading each time it is addressed to talk (``T0``), readings
+  from the A/D converter rather than the data store (``B0``), and readings with a
+  prefix (``G0``).
+* The prefix is how an overload shows (3.9.12, and the example on page 3-3):
+  ``NOHM+1.100000E+2``. The first letter is N for a normal reading and O for an
+  overload, whose number is all 9s. Without the prefix (``G1``) an overload would
+  parse as a large, valid-looking resistance. The next three letters name the
+  function, which confirms the meter really is on ohms.
+* Ohms switches between 2- and 4-terminal automatically, depending on whether the
+  OHMS SENSE leads are connected (2.6.6). Connect them for a Pt100.
+* There is no temperature function, so the "reading is already °C" mode of the
+  34401A has no equivalent here.
 """
 
 from __future__ import annotations
 
 from ..transports import Transport, TransportError
+from .hp34401a import pt100_to_celsius
 
-FUNCTIONS = {
-    "dcv": 0,
-    "acv": 1,
-    "ohms": 2,
-    "dca": 3,
-    "aca": 4,
-    "acv_db": 5,
-    "aca_db": 6,
-}
-AUTORANGE = 0
+SETUP = "F2R0T0B0G0X"  # see module docstring
+
+
+def parse_reading(text: str, function: str = "OHM") -> float:
+    """Value from a prefixed reading such as ``NOHM+1.100000E+2``."""
+    text = text.strip()
+    if len(text) < 5 or text[0] not in "NO":
+        raise TransportError(f"multimeter answered {text!r}, not a prefixed reading")
+    if text[1:4] != function:
+        raise TransportError(f"multimeter is measuring {text[1:4]}, not {function}: {text!r}")
+    if text[0] == "O":
+        raise TransportError(f"multimeter reading overflow ({text!r}) - out of range")
+    try:
+        return float(text[4:])
+    except ValueError as exc:
+        raise TransportError(f"multimeter answered {text!r}") from exc
 
 
 class Keithley199:
-    def __init__(self, transport: Transport) -> None:
-        self.t = transport
-        # Force a known state instead of trusting power-on defaults -- see module
-        # docstring. F0=DCV, T0=continuous-on-talk, B0=A/D readings, G1=bare float.
-        self.t.write("F0T0B0G1X")
+    MODEL = "Keithley 199"
 
-    # --- identification ----------------------------------------------------
+    def __init__(self, transport: Transport, mode: str = "pt100", r0: float = 100.0) -> None:
+        if mode != "pt100":
+            raise TransportError("The Keithley 199 has no temperature function; "
+                                 "choose the Pt100 (ohms) reading")
+        self.t = transport
+        self.mode = mode
+        self.r0 = r0
+        self.t.write(SETUP)
+
     def identify(self) -> str:
         return self.t.query("U0X")
 
     def check(self) -> str:
         status = self.identify()
         if not status.startswith("199"):
-            raise TransportError(
-                f"expected a Model 199 status word (starting '199'), instrument answered {status!r}")
+            raise TransportError(f"expected a Model 199 status word, instrument answered {status!r}")
         return status
 
-    # --- configuration -------------------------------------------------------
-    def set_function(self, name: str) -> None:
-        try:
-            code = FUNCTIONS[name]
-        except KeyError:
-            raise ValueError(f"unknown function {name!r}; choose from {sorted(FUNCTIONS)}") from None
-        self.t.write(f"F{code}X")
-
-    def set_range(self, index: int) -> None:
-        """0 = autorange, on every function. 1-7 = fixed range, meaning depends on
-        the active function (manual table 3-9) -- not decoded here, see module docstring."""
-        self.t.write(f"R{int(index)}X")
-
-    def zero_enable(self, enabled: bool) -> None:
-        self.t.write(f"Z{1 if enabled else 0}X")
-
-    def filter_enable(self, enabled: bool) -> None:
-        self.t.write(f"P{1 if enabled else 0}X")
-
-    # --- data ------------------------------------------------------------
     def read_raw(self) -> float:
-        # "X" with nothing queued just re-executes -- in T0 (continuous-on-talk)
-        # mode, addressing the instrument to talk is what produces the next reading
-        # (manual 3.9.7), which is exactly what Transport.query's write-then-read does.
-        text = self.t.query("X")
-        try:
-            return float(text)
-        except ValueError as exc:
-            raise TransportError(f"multimeter answered {text!r}") from exc
+        # "X" with nothing queued changes nothing; reading the reply addresses the
+        # meter to talk, which in T0 is what triggers the reading (3.9.7).
+        return parse_reading(self.t.query("X"))
+
+    def read_celsius(self) -> float:
+        value = self.read_raw()
+        if not 0.5 * self.r0 < value < 3.0 * self.r0:
+            raise TransportError(
+                f"multimeter reads {value:g} ohm; expected ~{self.r0:g}-{2 * self.r0:g} ohm. "
+                "Is the Pt100 connected?")
+        return pt100_to_celsius(value, self.r0)
 
     def close(self) -> None:
         self.t.close()

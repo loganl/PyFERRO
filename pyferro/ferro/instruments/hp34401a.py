@@ -28,6 +28,8 @@ def celsius_to_pt100(t_c: float, r0: float = 100.0) -> float:
 
 
 class HP34401A:
+    MODEL = "HP 34401A"
+
     def __init__(self, transport: Transport, mode: str = "pt100", r0: float = 100.0) -> None:
         self.t = transport
         self.mode = mode  # "pt100" (reading is ohms) or "celsius" (reading already degC)
@@ -35,6 +37,12 @@ class HP34401A:
 
     def identify(self) -> str:
         return self.t.query("*IDN?")
+
+    def check(self) -> str:
+        ident = self.identify()
+        if "34401" not in ident:
+            raise TransportError(f"expected a 34401A, instrument answered {ident!r}")
+        return ident
 
     def read_raw(self) -> float:
         text = self.t.query("READ?")
