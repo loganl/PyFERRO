@@ -14,9 +14,12 @@ from ferro.analysis import DirectionTracker
 from ferro.datafile import COLUMNS, DataWriter, check_writable, unique_path
 from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temperature
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
+from ferro.instruments.keithley199 import Keithley199
+from ferro.instruments.lockin5301a import Lockin5301A
 from ferro.instruments.lockin5302 import (Lockin5302, checked_index, counts_to_volts,
                                           parse_ints)
 from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
+from ferro.instruments.sr830 import SR830, parse_floats
 from ferro.transports import (TERMINATIONS, TransportError, VisaTransport, describe_status,
                               drain_replies, probe_terminations)
 
@@ -73,6 +76,139 @@ def test_lockin_xy_split_over_two_reads():
     r = Lockin5302(SplitReplyTransport()).read()
     assert (r.x_counts, r.y_counts) == (5000, -2500)
     assert r.x_v == pytest.approx(5e-3)
+
+
+# --- SR830 ---------------------------------------------------------------------
+class FakeSR830Transport:
+    """Just enough of the SR830's ASCII command set (manual chapter 5) to drive SR830."""
+
+    def __init__(self):
+        self.outx = None
+        self.lias = 0
+
+    def write(self, cmd):
+        if cmd == "OUTX1":
+            self.outx = 1
+
+    def query(self, cmd):
+        return {
+            "*IDN?": "Stanford_Research_Systems,SR830,s/n12345,ver1.07",
+            "SNAP?1,2,3,4,9": "1.234560e-03,-5.678900e-04,1.350000e-03,-24.71,1000.00",
+            "SENS?": "17",
+            "OFLT?": "9",
+            "OFSL?": "1",
+            "FREQ?": "1000.00",
+            "PHAS?": "0.00",
+            "FMOD?": "1",
+            "LIAS?": str(self.lias),
+        }[cmd]
+
+    def close(self):
+        pass
+
+
+def test_sr830_against_fake_protocol():
+    li = SR830(FakeSR830Transport())
+    assert li.t.outx == 1  # OUTX1 sent at open, see module docstring
+    assert "SR830" in li.check()
+    r = li.read()
+    assert r.x_v == pytest.approx(1.23456e-3)
+    assert r.y_v == pytest.approx(-5.6789e-4)
+    assert r.freq_hz == pytest.approx(1000.0)
+    assert li.settings()["sensitivity"] == "1 mV"
+    assert li.settings()["time_constant"] == "300 ms"
+    assert not li.overloaded()
+
+
+def test_sr830_overload_bits():
+    transport = FakeSR830Transport()
+    transport.lias = 1 << 2  # OUTPT overload, manual page 5-23
+    assert SR830(transport).overloaded()
+
+
+@pytest.mark.parametrize("text", ["1.0,2.0", "1.0 2.0", "+1.0,-2.0e-3"])
+def test_sr830_parse_floats_any_delimiter(text):
+    assert len(parse_floats(text, 2)) == 2
+
+
+def test_sr830_parse_floats_rejects_wrong_count():
+    with pytest.raises(TransportError):
+        parse_floats("1.0", 2)
+
+
+# --- Keithley 199 ---------------------------------------------------------------
+class FakeKeithley199Transport:
+    """Just enough of the 199's device-dependent commands (manual section 3.9)."""
+
+    def __init__(self, reading="-1.234567E+0", status="199 1  0 0 0 0 00 00 0 0"):
+        self.init_cmd = None
+        self.reading = reading
+        self.status = status
+
+    def write(self, cmd):
+        self.init_cmd = cmd
+
+    def query(self, cmd):
+        if cmd == "U0X":
+            return self.status
+        if cmd == "X":
+            return self.reading
+        raise AssertionError(f"unexpected command {cmd!r}")
+
+    def close(self):
+        pass
+
+
+def test_keithley199_against_fake_protocol():
+    transport = FakeKeithley199Transport()
+    dmm = Keithley199(transport)
+    assert transport.init_cmd == "F0T0B0G1X"  # explicit state, not trusted power-on defaults
+    assert dmm.check().startswith("199")
+    assert dmm.read_raw() == pytest.approx(-1.234567)
+
+
+def test_keithley199_check_rejects_a_non_199_status_word():
+    with pytest.raises(TransportError):
+        Keithley199(FakeKeithley199Transport(status="NOT A 199")).check()
+
+
+def test_keithley199_read_raw_rejects_garbage():
+    with pytest.raises(TransportError):
+        Keithley199(FakeKeithley199Transport(reading="ERROR")).read_raw()
+
+
+def test_keithley199_rejects_an_unknown_function():
+    with pytest.raises(ValueError):
+        Keithley199(FakeKeithley199Transport()).set_function("wat")
+
+
+# --- 5301A (unverified -- see lockin5301a.py) -------------------------------------
+class Fake5301ATransport(SimLockinTransport):
+    """The 5302's simulated protocol, but answering ID as a 5301A would (by analogy)."""
+
+    def query(self, cmd):
+        if cmd.strip().upper() == "ID":
+            return "5301A"
+        return super().query(cmd)
+
+
+def test_5301a_warns_that_it_is_unverified():
+    with pytest.warns(UserWarning, match="unverified|analogy"):
+        Lockin5301A(Fake5301ATransport(SimulatedSample()))
+
+
+def test_5301a_reuses_the_5302_protocol():
+    with pytest.warns(UserWarning):
+        li = Lockin5301A(Fake5301ATransport(SimulatedSample()))
+    assert "5301" in li.check()
+    assert li.read().sen_index == 17  # SEN/XY parsing inherited from Lockin5302
+
+
+def test_5301a_check_rejects_an_id_that_does_not_say_5301():
+    with pytest.warns(UserWarning):
+        li = Lockin5301A(SimLockinTransport(SimulatedSample()))  # answers ID "5302"
+    with pytest.raises(TransportError):
+        li.check()
 
 
 # --- CND3 ----------------------------------------------------------------------

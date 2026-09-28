@@ -9,6 +9,22 @@ to the code that produced it. The number is written in exactly one place,
 
 ## Unreleased
 
+### Added
+- Driver for the SRS SR830 DSP lock-in amplifier (`instruments/sr830.py`), built from
+  its manual (now in `docs/manuals/`). IEEE 488.2, so identification and reset use the
+  standard `*IDN?`/`*RST` unlike the 5302.
+- Driver for the Keithley 199 System DMM/Scanner (`instruments/keithley199.py`), built
+  from its manual (now in `docs/manuals/`). Predates `*IDN?` like the 5302 does;
+  identifies itself from the `U0` status word instead.
+- Driver for the EG&G/PAR 5301A lock-in (`instruments/lockin5301a.py`), reusing the
+  5302's command set by analogy. **Unverified**: no 5301A manual could be found
+  anywhere, including from Signal Recovery's own instruction-manual index, so this
+  one is a guess rather than a citation. It warns loudly at construction time and
+  should not be trusted against real hardware without checking `ID` and the
+  sensitivity/time-constant tables first.
+- None of the three are wired into the acquisition loop or GUI yet — they are
+  drivers only, following the pattern in `docs/drivers-and-daq.md`.
+
 ### Fixed
 - **Connecting to the lock-in, and the Test button, timed out.** The app asked for a
   query's reply the instant it had sent the query; the 5302 had not finished parsing it,
