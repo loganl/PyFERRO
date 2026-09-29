@@ -559,7 +559,7 @@ class Acquisition:
                 dev = slot.get()
                 info = dev.settings() if key == "lockin" else dev.status()
                 for k, v in info.items():
-                    meta[f"{label}_{k}"] = v
+                    meta[f"{label}_{k}"] = "not read" if v is None else v
             except Exception as exc:
                 meta[f"{label}_error"] = str(exc)
         return meta

@@ -29,6 +29,21 @@ from .widgets import PortCombo, run_task
 FORMATS = ["7E1", "8N1", "7O1", "8E1", "7N2", "8N2", "7E2", "7O2", "8O1"]
 
 
+def describe_setup(s: dict) -> str:
+    """The 5302's front-panel set-up for the Test result; empty for other models."""
+    if "reference_mode" not in s:
+        return ""
+    unread = "?"
+    osc_v, osc_hz, phase = s.get("oscillator_v"), s.get("oscillator_hz"), s.get("phase_deg")
+    return ("; ref " + (s.get("reference_mode") or unread)
+            + ", osc " + (f"{osc_v:.3f} V" if osc_v is not None else unread)
+            + " at " + (f"{osc_hz / 1000:.3f} kHz" if osc_hz is not None else unread)
+            + ", reserve " + (s.get("dynamic_reserve") or unread)
+            + ", filter " + (s.get("filter") or unread)
+            + ", input " + (s.get("signal_input") or unread)
+            + ", phase " + (f"{phase:.1f}°" if phase is not None else unread))
+
+
 def _result_label() -> QLabel:
     lab = QLabel("")
     lab.setWordWrap(True)
@@ -243,6 +258,7 @@ class SetupPanel(QWidget):
             f"{s['model']} found — sensitivity {s['sensitivity']}, TC {s['time_constant']}, "
             f"reference {s['frequency_hz']:.4g} Hz"
             + (f", {s['expand_name'].upper()} on" if s["expand"] else "")
+            + describe_setup(s)
             + (f" [{s['link']}]" if s.get("link") else "")))
 
     def _test_pid(self) -> None:

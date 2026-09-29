@@ -46,6 +46,13 @@ TIME_CONSTANT_LABELS = [
     "500 ms", "1 s", "2 s", "5 s", "10 s", "20 s", "50 s", "100 s", "200 s", "500 s",
     "1000 s",
 ]
+# Front-panel set-up, read back so the Test button and the data file show how the
+# instrument was set (manual ch. 9: IE, DR, FLT, PREAMP). AC/DC coupling and
+# FLOAT/GND are latching front-panel keys with no GPIB command, so they cannot be read.
+REFERENCE_MODES = {0: "INT", 1: "TTL", 2: "EXT"}
+RESERVE_MODES = {0: "MIN", 1: "HI STAB", 2: "NORM", 3: "HI RES 1", 4: "HI RES 2"}
+FILTER_MODES = {0: "FLAT", 1: "NOTCH", 2: "LOW-PASS", 3: "BAND-PASS", 4: "HI-PASS"}
+SIGNAL_INPUTS = {0: "DIRECT", 1: "PREAMP"}
 FULL_SCALE_COUNTS = 10000
 OVERLOAD_COUNTS = 12000
 
@@ -157,6 +164,48 @@ class Lockin5302:
     def frequency_hz(self) -> float:
         return parse_ints(self.t.query("FRQ"), 1)[0] / 1000.0
 
+    def oscillator_v(self) -> float:
+        """OA answers ``n1 n2``: n1 in steps of 10 uV, 100 uV or 1 mV for n2 = 0, 1, 2."""
+        n1, n2 = parse_ints(self.t.query("OA"), 2)
+        return n1 * 10.0 ** (n2 - 5)
+
+    def oscillator_hz(self) -> float:
+        """OF answers ``n1 n2``: n1 = 1000..10000 across the decade 10**(n2-3) Hz."""
+        n1, n2 = parse_ints(self.t.query("OF"), 2)
+        return n1 * 10.0 ** (n2 - 6)
+
+    def phase_deg(self) -> float:
+        """P answers ``quadrant millidegrees``."""
+        quadrant, mdeg = parse_ints(self.t.query("P"), 2)
+        return (quadrant * 90000 + mdeg) / 1000.0 % 360.0
+
+    def setup(self) -> dict:
+        """The front-panel set-up, each value read on its own.
+
+        A value that cannot be read is None rather than a failed Test or header:
+        these describe the run, they are not measurements.
+        """
+        def code(command, names):
+            value = parse_ints(self.t.query(command), 1)[0]
+            return names.get(value, f"? ({value})")
+
+        reads = {
+            "reference_mode": lambda: code("IE", REFERENCE_MODES),
+            "oscillator_v": self.oscillator_v,
+            "oscillator_hz": self.oscillator_hz,
+            "dynamic_reserve": lambda: code("DR", RESERVE_MODES),
+            "filter": lambda: code("FLT", FILTER_MODES),
+            "signal_input": lambda: code("PREAMP", SIGNAL_INPUTS),
+            "phase_deg": self.phase_deg,
+        }
+        out = {}
+        for key, read in reads.items():
+            try:
+                out[key] = read()
+            except TransportError:
+                out[key] = None
+        return out
+
     def set_sensitivity(self, index: int) -> None:
         self.t.write(f"SEN {int(index)}")
 
@@ -174,6 +223,7 @@ class Lockin5302:
             "time_constant_s": TIME_CONSTANTS_S[tc],
             "expand": self.expand(),
             "frequency_hz": self.frequency_hz(),
+            **self.setup(),
         }
 
     # --- data ----------------------------------------------------------

@@ -29,6 +29,11 @@ to the code that produced it. The number is written in exactly one place,
   as an error, not recorded as a huge resistance, and a reading in the wrong function
   (someone changed it on the front panel) is refused.
 - Flag **16** in the data file: temperature discarded just after connecting.
+- **The 5302's front-panel set-up is read over GPIB**: reference mode, oscillator level
+  and frequency, dynamic reserve, filter, signal input and reference phase. The Test
+  button shows them and every data file header records them, so a file says how the
+  lock-in was set. The lab manual has a matching 5302 settings table, with how to set
+  each one.
 - **`pixi run start` updates itself first** with `git pull --ff-only`, so the lab PC's
   clone always runs the latest code. Being offline, a local edit that blocks the pull,
   or a folder that is not a git clone never stops the program starting.

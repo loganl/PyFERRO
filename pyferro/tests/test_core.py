@@ -72,6 +72,40 @@ class SplitReplyTransport:
         pass
 
 
+def test_5302_front_panel_setup_is_read_back():
+    """Manual ch. 9: IE, OA, OF, DR, FLT, PREAMP and P answer their values when sent bare."""
+    s = Lockin5302(SimLockinTransport(SimulatedSample())).settings()
+    assert (s["reference_mode"], s["dynamic_reserve"], s["filter"], s["signal_input"]) == \
+        ("INT", "HI STAB", "FLAT", "DIRECT")
+    assert s["oscillator_v"] == pytest.approx(1.000)  # OA 1000 2: 1000 mV
+    assert s["oscillator_hz"] == pytest.approx(25000)  # OF 2500 7: 25 kHz
+    assert s["phase_deg"] == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("reply, volts", [("500 0", 5e-3), ("5000 1", 0.5), ("250 2", 0.25)])
+def test_5302_oscillator_level_ranges(reply, volts):
+    li = Lockin5302(ScriptedTransport({"OA": reply}))
+    assert li.oscillator_v() == pytest.approx(volts)
+
+
+@pytest.mark.parametrize("reply, hz", [("1000 0", 1e-3), ("2500 7", 25e3), ("10000 8", 1e6)])
+def test_5302_oscillator_frequency_ranges(reply, hz):
+    assert Lockin5302(ScriptedTransport({"OF": reply})).oscillator_hz() == pytest.approx(hz)
+
+
+def test_5302_phase_from_quadrant_and_millidegrees():
+    assert Lockin5302(ScriptedTransport({"P": "1 5000"})).phase_deg() == pytest.approx(95.0)
+    assert Lockin5302(ScriptedTransport({"P": "3 95000"})).phase_deg() == pytest.approx(5.0)
+
+
+def test_a_setup_value_that_does_not_answer_is_left_unread_not_fatal():
+    replies = {"SEN": "21", "XTC": "8", "EX": "0", "FRQ": "25000000", "IE": "2",
+               "OA": TransportError("VI_ERROR_TMO"), "OF": "2500 7", "DR": "1", "FLT": "3",
+               "PREAMP": "0", "P": "0 0"}
+    s = Lockin5302(ScriptedTransport(replies)).settings()
+    assert s["oscillator_v"] is None and s["reference_mode"] == "EXT" and s["filter"] == "BAND-PASS"
+
+
 def test_lockin_xy_split_over_two_reads():
     r = Lockin5302(SplitReplyTransport()).read()
     assert (r.x_counts, r.y_counts) == (5000, -2500)

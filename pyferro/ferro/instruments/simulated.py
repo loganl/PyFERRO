@@ -81,6 +81,11 @@ class SimLockinTransport(Transport):
             return str(self.expand)
         if name == "FRQ":
             return "25000000"
+        # The capacitance set-up of the lab manual's 5302 table: INT, 1.000 V at 25 kHz.
+        setup = {"IE": "0", "OA": "1000 2", "OF": "2500 7", "DR": "1", "FLT": "0",
+                 "PREAMP": "0", "P": "0 0"}
+        if name in setup:
+            return setup[name]
         if name == "XY":
             x, y = self.sample.signal_v(self.sample.temperature())
             fs = SENSITIVITIES_V[self.sen]

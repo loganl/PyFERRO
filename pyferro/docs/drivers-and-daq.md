@@ -154,6 +154,15 @@ Source: [`ferro/instruments/lockin5302.py`](../ferro/instruments/lockin5302.py)
 | `XTC` | time-constant index 0–18 |
 | `FRQ` | reference frequency in **mHz** |
 | `XY` | X and Y as integer **counts** |
+| `IE`, `DR`, `FLT`, `PREAMP` | codes for reference mode, dynamic reserve, filter, signal input |
+| `OA`, `OF` | oscillator level and frequency as `n1 n2`: a count and its range |
+| `P` | reference phase as `quadrant millidegrees` |
+
+The last three rows are read only by `setup()`, for the **Test** button and the data-file
+header — a record of how the front panel was set, following the lab manual's 5302
+table. Each is read on its own and becomes `not read` if it fails, so a dropped exchange
+there cannot fail a Test or a recording. AC/DC coupling and FLOAT/GND are latching keys
+with no GPIB command and cannot be read at all.
 
 The instrument speaks **counts, not volts**. ±10000 counts is full scale; readings run to
 ±12000 before clipping.

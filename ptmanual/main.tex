@@ -838,6 +838,89 @@ The standard settings of the EG\&G model 5209 lock-in amplifier are:
 \end{tabular}
 \end{center}
 
+\paragraph{Settings for the EG\&G model 5302.}
+The rig now uses a model 5302 (Figure~\ref{fig:daqwiring}), which differs from the 5209
+in ways that matter here. Table~\ref{tab:lockin5302} gives its settings for the
+capacitance measurement, where to find each one on the front panel, and the
+equivalent GPIB command. The same command sent without a number makes the lock-in
+reply with the current value, which is how PyFERRO reads these settings back and
+records them in the data-file header.
+
+\notebox{Two numbers differ from the 5209}{The 5302's oscillator output resistance is
+$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not \SI{600}{\ohm}: use
+\SI{450}{\ohm} in $C = \delta/(\omega R_0)$ and wherever this manual writes $R_0$.
+And its least sensitive range is \SI{1}{\volt}, with no \SI{3}{\volt} range, so set the
+oscillator to $V_0 = \SI{1.000}{\volt}$ instead of \SI{1.999}{\volt}: the in-phase signal is close
+to $V_0$ and would overload the \SI{1}{\volt} range. Nothing is lost, since
+$C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{@{}p{2.3cm}p{2.3cm}p{7.6cm}p{2.1cm}@{}}
+    \toprule
+    \textbf{Setting} & \textbf{Value} & \textbf{How to set it on the front panel}
+      & \textbf{GPIB} \\
+    \midrule
+    Signal input & DIRECT INPUT, AC, FLOAT
+      & Cable to the DIRECT INPUT connector (lower left). Of the two buttons above it,
+        latch the upper one (AC) and release the lower one (FLOAT). The display shows
+        DIR at the upper right; if it shows PRE, select DIRECT INPUT on the SIGNAL
+        SETUP screen.
+      & \texttt{PREAMP 0} (AC and FLOAT: front panel only) \\
+    Reference & INT
+      & Press REF, the rightmost of the five keys under the display, until INT shows
+        in the upper-left window. The INT light above the meter comes on.
+      & \texttt{IE 0} \\
+    Oscillator frequency & \SI{25.000}{\kilo\hertz}
+      & Press the keys to the right of the large setting knob until OSC F is in the
+        middle of the lower-right window, then turn the knob. The KNOB ACTIVE light
+        must be on; if it is off, press either key once.
+      & \texttt{OF 2500 7} \\
+    Oscillator level & \SI{1.000}{\volt}
+      & As for the frequency, with OSC V selected.
+      & \texttt{OA 1000 2} \\
+    Sensitivity & \SI{1}{\volt}
+      & The SEN keys, at the top of the two key columns to the right of the display:
+        the left one moves to a larger full scale (less sensitive).
+      & \texttt{SEN 21} \\
+    Expand & off
+      & When it is on, EX shows at the upper right. Press FUNCT and then the right SEN
+        key (SEN/EXPAND) to toggle it.
+      & \texttt{EX 0} \\
+    Time constant & \SI{500}{\milli\second} (or \SI{200}{\milli\second})
+      & The TC keys, below the SEN keys. The 5302 has no \SI{300}{\milli\second}.
+      & \texttt{XTC 8} (\texttt{XTC 7}) \\
+    Filter & FLAT
+      & Press FILT, the second key from the right under the display, until FLAT
+        shows at the upper left.
+      & \texttt{FLT 0} \\
+    Dynamic reserve & HI STAB
+      & The DYNRES/LOCAL key, to the left of the display near its bottom edge.
+      & \texttt{DR 1} \\
+    Reference phase & $Y = 0$ with the sample disconnected
+      & Press AUTO and then the left PHASE key (Auto-Phase); repeat once the outputs
+        have settled. For fine tuning, select PHASE with the keys by the setting knob
+        and turn the knob.
+      & \texttt{AQN} \\
+    Display & X-Y\%
+      & The DISP keys, to the right of the display.
+      & --- \\
+    \bottomrule
+  \end{tabular}
+  \caption{EG\&G model 5302 settings for the capacitance measurement. The GPIB
+    commands are from chapter~9 of the 5302 manual; \texttt{OF 2500 7} means 2500 in
+    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 1000 2} means
+    \SI{1000}{\milli\volt} in the \SIrange{250}{5000}{\milli\volt} range.}
+  \label{tab:lockin5302}
+\end{table}
+
+The 5302 is a dual-phase lock-in: it shows the in-phase signal as $X$ and the
+out-of-phase signal as $Y$ at the same time, so there is no \textsc{90 deg} button to
+press. Tune the phase with the sample disconnected until $Y$ is as close to zero as
+possible (Auto-Phase does this), then connect the sample and read $V_{\mathrm{meas}}$
+from $Y$.
+
 Before measuring the sample, we do a practice run by measuring the capacitance
 of a piece of BNC cable. See Appendix~\ref{app:ac} for the relevant phasor
 diagrams.
