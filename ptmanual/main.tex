@@ -256,16 +256,15 @@ data will be stored in the computer and need not be in the notebook.
   \item Sample chamber with four electric leads.
   \item Temperature controller.
   \item Lock-in amplifier to measure the samples.
-  \item Keithley four-probe resistance meter to measure temperature.
+  \item HP 34401A multimeter to measure temperature.
   \item Computer (username \texttt{LabStudent}, password \texttt{PhaseTransition}).
   \item Decade resistance box, additional resistors, capacitors, BNC cables etc.
 \end{itemize}
 
-See the equipment manuals for details. The Omega                                                              %equipment manunal?
-CN08D3-SR-2U-CM-AC temperature controller controls the heater and can be
-programmed from its front panel. It is connected to the computer via RS-485,
+The Omega CN08D3-SR-2U-CM-AC temperature controller controls the heater
+and can be programmed from its front panel. It is connected to the computer via RS-485,
 allowing PyFERRO to read the temperature without changing the controller
-settings. The lock-in amplifier is connected to the computer by the
+settings. The lock-in amplifier and HP 34401A multimeter are connected to the computer by the
 IEEE~488 (GPIB) interface. PyFERRO displays and records the measurements
 in real time.
 
@@ -287,7 +286,7 @@ in real time.
   \label{fig:daqwiring}
 \end{figure}
 
-\paragraph{Samples.}                                                                                                % should we keep it?
+\paragraph{Samples.}
 You will be studying samples of \VOtwo\ and \BTO. If two students work on this
 lab, they should together measure at least one \VOtwo\ sample, which will be
 provided, and prepare themselves and measure two \BTO\ samples. Sample
@@ -658,8 +657,7 @@ resistor: instead of being \SI{10}{\mega\ohm} it can be, for example,
 \SI{0.200}{\milli\ampere} instead of \SI{0.200}{\micro\ampere}. But we will have
 to monitor the current and to use the measured current $I_{\mathrm{meas}}$ in a
 calculation of a sample resistance at every point along the way. This can be
-done with the use of an additional computer-interfaced voltmeter, and with
-modification of a LabVIEW program.                                                               %change?
+done with the use of modification function in PyFERRO.
 
 \notebox{Do not overdrive the sample}{The current should not be increased
 indefinitely; excessive currents can produce self-heating and even damage the
@@ -846,14 +844,15 @@ diagrams.
 \begin{figure}[htbp]                                                                               %take a photo on Tuesday
   \centering
   \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
-    Photograph of the instrument rack. On top is an EG\&G Princeton Applied
-    Research model 5209 lock-in amplifier; its front panel is divided into
-    sections labeled Sensitivity, Filters, Tuning, Reference and Output, with a
-    digital display reading 6.0, an analog meter, and a second display reading
-    0.00. A BNC cable is plugged into the oscillator output at the right. Below
-    it is a Keithley 199 System DMM/Scanner whose red display reads 001.090
-    kilohms.}
-  \caption{The lock-in amplifier.}
+  Photograph of the instrument setup. On top is an HP 34401A digital
+  multimeter whose display reads approximately \SI{-0.025}{\milli\volt}
+  DC; its four front-panel input terminals are visible on the right.
+  Below it is an EG\&G Princeton Applied Research model 5302 lock-in
+  amplifier, with its differential preamplifier, central digital
+  display, analog meter, adjustment knob, and front-panel BNC
+  connectors visible.}
+  \caption{The HP 34401A multimeter (top) and the EG\&G Princeton
+    Applied Research model 5302 lock-in amplifier (bottom).}
   \label{fig:frontpanel}
 \end{figure}
 
@@ -921,28 +920,27 @@ their own sample and evaluates the data independently. However, \VOtwo\ samples 
 fragile, and a staff member should be asked to mount them in the chamber, at
 least initially.
 
-\begin{figure}[htbp]                                                                             % use the photo which has four wires
+\begin{figure}[htbp]
   \centering
-  \photo[width=0.62\linewidth]{sample-chamber.png}{%
-    Top view of the sample chamber, with the removed metal cup cover on
-    the left. A metal clip on top of the chamber holds the sample.
-    The PCB connector plugs onto the metal pins at the back. The white
-    cable below connects to the PID temperature controller.}
+  \photo[width=0.45\linewidth]{sample-chamber.png}{%
+  Top view of the sample chamber, with the removed metal cup cover on
+  the left. Four metal pins at the back provide the connection for the
+  PCB. The white cable below connects to the PID temperature
+  controller.}
   \caption{The sample chamber with its metal cup cover removed, showing
-    the sample clip, pins for connecting the PCB, and cable to the PID
-    temperature controller.}
+    the pins for connecting the PCB and the cable to the PID temperature
+    controller.}
   \label{fig:chamber}
 \end{figure}
 
-In normal use, the sample chamber is covered by an aluminum cup (see the upper                 % if ours is a dewar,temperature?
+In normal use, the sample chamber is covered by an aluminum cup (see the upper                 % correct?
 left corner of the photograph). The whole assembly is covered by a
-double-walled stainless steel cover for thermal insulation. A double-walled
-evacuated vessel is called a \emph{dewar}. If you wish to cool the sample faster,
-remove the stainless steel dewar. You may also remove the aluminum cup, but in
-that case stop taking data, since the temperature readout will not be reliable.
+stainless steel cover for thermal insulation. If you wish to cool the sample faster,
+You may also remove the aluminum cup, but in that case stop taking data,
+since the temperature readout will not be reliable.
 
 \subsection{Samples and sample preparation}
-                                                                                            %keep it?
+
 Samples of \VOtwo\ in a form of thin films (about \SI{100}{\nano\metre} thick)
 have been deposited on Si/SiO\textsubscript{2} substrates in another lab on campus.
 Contacts to them will be attached by staff members. These samples are rather
@@ -958,7 +956,7 @@ larger the area the better. Also remember that you will need to estimate $A$ and
 $d$ numerically, and so the more regular the sample shape, the easier and more
 accurate this estimate will be.
 
-\begin{figure}[htbp]                                                                      % euipment of preparing sample?
+\begin{figure}[htbp]
   \centering
   \photo[width=0.62\linewidth]{silver-paint.png}{%
     Photograph of the sample-preparation bench. On the left stands an open glass
@@ -985,8 +983,6 @@ are thus connected to separate PCB pads and separate connector terminals.
 Check for a short circuit again through the two connector terminals.
 Be careful not to let the silver paint or paste bridge the two faces:
 you are making a capacitor.
-
-How to use clip to secure the sample, connector?  How to connect                  % ?
 
 \notebox{The paint dries very quickly}{Do not leave the silver-paint container
 open for an extended period of time; open it for as short an interval as
@@ -1086,15 +1082,18 @@ temperature, and this resistor has a resistance of
 a \SI{1}{\degreeCelsius} increase changes its resistance by
 approximately \SI{0.38}{\ohm}.
 
-\begin{figure}[htbp]                                                                      % PID picture
+\begin{figure}[htbp]
   \centering
-  \photo[width=0.72\linewidth]{temperature-controller.png}{%
-    Photograph of the inside of the open temperature-controller enclosure. A
-    black Omega CNi8DH44 module with a white specification label sits at the top
-    right. To its left are a solid-state relay and a transformer, and the base of
-    the box is filled with blue, grey, black and yellow wiring running to a row
-    of screw terminals along the front edge.}
-  \caption{Inside the temperature controller.}
+  \photo[width=0.50\linewidth]{temperature-controller.png}{%
+    Close-up photograph of the front panel of the OMEGA
+    CN08D3-SR-2U-CM-AC temperature controller. The upper orange display
+    shows a measured temperature of \SI{37.5}{\degreeCelsius}, while the
+    lower green display shows a setpoint of \SI{60.0}{\degreeCelsius}.
+    The OUT1 indication and output bar are visible below the displays.
+    The front panel has F1 and F2 keys, a gear-symbol key, a return-arrow
+    key, and down and up arrow keys.}
+  \caption{Front panel of the OMEGA CN08D3-SR-2U-CM-AC temperature
+    controller, showing the measured temperature and setpoint.}
   \label{fig:tcguts}
 \end{figure}
 
