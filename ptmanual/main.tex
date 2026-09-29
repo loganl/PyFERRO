@@ -261,12 +261,13 @@ data will be stored in the computer and need not be in the notebook.
   \item Decade resistance box, additional resistors, capacitors, BNC cables etc.
 \end{itemize}
 
-See the equipment manuals for details. The temperature controller has a web
-interface. Use this interface for programming the controller (see
-Appendix~\ref{app:tempcontrol}). The lock-in amplifier and the Keithley
-multimeter are connected to a computer by the IEEE~488 interface. A data-taking
-routine, written in LabVIEW, is provided for recording data
-(Appendix~\ref{app:labview}).
+See the equipment manuals for details. The Omega                                                              %equipment manunal?
+CN08D3-SR-2U-CM-AC temperature controller controls the heater and can be
+programmed from its front panel. It is connected to the computer via RS-485,
+allowing PyFERRO to read the temperature without changing the controller
+settings. The lock-in amplifier is connected to the computer by the
+IEEE~488 (GPIB) interface. PyFERRO displays and records the measurements
+in real time.
 
 \begin{figure}[htbp]
   \centering
@@ -276,7 +277,7 @@ routine, written in LabVIEW, is provided for recording data
     terminals; the oscillator drives the sample through resistor R-zero and the
     measuring input sits across the sample. Below it a dashed box marks the
     sample chamber, containing the sample capacitor, a heater winding and a
-    Pt100 probe. The probe runs to the PID controller box, an Omega CND3, which
+    Pt100 probe. The probe runs to the PID controller box, an Omega CN08D3, which
     lists probe input terminals 10, 11 and 12, output OUT1 on terminals 8 and 9,
     and RS-485 on terminals 13 (D minus) and 14 (D plus). OUT1 switches a
     solid-state relay that powers the heater from AC mains. On the right, the
@@ -286,7 +287,7 @@ routine, written in LabVIEW, is provided for recording data
   \label{fig:daqwiring}
 \end{figure}
 
-\paragraph{Samples.}
+\paragraph{Samples.}                                                                                                % should we keep it?
 You will be studying samples of \VOtwo\ and \BTO. If two students work on this
 lab, they should together measure at least one \VOtwo\ sample, which will be
 provided, and prepare themselves and measure two \BTO\ samples. Sample
@@ -658,7 +659,7 @@ resistor: instead of being \SI{10}{\mega\ohm} it can be, for example,
 to monitor the current and to use the measured current $I_{\mathrm{meas}}$ in a
 calculation of a sample resistance at every point along the way. This can be
 done with the use of an additional computer-interfaced voltmeter, and with
-modification of a LabVIEW program.
+modification of a LabVIEW program.                                                               %change?
 
 \notebox{Do not overdrive the sample}{The current should not be increased
 indefinitely; excessive currents can produce self-heating and even damage the
@@ -816,24 +817,24 @@ $\omega$ and $R_0$, we can calculate the capacitance of the sample as
 
 \subsection{Lock-in amplifier settings}
 
-The standard settings of the EG\&G model 5209 lock-in amplifier are:
+The standard settings of the EG\&G Princeton Applied Research Model 5302 are:
 
 \begin{center}
-\begin{tabular}{@{}ll@{}}                                                   %change
+\begin{tabular}{@{}ll@{}}
   \toprule
   \textbf{Setting} & \textbf{Value} \\
   \midrule
-  Input            & A \\
-  Sensitivity      & \SI{3}{\volt} \\
-  Filter           & flat, track \\
-  Oscillator level & \SI{1.999}{\volt} \\
+  Input            & preamplifier A input (select PREAMP as signal source) \\
+  Sensitivity      & \SI{1}{\volt} initially \\
+  Filter           & flat \\
+  Oscillator level & \SI{0.500}{\volt} initially\\
   Oscillator frequency & \SI{25}{\kilo\hertz} \\
   Reference phase  & tuned (see below) \\
   Reference        & internal \\
-  Oscillator out   & BNC cable connected \\
-  Time constant    & \SI{300}{\milli\second} \\
-  Dynamic reserve  & high resolution \\
-  Output display   & signal \\
+  Oscillator out   & OSC to preamplifier A (BNC cable) \\
+  Time constant    & \SI{500}{\milli\second} \\
+  Dynamic reserve  & HI STAB \\
+  Output display   & X--YV \\
   \bottomrule
 \end{tabular}
 \end{center}
@@ -842,7 +843,7 @@ Before measuring the sample, we do a practice run by measuring the capacitance
 of a piece of BNC cable. See Appendix~\ref{app:ac} for the relevant phasor
 diagrams.
 
-\begin{figure}[htbp]                                                                      %change
+\begin{figure}[htbp]                                                                               %take a photo on Tuesday
   \centering
   \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
     Photograph of the instrument rack. On top is an EG\&G Princeton Applied
@@ -852,49 +853,55 @@ diagrams.
     0.00. A BNC cable is plugged into the oscillator output at the right. Below
     it is a Keithley 199 System DMM/Scanner whose red display reads 001.090
     kilohms.}
-  \caption{The lock-in amplifier (top) and the Keithley 199 multimeter
-           (bottom).}
+  \caption{The lock-in amplifier.}
   \label{fig:frontpanel}
 \end{figure}
 
-First we check the signal generated by the internal source of the lock-in.
-Connect one end of a BNC cable to the ``osc out'' connector, and the other end
-to input~A. In the ``tuning'' section scroll until the display shows the
-reference phase, ``ref ph'', and set it to \num{0.0}. The analog meter and the
-output display on the right should show a voltage slightly less than
-\SI{2}{\volt}.
+First, check the signal generated by the lock-in amplifier's internal
+oscillator. Connect one end of a BNC cable to the ``OSC'' output and the
+other end to input A on the preamplifier. Select ``PREAMP'' as the signal
+source. On the main display, select ``PHASE'' and turn the setting knob
+to set the reference phase to \ang{0.0}. Check that the analog meter
+and the in-phase component X show a clear signal. If most of the signal
+appears in X, its reading should be close to the oscillator setting of
+\SI{0.500}{\volt}.
 
-We are going to be interested in the out-of-phase component, and we can get that
-by pressing the \textsc{90 deg} button once. Ideally, the out-of-phase signal
-should be zero. However, with all the electronics inside the lock-in, keeping the
-phase of the output voltage under control is not an easy job and there will be a
-small but finite out-of-phase signal.
+We are interested in the out-of-phase component Y. Ideally, Y should
+be zero after the phase has been correctly adjusted. However, the
+electronics inside the lock-in amplifier can introduce a small phase
+error, so Y may initially have a small but nonzero value.
 
-The engineers designing the lock-in provided a way to correct any phase error:
-run an autotune cycle. First press the red ``auto'' button, and then press the
-button slightly up and left. Wait a few seconds, and the lock-in will find the
-best phase so that the in-phase signal is maximum, and the out-of-phase signal
-is zero. To check the out-of-phase, press the \textsc{90 deg} button again and
-you should see zero.
+The lock-in amplifier provides an automatic way to correct this phase
+error. Press the red ``AUTO'' button, followed by the left ``PHASE''
+button, to run Auto-Phase. Wait a few seconds for the readings to
+settle. The in-phase component X should then be maximized, while the
+out-of-phase component Y should be close to zero.
 
-Upon closer inspection you may discover that the autotuning is not perfect. Change
-the sensitivity from \SI{3}{\volt} to \SI{300}{\milli\volt}, and you will see
-that there is a finite signal. You should do a manual fine tuning of the phase,
-so that this signal is as close to zero as possible. You may increase the
-sensitivity to \SI{100}{\milli\volt} and continue tuning the phase.
+Upon closer inspection, you may find that Auto-Phase has left a small
+out-of-phase signal. If Y is too small to read clearly, keep the
+sensitivity at \SI{1}{\volt} and press the ``+90'' phase button once
+to bring this small signal into the X channel. Then press ``FUNCT''
+followed by ``SEN down/EXPAND'' to magnify X by a factor of ten.
+Watch X and adjust the reference phase manually until it is as close
+to zero as possible. Press ``FUNCT'' followed by ``SEN down/EXPAND''
+again to turn off EXPAND, then select ``PHASE'' and subtract
+\ang{90} from its current setting to restore the original X--Y
+orientation. If the red ``OUTPUT OVLD'' indicator lights while
+EXPAND is on, turn EXPAND off before continuing. Do not reduce the
+\SI{1}{\volt} sensitivity setting while the oscillator is connected
+directly to the input.
 
-\notebox{Do not overload the input}{Do not increase the sensitivity further,
-because the input of the lock-in will be overloaded. If you see the red overload
-sign flashing, change to a less sensitive setting. Never set the lock-in to
-sensitivity of \SI{10}{\milli\volt} or higher.}
-
-Now that you have the out-of-phase voltage at zero, select the sensitivity of
-\SI{300}{\milli\volt} again. Insert a BNC ``T'' connector to the line and
-connect another BNC cable. Suddenly, there will be a finite out-of-phase signal
-$V_{\mathrm{meas}}$. Calculate $C$ using
-$C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ with $V_0 = \SI{2.00}{\volt}$,
-$\omega = \SI{1.57e5}{\per\second}$ and $R_0 = \SI{600}{\ohm}$. Measure the
-length of the cable. Test a longer cable.
+Now that the out-of-phase signal has been brought as close to zero as
+possible, keep the sensitivity at \SI{1}{\volt}. Insert a BNC ``T''
+connector into the line and connect another BNC cable. The added cable
+will produce a nonzero out-of-phase signal $V_{\mathrm{meas}}$, which
+you can read from Y. Calculate its capacitance using
+$C = |V_{\mathrm{meas}}|/(V_0\omega R_0)$, where
+$V_0 = \SI{0.500}{\volt}$,
+$\omega = \SI{1.57e5}{\per\second}$, and
+$R_0 = \SI{450}{\ohm}$.
+Measure the length of the cable, then repeat the measurement with a
+longer cable.
 
 \notebox{Question}{In round numbers, what is the capacitance of one foot of BNC
 cable?}
@@ -914,7 +921,7 @@ their own sample and evaluates the data independently. However, \VOtwo\ samples 
 fragile, and a staff member should be asked to mount them in the chamber, at
 least initially.
 
-\begin{figure}[htbp]
+\begin{figure}[htbp]                                                                             % use the photo which has four wires
   \centering
   \photo[width=0.62\linewidth]{sample-chamber.png}{%
     Top view of the sample chamber, with the removed metal cup cover on
@@ -927,15 +934,15 @@ least initially.
   \label{fig:chamber}
 \end{figure}
 
-In normal use, the sample chamber is covered by an aluminum cup (see the upper
-right corner of the photograph). The whole assembly is covered by a
+In normal use, the sample chamber is covered by an aluminum cup (see the upper                 % if ours is a dewar,temperature?
+left corner of the photograph). The whole assembly is covered by a
 double-walled stainless steel cover for thermal insulation. A double-walled
 evacuated vessel is called a \emph{dewar}. If you wish to cool the sample faster,
 remove the stainless steel dewar. You may also remove the aluminum cup, but in
 that case stop taking data, since the temperature readout will not be reliable.
 
 \subsection{Samples and sample preparation}
-                                                                                          %sample update
+                                                                                            %keep it?
 Samples of \VOtwo\ in a form of thin films (about \SI{100}{\nano\metre} thick)
 have been deposited on Si/SiO\textsubscript{2} substrates in another lab on campus.
 Contacts to them will be attached by staff members. These samples are rather
@@ -951,7 +958,7 @@ larger the area the better. Also remember that you will need to estimate $A$ and
 $d$ numerically, and so the more regular the sample shape, the easier and more
 accurate this estimate will be.
 
-\begin{figure}[htbp]                                                                      % change new one
+\begin{figure}[htbp]                                                                      % euipment of preparing sample?
   \centering
   \photo[width=0.62\linewidth]{silver-paint.png}{%
     Photograph of the sample-preparation bench. On the left stands an open glass
@@ -965,19 +972,27 @@ accurate this estimate will be.
   \label{fig:silverpaint}
 \end{figure}
 
-Use silver paint to create the capacitor plates and mount the sample (with the
-silver paint) onto the two-terminal connector shown in the middle of the figure.
-The best way to do this is by placing the sample between the two pins and using
-the silver paint to create the capacitor plates. The silver paint should be
-applied by a piece of thin wire (visible in the photograph above). Be careful
-not to paint over the edges, because that creates a short circuit and ruins the
-sample. Remember that you are making a capacitor.
+The procedure for preparing and mounting the \BTO\ sample is as follows.
+Sand the \BTO\ sample to a uniform size and measure its dimensions.
+Apply silver paint to its two broad faces to form the capacitor plates,
+then sand the unpainted sides so that the two plates do not touch.
+Check for a short circuit with an ohmmeter. Apply a thin layer of silver
+paste to the PCB pad connected to one terminal of the through-hole
+connector, and place one painted face of the sample onto the paste.
+Solder a wire to the pad connected to the other terminal and connect
+the wire to the painted upper face of the sample. The two painted faces
+are thus connected to separate PCB pads and separate connector terminals.
+Check for a short circuit again through the two connector terminals.
+Be careful not to let the silver paint or paste bridge the two faces:
+you are making a capacitor.
+
+How to use clip to secure the sample, connector?  How to connect                  % ?
 
 \notebox{The paint dries very quickly}{Do not leave the silver-paint container
 open for an extended period of time; open it for as short an interval as
 possible, just to get the paint onto a piece of wire.}
 
-\begin{figure}[htbp]                                                                         % change
+\begin{figure}[htbp]                                                                         %  photo of board, no sample board, connector
   \centering
   \photo[width=0.48\linewidth]{two-pin-connectors.png}{%
     Photograph of three small black two-pin connectors side by side. The one on
@@ -996,7 +1011,7 @@ and eye--hand coordination it can be done without the microscope.
 for the studies should be returned with your final lab report. Simply attach the
 sample with Scotch tape to the first page of your report.}
 
-\begin{figure}[htbp]
+\begin{figure}[htbp]                                                                          % change photo
   \centering
   \photo[width=0.6\linewidth]{bnc-connections.png}{%
     Photograph of the bench-top wiring. The bottom of the aluminum sample
@@ -1004,7 +1019,7 @@ sample with Scotch tape to the first page of your report.}
     white Teflon-insulated cable and red and black wires running from it down to
     a metal panel carrying four BNC bulkhead connectors. One BNC is fitted with a
     black coaxial cable and another carries a short-circuit termination.}
-  \caption{Connecting the apparatus. One BNC cable runs from the signal source to
+  \caption{Connecting the apparatus. One BNC cable runs from the signal source to              %short circuit? connection
     input~A of the lock-in, and another from the lock-in to the BNC leading to
     the sample. When the sample is in place, the other BNC must be terminated
     with a short circuit to ground, as shown.}
@@ -1017,26 +1032,35 @@ the sample. Check that there is no sample in the sample chamber. (For later use,
 when you put in the sample, you need to terminate the other BNC with a short
 circuit to ground, as shown in the photograph.)
 
-The out-of-phase signal you see now is due to all of the capacitances leading to
-the sample, including the capacitance between the Teflon-insulated black wire and
-ground. Do a fine tuning of the phase so that this signal is zero. Switch to a
-sensitivity of \SI{300}{\milli\volt} and insert the sample. The signal you see
-now is entirely due to the sample, and you can use
-$C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ again to calculate the capacitance of
-the sample. (If the signal is small, you may need to change the sensitivity to
-\SI{100}{\milli\volt}.)
+The Y reading (the out-of-phase component) that you see now is due to
+all of the capacitances leading to the sample, including the capacitance
+between the Teflon-insulated black wire and ground. Fine-tune the phase
+so that this background Y reading is as close to zero as possible.
+Keep the sensitivity at \SI{1}{\volt} and insert the sample. The
+additional Y signal is due primarily to the sample; use its measured
+voltage $V_{\mathrm{meas}}$ in
+$C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ to calculate the sample's
+capacitance. If Y is too small to read clearly, use the phase-shift
+and EXPAND procedure described above. Restore the phase and turn off
+EXPAND before recording the Y measurement.
 
-For all of this to work, $V_{\mathrm{meas}}/V_0 = \omega R_0 C$ should be much
-less than~1. In Appendix~\ref{app:ac} we derived the exact formula for the
-calculation of the capacitance, and we noted that the difference between the
-exact and the approximate formulae is about \SI{1}{\percent} when
-$\delta = 0.1$.
-Therefore, for $V_0 = \SI{2}{\volt}$, the systematic error caused by using the
-approximate formula will be less than \SI{1}{\percent} if $V_{\mathrm{meas}}$ is
-smaller than \SI{200}{\milli\volt}. If you made a very thin sample and the
-capacitance is large, you may go outside of this limit. When that happens you should
-either use the exact formula or reduce the frequency to \SI{10}{\kilo\hertz} or
-\SI{5}{\kilo\hertz} and repeat the tuning.
+For all of this to work, $V_{\mathrm{meas}}/V_0 = \omega R_0 C$ should be
+much less than~1. In Appendix~\ref{app:ac} we derived the exact formula
+for calculating the capacitance, and noted that the difference between
+the exact and approximate formulae is about \SI{1}{\percent} when
+$\delta = 0.1$. Therefore, for an initial oscillator setting of
+$V_0 = \SI{0.500}{\volt}$, the systematic error caused by using the
+approximate formula is about \SI{1}{\percent} or less if
+$V_{\mathrm{meas}}$ is smaller than \SI{50}{\milli\volt}. If the measured
+oscillator voltage differs from this setting, use the measured value of
+$V_0$ and adjust the voltage limit accordingly. Here
+$R_0 = \SI{450}{\ohm}$ and, at \SI{25}{\kilo\hertz},
+$\omega = 2\pi f \simeq \SI{1.57e5}{\per\second}$.
+If you made a very thin sample and its capacitance is large, you may
+go outside this limit. In that case, use the exact formula or reduce
+the frequency to \SI{10}{\kilo\hertz} or \SI{5}{\kilo\hertz} and repeat
+the phase tuning. If you change the frequency, use its new value of
+$\omega$ when calculating the capacitance.
 
 At this point you are ready to measure the temperature dependence of the
 capacitance. Keep in mind that we expect the capacitance to increase as we warm
@@ -1046,18 +1070,21 @@ interesting part of the measurement is happening.
 
 \subsection{Temperature control}
 
-The ``guts'' of the temperature controller~\cite{ref:pid} are shown in
-Figure~\ref{fig:tcguts}. The ``brain'' is an Omega CNi8DH44 unit, connected to a           % wrong
-solid-state relay (on the left) and other circuitry, like fuses and connection
-pads. The solid-state relay converts the low-power output of the converter into
-the high power that drives the heater wrapped around the sample chamber (see the
-photograph of the sample chamber above). The input for the temperature controller
-is a platinum resistor that is placed in the aluminum block of the sample
-chamber. The resistance of platinum (and all other metals) depends on the
-temperature, and this resistor has a resistance of \SI{100}{\ohm} at temperature
-\SI{0}{\degreeCelsius}. For
-platinum, a \SI{1}{\degreeCelsius} increment of temperature changes the
-resistance by \SI{0.38}{\ohm}.
+The front panel of the Omega CN08D3-SR-2U-CM-AC temperature
+controller~\cite{ref:pid} is shown in Figure~\ref{fig:tcguts}.
+The controller is connected to a nearby solid-state relay. Its
+low-power control output turns the relay on and off; the relay, in
+turn, switches the separate power circuit that drives the heater
+wrapped around the sample chamber (see the photograph of the sample
+chamber above). In PID operation, changing the fraction of time that
+the relay is on adjusts the average power delivered to the heater.
+The input for the temperature controller is a platinum resistor
+that is placed in the aluminum block of the sample chamber. The
+resistance of platinum (and all other metals) depends on the
+temperature, and this resistor has a resistance of
+\SI{100}{\ohm} at \SI{0}{\degreeCelsius}. Near this temperature,
+a \SI{1}{\degreeCelsius} increase changes its resistance by
+approximately \SI{0.38}{\ohm}.
 
 \begin{figure}[htbp]                                                                      % PID picture
   \centering
@@ -1071,41 +1098,73 @@ resistance by \SI{0.38}{\ohm}.
   \label{fig:tcguts}
 \end{figure}
 
-The simplest way to warm the sample to a pre-set temperature and keep it there is
-the ``on/off'' control mechanism. You specify the \emph{set point} (or
-\emph{setpoint} in one word), which is just the highest temperature needed, and
-the controller starts to heat the sample chamber with full power. If the ramp is
-specified, the controller will slow down this heating rate by lowering the power
-to keep the specified ramp. This is important in order to obtain good data. You
-should experiment with the ramp rate and settle at the acceptable rate which you
-will judge by the quality of your data.
+The simplest form of temperature control is ``on/off'' control. You
+specify a \emph{setpoint}, the highest temperature needed for the
+measurement. When the measured temperature is below it, the
+controller turns the heater fully on; when the setpoint is reached,
+it turns the heater off. Heat remaining in the chamber may continue
+to raise its temperature after the heater turns off. This is called
+``overshoot''. As the temperature falls below the setpoint, heating
+starts again. Because different parts of the chamber take time to
+warm and cool, the temperature may continue to fall before rising
+again and may oscillate around the setpoint. ``PID'' control adjusts
+the heating output to reduce these oscillations; see
+Ref.~\cite{ref:pid} for an introduction to PID control. Compare
+the temperature response under on/off and PID control.
 
-Once the temperature at the control thermometer reaches the set point, the
-heating power is switched off. It is most likely, however, that at this moment
-there is an amount of excess heat in the system, and temperature keeps climbing
-(this is called an ``overshoot''). After a while the readout of the control
-thermometer starts decreasing, and crosses the setpoint from above. The
-``on/off'' controller switches ``on'', but by this time the rest of the sample
-chamber is too cold, and the temperature keeps dropping for a while. Then the
-temperature overshoots again (in the opposite direction) and the process goes
-into a cycle. The desired temperature will never be reached; instead there will
-be an oscillation around it. To fix this problem the temperature controller is
-programmed to use ``PID'' control, with the P, I and D parameters optimized for
-this particular sample chamber. Read about the PID control in
-Ref.~\cite{ref:pid}.
+For a phase-transition measurement, the heating rate also matters.
+In the CN08D3's Slope SV (\texttt{SLOP}) mode, you specify a target
+temperature and a rate at which the setpoint rises toward it. PID
+control adjusts the heater output, reducing it when necessary to
+limit the rate of heating. This helps the sample temperature follow
+the measured chamber temperature and is important for obtaining
+reliable data. Try different heating rates, examine the data, and
+choose a suitable rate based on their quality. When the target
+temperature is reached, \texttt{SLOP} mode continues to hold that
+setpoint, so stop heating before recording the cooling data. The
+CN08D3 also has a Program SV (\texttt{PROG}) mode for scheduling
+multiple heating and holding steps, but it is optional for this
+experiment.
 
 \notebox{Question}{Be ready to answer this question: what is the role of the
 ``I'' in PID?}
 
-\notebox{Hot surfaces and overheating}{Most of the capacitive measurement is done
-at temperatures over \SI{100}{\degreeCelsius}. Be careful: the sample chamber
-will be hot. Do not exceed \SI{160}{\degreeCelsius}, because the sample chamber
-will be damaged. The sample chamber can be seriously overheated if left alone
-with the heater on. Always switch off the temperature controller when the
-measurement is done. If you are using ``ramp'' mode, remember to make sure that
-``soak'' is also on for a short time, to ensure that the heater shuts off once
-the desired temperature is reached; more on this in
-Appendix~\ref{app:tempcontrol}.}
+\paragraph{Front-panel operation.}
+The gear-symbol key at the lower left of Figure~\ref{fig:tcguts}
+is \texttt{SET}. It enters setting modes and saves changes. The
+key beside it, marked with two left-pointing arrows, moves
+between menu items or selects a parameter. The down and up arrow
+keys change a value or option. F1 and F2 have user-defined
+functions and are not needed here. On the normal display, PV is
+the measured temperature and SV is the setpoint.
+
+To heat at a specified rate and then record cooling, hold
+\texttt{SET} for more than three seconds from the PV/SV display.
+In Initial Setting Mode, use the selection key to find
+\texttt{CTRL} and select \texttt{PID}; then find \texttt{CRTS},
+select \texttt{SLOP}, and press \texttt{SET} to save. Return to
+the normal display and press \texttt{SET} briefly to enter
+Regulation Mode. Find \texttt{SVSL} (SV Slope), set the heating
+rate with the arrow keys, and press \texttt{SET} to save. Check
+whether the rate is in \si{\degreeCelsius\per\minute} or
+\si{\degreeCelsius\per\second}. Return to the PV/SV display,
+set the target temperature SV, and check that the controller is
+in \texttt{RUN}. Watch PV and the measurement data during
+heating. At the target temperature, use the selection key from
+the normal display to find \texttt{R-S} (Run/Stop). Select
+\texttt{STOP} with the arrow keys and press \texttt{SET} to
+save. Confirm that the heating output is off, then continue
+recording as the sample cools.
+
+\notebox{Hot surfaces and overheating}{Most of the capacitance measurements are
+made at temperatures over \SI{100}{\degreeCelsius}. Be careful: the sample
+chamber will be hot. Do not exceed \SI{160}{\degreeCelsius}, because the                          %temperature?
+sample chamber may be damaged. The sample chamber can be seriously overheated
+if left unattended with the heater on. Always switch off the temperature
+controller when the measurement is done. When using \texttt{SLOP} mode,
+reaching the target temperature does not turn off the heater. Set
+\texttt{R-S} to \texttt{STOP} and confirm that the heating output is off
+before recording the cooling data.}
 
 \subsection{Temperature measurement}
 
