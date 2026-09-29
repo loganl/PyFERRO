@@ -266,7 +266,8 @@ its own calls with a lock.
 ## 8. Tests and simulation
 
 ```bash
-pixi run start                     # run from source against the real instruments
+pixi run start                     # git pull, then run against the real instruments
+pixi run start --skip-deps         # the same without updating first
 pixi run simulate                  # the GUI with simulated instruments
 pixi run -e test test              # everything (GUI tests run offscreen)
 pixi run -e test test -k protocol  # one group
@@ -274,6 +275,12 @@ pixi run -e test test -k protocol  # one group
 
 `pixi` installs the environment on first use; no other setup is needed on a development
 machine (macOS, Linux or Windows).
+
+`pixi run start` first runs `tools/update.py`, which does `git pull --ff-only` so a
+git clone (such as the lab PC's `C:\PyFERRO`) always starts on the latest code. It never
+stops the program starting: offline, a local edit in the way, or a folder that is not a
+clone each print one line and start the code as it is. If the pull changed the
+dependencies, it says to close and start again so pixi can install them.
 
 | File | Covers |
 |---|---|

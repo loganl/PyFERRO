@@ -27,7 +27,7 @@ Run from `pyferro/`:
 
 ```bash
 pixi run simulate            # GUI against simulated instruments
-pixi run start               # against real instruments
+pixi run start               # git pull --ff-only (tools/update.py), then real instruments
 pixi run -e test test        # full suite
 pixi run gpib                # diagnose the lock-in's GPIB link
 ```

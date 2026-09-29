@@ -29,6 +29,10 @@ to the code that produced it. The number is written in exactly one place,
   as an error, not recorded as a huge resistance, and a reading in the wrong function
   (someone changed it on the front panel) is refused.
 - Flag **16** in the data file: temperature discarded just after connecting.
+- **`pixi run start` updates itself first** with `git pull --ff-only`, so the lab PC's
+  clone always runs the latest code. Being offline, a local edit that blocks the pull,
+  or a folder that is not a git clone never stops the program starting.
+  `pixi run start --skip-deps` starts without updating.
 
 ### Fixed
 - **After Clear plots, nothing new appeared on the plots.** Zooming or dragging a plot
