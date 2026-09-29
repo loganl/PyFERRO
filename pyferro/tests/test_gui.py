@@ -61,6 +61,24 @@ def test_simulated_record_stop_cycle(window, qtbot, tmp_path):
     assert config.load().run.sample == "gui test"  # settings persisted
 
 
+def test_new_points_are_visible_after_clear_plots_even_after_a_zoom(window, qtbot):
+    """A mouse-wheel zoom turns auto-range off; Clear then left every new point off-screen."""
+    qtbot.mouseClick(window.start_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: window.buffer.n >= 5, timeout=10000)
+    window._redraw()
+    vb = window.p_time.getViewBox()
+    vb.scaleBy((0.9, 0.9))  # what the mouse wheel does
+    assert not any(vb.autoRangeEnabled())
+    qtbot.mouseClick(window.clear_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: window.buffer.n >= 4, timeout=10000)
+    window._redraw()
+    qtbot.waitUntil(lambda: all(vb.autoRangeEnabled()), timeout=2000)
+    t, temp = window.buffer.view("time_s") / 60, window.buffer.view("T_C")
+    qtbot.wait(100)
+    (x0, x1), (y0, y1) = vb.viewRange()
+    assert ((t >= x0) & (t <= x1) & (temp >= y0) & (temp <= y1)).any(), "new points must be on screen"
+
+
 def test_monitor_then_record_creates_separate_files(window, qtbot, tmp_path):
     window.sample.setText("two")
     qtbot.mouseClick(window.start_btn, Qt.LeftButton)

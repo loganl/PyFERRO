@@ -31,6 +31,10 @@ to the code that produced it. The number is written in exactly one place,
 - Flag **16** in the data file: temperature discarded just after connecting.
 
 ### Fixed
+- **After Clear plots, nothing new appeared on the plots.** Zooming or dragging a plot
+  switches its auto-range off, which pins the view to the old time window; once the old
+  points were cleared, every new one landed off-screen, so it looked as if nothing was
+  recorded. The data file was unaffected. Clear plots now turns auto-range back on.
 - **Temperatures of about −3000 °C at the start of a run** squashed the plot. A status
   word from the controller outside the five fault codes the manual lists (8000H decodes
   to −3276.8 °C) was read as a temperature. Anything below −999.9 °C, lower than any

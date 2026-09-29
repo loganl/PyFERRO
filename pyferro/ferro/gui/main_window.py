@@ -512,6 +512,11 @@ class MainWindow(QMainWindow):
 
     def _clear(self) -> None:
         self.buffer.clear()
+        # A zoom or drag switches pyqtgraph's auto-range off and pins the view to the old
+        # time window, so every point after the clear would land off-screen - the plots
+        # looked as if nothing was being recorded. A clear starts the view afresh too.
+        for p in (self.p_time, self.p_x, self.p_y):
+            p.enableAutoRange()
         self._dirty = True
 
     def _browse(self) -> None:
