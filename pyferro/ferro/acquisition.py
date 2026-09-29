@@ -27,6 +27,7 @@ from .datafile import (
     FLAG_LOCKIN_ERROR,
     FLAG_LOCKIN_OVERLOAD,
     FLAG_PID_ERROR,
+    FLAG_TEMP_DISCARDED,
     DataWriter,
     unique_path,
 )
@@ -40,12 +41,16 @@ from .transports import (TERMINATIONS, SerialTransport, TransportError, VisaTran
                          probe_terminations)
 
 NAN = float("nan")
+DISCARDED = object()  # what _read returns for a reading thrown away just after connecting
 REOPEN_AFTER_FAILURES = 3
 REOPEN_BACKOFF_S = 5.0
 POLL_SETTINGS_S = 60.0  # how often to re-read settings that are not read every sample
 BEHIND_WARN_S = 30.0  # how often to say the loop cannot keep up with the interval
 LOCKIN_GAP_S = 0.05  # the 5302 loses a command sent while it is still busy
 LOCKIN_RETRIES = 2  # the GPIB link on this rig drops the odd exchange
+# Temperatures thrown away after each (re)connect: the first ones can be nonsense
+# (-3000 C spikes on the CND3) and would squash the plot's temperature axis.
+DISCARD_TEMPERATURES_AFTER_OPEN = 3
 
 # Config value -> driver. The SR830 and the Keithley 199 are opened with the
 # terminators their manuals give; the 5302 with the terminator search.
@@ -167,6 +172,8 @@ class InstrumentSlot:
     next_attempt: float = 0.0
     state: str = "off"  # off | ok | error
     message: str = ""
+    discard_after_open: int = 0  # readings to throw away after each successful open
+    to_discard: int = 0
 
     def get(self):
         if self.device is None and time.monotonic() >= self.next_attempt:
@@ -175,6 +182,7 @@ class InstrumentSlot:
             except Exception as exc:
                 self.next_attempt = time.monotonic() + REOPEN_BACKOFF_S
                 raise
+            self.to_discard = self.discard_after_open
         if self.device is None:
             raise TransportError(f"{self.name}: waiting to reconnect")
         return self.device
@@ -226,10 +234,11 @@ class Acquisition:
         self.tracker = DirectionTracker()
         self.slots = {
             "lockin": InstrumentSlot("Lock-in", lambda: open_lockin(cfg, self.on_log, self._stop.is_set)),
-            "pid": InstrumentSlot("CND3", lambda: open_pid(cfg)),
+            "pid": InstrumentSlot("CND3", lambda: open_pid(cfg),
+                                  discard_after_open=DISCARD_TEMPERATURES_AFTER_OPEN),
         }
         if cfg.dmm.enabled or cfg.run.temp_source == "dmm":
-            self.slots["dmm"] = InstrumentSlot("Multimeter", lambda: open_dmm(cfg))
+            self.slots["dmm"] = self._dmm_slot()
         self._last_logged_t = NAN
         self._over_temp = False
         self._t0 = 0.0
@@ -309,6 +318,10 @@ class Acquisition:
             except OSError:
                 pass
 
+    def _dmm_slot(self) -> InstrumentSlot:
+        return InstrumentSlot("Multimeter", lambda: open_dmm(self.cfg),
+                              discard_after_open=DISCARD_TEMPERATURES_AFTER_OPEN)
+
     def _set_status(self, key: str, state: str, message: str = "") -> None:
         slot = self.slots[key]
         if (state, message) != (slot.state, slot.message):
@@ -326,6 +339,9 @@ class Acquisition:
             slot.failures = 0
             slot.failing_since = 0.0
             self._set_status(key, "ok")
+            if slot.to_discard:
+                slot.to_discard -= 1  # the link works; the value is not trusted yet
+                return DISCARDED
             return value
         except Exception as exc:
             if slot.state != "error":
@@ -393,18 +409,23 @@ class Acquisition:
         row = {"time_s": time.monotonic() - self._t0, "flags": 0}
 
         pid = self._read("pid", lambda d: d.read())
+        if pid is DISCARDED:
+            row["flags"] |= FLAG_TEMP_DISCARDED
+            pid = None
+        elif pid is None:
+            row["flags"] |= FLAG_PID_ERROR
         row["PV_C"] = pid.pv_c if pid else NAN
         row["SV_C"] = pid.sv_c if pid else NAN
-        if pid is None:
-            row["flags"] |= FLAG_PID_ERROR
 
         row["T_dmm_C"] = NAN
         if "dmm" not in self.slots and (self.cfg.dmm.enabled or self.cfg.run.temp_source == "dmm"):
             # The multimeter was switched on (or selected) after the run started.
-            self.slots["dmm"] = InstrumentSlot("Multimeter", lambda: open_dmm(self.cfg))
+            self.slots["dmm"] = self._dmm_slot()
         if "dmm" in self.slots:
             t_dmm = self._read("dmm", lambda d: d.read_celsius())
-            if t_dmm is None:
+            if t_dmm is DISCARDED:
+                row["flags"] |= FLAG_TEMP_DISCARDED
+            elif t_dmm is None:
                 row["flags"] |= FLAG_DMM_ERROR
             else:
                 row["T_dmm_C"] = t_dmm

@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import QMessageBox  # noqa: E402
 
 from ferro import config  # noqa: E402
+from ferro.datafile import FLAG_TEMP_DISCARDED  # noqa: E402
 from ferro.gui.main_window import MainWindow  # noqa: E402
 
 
@@ -38,7 +39,7 @@ def test_record_requires_a_name(window, qtbot, monkeypatch):
 def test_simulated_record_stop_cycle(window, qtbot, tmp_path):
     window.sample.setText("gui test")
     qtbot.mouseClick(window.record_btn, Qt.LeftButton)
-    qtbot.waitUntil(lambda: window._rows_written >= 5, timeout=15000)
+    qtbot.waitUntil(lambda: window._rows_written >= 6, timeout=15000)
     assert window.record_btn.isChecked()
     assert not window.start_btn.isEnabled()
     assert window.tiles["T"].value.text().endswith("°C")
@@ -55,7 +56,8 @@ def test_simulated_record_stop_cycle(window, qtbot, tmp_path):
     files = list((tmp_path / "data").glob("gui_test_*.txt"))
     assert len(files) == 1
     data = np.loadtxt(files[0])
-    assert data.shape[0] >= 5 and np.isfinite(data[:, :3]).all()
+    kept = data[data[:, 12] != FLAG_TEMP_DISCARDED]  # first temperatures after connecting
+    assert kept.shape[0] >= 3 and np.isfinite(kept[:, :3]).all()
     assert config.load().run.sample == "gui test"  # settings persisted
 
 
@@ -99,7 +101,7 @@ def test_other_models_record_and_are_saved(window, qtbot, tmp_path):
     setup.dmm_enabled.setChecked(True)
     window.sample.setText("sr830 k199")
     qtbot.mouseClick(window.record_btn, Qt.LeftButton)
-    qtbot.waitUntil(lambda: window._rows_written >= 3, timeout=15000)
+    qtbot.waitUntil(lambda: window._rows_written >= 6, timeout=15000)
     qtbot.mouseClick(window.stop_btn, Qt.LeftButton)
     qtbot.waitUntil(lambda: not window.running and not window._stopping, timeout=15000)
 
@@ -107,6 +109,7 @@ def test_other_models_record_and_are_saved(window, qtbot, tmp_path):
     text = path.read_text()
     assert "# lockin_model: SR830" in text and "Keithley 199" in text
     data = np.loadtxt(path)
-    assert np.isfinite(data[:, :3]).all()
+    kept = data[data[:, 12] != FLAG_TEMP_DISCARDED]
+    assert kept.shape[0] >= 3 and np.isfinite(kept[:, :3]).all()
     saved = config.load()
     assert (saved.lockin.model, saved.dmm.model) == ("sr830", "k199")

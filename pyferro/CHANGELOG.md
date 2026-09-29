@@ -28,8 +28,15 @@ to the code that produced it. The number is written in exactly one place,
   its saved defaults. An overload is reported
   as an error, not recorded as a huge resistance, and a reading in the wrong function
   (someone changed it on the front panel) is refused.
+- Flag **16** in the data file: temperature discarded just after connecting.
 
 ### Fixed
+- **Temperatures of about −3000 °C at the start of a run** squashed the plot. A status
+  word from the controller outside the five fault codes the manual lists (8000H decodes
+  to −3276.8 °C) was read as a temperature. Anything below −999.9 °C, lower than any
+  input can measure, is now reported as a controller fault instead. And the first 3
+  temperatures after the controller or multimeter connects, at the start or on a
+  reconnect, are discarded: `nan` in the file with flag 16, left out of the plot.
 - **Connecting to the lock-in, and the Test button, timed out.** The app asked for a
   query's reply the instant it had sent the query; the 5302 had not finished parsing it,
   so the reply came late and landed on the next query (`SEN answered 5302`), after which

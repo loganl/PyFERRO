@@ -92,7 +92,9 @@ PyFERRO warns above that but is not a safety device; the controller and relay ar
 
 Status lights: green OK, red not answering (hover for the reason), grey unused. A failed
 reading never stops a run — the value becomes `nan`, a flag is set, and the instrument is
-reopened after three consecutive failures. The temperature tile turns red above the
+reopened after three consecutive failures. The first three temperatures after the
+controller or multimeter connects are discarded (`nan`, flag 16) so a start-up glitch
+cannot squash the plot. The temperature tile turns red above the
 chamber limit (default 160 °C).
 
 Settings persist in `%USERPROFILE%\.ferro\settings.json`; delete it to reset, or set
@@ -123,7 +125,7 @@ Settings persist in `%USERPROFILE%\.ferro\settings.json`; delete it to reset, or
 | 9 | `T_dmm_C` | multimeter Pt100 temperature (`nan` when unused) |
 | 10 | `sens_V` | lock-in full-scale sensitivity at that moment |
 | 11–12 | `direction`, `segment` | +1 heating, −1 cooling, 0 steady; segment increments at each turn-around |
-| 13 | `flags` | 1 lock-in overload, 2 lock-in error, 4 controller error, 8 multimeter error (added together) |
+| 13 | `flags` | 1 lock-in overload, 2 lock-in error, 4 controller error, 8 multimeter error, 16 temperature discarded just after connecting (added together) |
 
 Missing values are `nan`. Load with `numpy.loadtxt(path)`, or:
 

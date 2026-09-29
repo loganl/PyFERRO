@@ -96,6 +96,11 @@ don't add it back.
   mid-query is what leaves these behind.
 - Settings read on 2026-09-24 with nothing connected: SEN 21 (1 V), EX on, XTC 8, IE 2
   (external reference), FRQ 1 mHz, `XY` = `0 0` as one line with a space delimiter.
+- "-3000 °C" on the first temperatures of a run (reported 2026-09-29) is taken to be a
+  CND3 status word outside the manual's 8002H–8007H list: `8000H` decodes to -3276.8.
+  **Inferred, not caught on the wire** — COM5 was held by the running app. Now any
+  value below -999.9 is a fault, and the first 3 temperatures after each connect are
+  discarded (flag 16). If spikes persist, log the raw PV word to confirm the cause.
 - An unpowered instrument anywhere on the GPIB chain holds NRFD/NDAC and stalls the
   bus, which also makes a scan "find" a device that never answers.
 - `ibic` (MAX → Tools → NI-488.2 → Interactive Control) needs no admin rights, unlike

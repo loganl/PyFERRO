@@ -46,12 +46,22 @@ class PIDSensorError(PIDError):
     """Controller answered, but reports a sensor fault instead of a temperature."""
 
 
+# No input reads below this (the manual's sensor table bottoms out at -200 C, the
+# analog inputs at -999.9), so anything lower is a status code, not a temperature.
+LOWEST_READING_C = -999.9
+
+
 def decode_temperature(raw: int) -> float:
     if raw in PV_ERRORS:
         raise PIDSensorError(PV_ERRORS[raw])
     if raw >= 0x8000:
         raw -= 0x10000
-    return raw / 10.0
+    value = raw / 10.0
+    if value < LOWEST_READING_C:
+        # e.g. 8000H decodes to -3276.8: a code outside the manual's list, seen as a
+        # "-3000 C" spike on the first readings after connecting.
+        raise PIDSensorError(f"controller sent {raw & 0xFFFF:04X}H, a status code, not a temperature")
+    return value
 
 
 @dataclass

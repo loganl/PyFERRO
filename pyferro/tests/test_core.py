@@ -9,10 +9,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from ferro import config, sessionlog
+from ferro import acquisition, config, sessionlog
 from ferro.acquisition import Acquisition
 from ferro.analysis import DirectionTracker
-from ferro.datafile import COLUMNS, DataWriter, check_writable, unique_path
+from ferro.datafile import COLUMNS, FLAG_TEMP_DISCARDED, DataWriter, check_writable, unique_path
 from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temperature
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.keithley199 import Keithley199
@@ -302,6 +302,14 @@ def test_decode_temperature():
         decode_temperature(0x8003)
 
 
+@pytest.mark.parametrize("raw", [0x8000, 0x8001, 0x8005, 0x8008, 0xD8F0])
+def test_a_status_code_is_never_read_as_a_temperature(raw):
+    """8000H would decode to -3276.8 C: the '-3000 C' spikes at the start of a run."""
+    with pytest.raises(PIDSensorError, match="status code"):
+        decode_temperature(raw)
+    assert decode_temperature(0xD8F1) == pytest.approx(-999.9)  # the lowest real reading
+
+
 def test_cnd3_rejects_unsupported_framing():
     with pytest.raises(PIDError):
         CND3("X", bytesize=8, parity="E", stopbits=2, instrument=object())
@@ -569,13 +577,37 @@ def test_simulated_acquisition_records(tmp_path):
     acq.stop()
     assert not acq.running
     assert len(rows) >= 5
-    assert all(r["flags"] == 0 for r in rows), logs
+    skipped = acquisition.DISCARD_TEMPERATURES_AFTER_OPEN
+    assert all(r["flags"] == FLAG_TEMP_DISCARDED for r in rows[:skipped]), logs
+    assert all(r["flags"] == 0 for r in rows[skipped:]), logs
     files = list(tmp_path.glob("sim_*.txt"))
     assert len(files) == 1
     data = np.loadtxt(files[0])
     assert data.shape[0] >= 4
     text = files[0].read_text()
     assert "lockin_sensitivity: 50 mV" in text and "controller_firmware: V1.00" in text
+
+
+def test_first_temperatures_after_connecting_are_discarded_not_plotted():
+    """Every (re)connect throws away its first readings, flagged rather than nan-and-silent."""
+    cfg = config.AppConfig(simulate=True)
+    cfg.dmm.enabled = True
+    acq = Acquisition(cfg)
+    n = acquisition.DISCARD_TEMPERATURES_AFTER_OPEN
+    rows = [acq._sample() for _ in range(n + 2)]
+    for r in rows[:n]:
+        assert math.isnan(r["PV_C"]) and math.isnan(r["T_dmm_C"]) and math.isnan(r["T_C"])
+        assert r["flags"] == FLAG_TEMP_DISCARDED
+        assert not math.isnan(r["X_V"]), "only temperatures are discarded"
+    for r in rows[n:]:
+        assert math.isfinite(r["PV_C"]) and math.isfinite(r["T_dmm_C"]) and r["flags"] == 0
+    assert acq.slots["pid"].state == "ok", "a discarded reading is not a failure"
+
+    acq.slots["pid"].close()  # a reconnect starts the count again
+    acq.slots["pid"].device = None
+    assert acq._sample()["flags"] & FLAG_TEMP_DISCARDED
+    for slot in acq.slots.values():
+        slot.close()
 
 
 def test_acquisition_survives_missing_instruments(tmp_path):

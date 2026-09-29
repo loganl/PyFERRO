@@ -211,7 +211,10 @@ The reply is `:01 03 04 05DC 0640 D1`: four data bytes, where `05DC` = 1500 →
 **150.0 °C** process value and `0640` = 1600 → **160.0 °C** setpoint.
 
 `decode_temperature` checks the fault codes 8002H–8007H first, then reads the word as
-signed 16-bit and divides by ten: `FFF6` → 65526 − 65536 = −10 → **−1.0 °C**.
+signed 16-bit and divides by ten: `FFF6` → 65526 − 65536 = −10 → **−1.0 °C**. Anything
+below −999.9 °C is refused as a status code: no input goes that low, and an unlisted
+code such as `8000` would otherwise become **−3276.8 °C** — the "−3000 °C" spikes once
+seen on the first readings of a run.
 
 **Who does what.** minimalmodbus builds the frame, computes the LRC (or CRC-16 for RTU,
 the same content in raw binary), sends it through pyserial, and validates the reply's
@@ -307,6 +310,11 @@ restores the full timeout and turns retries on. `open_pid` and `open_dmm` are si
 to reconnect" instead. `failed()` counts failures, and on the third closes the device and
 schedules a reopen.
 
+The two thermometer slots, controller and multimeter, also have `discard_after_open`
+(`DISCARD_TEMPERATURES_AFTER_OPEN`, 3). Every successful open, at the start of a run or
+on a reconnect, resets `to_discard` to it, and that many readings are thrown away before
+any is trusted.
+
 ### `_read`: the wrapper around every instrument call
 
 - It times the call — the source of the "falling behind" message's numbers.
@@ -314,6 +322,9 @@ schedules a reopen.
   something breaks, not one per sample.
 - When a device recovers it logs "answering again after N s".
 - On failure it returns `None`, and the caller records NaN plus a flag.
+- While a slot still has readings to discard it returns `DISCARDED`: the instrument
+  answered (its light stays green), but the caller records NaN with flag 16, not the
+  error flag.
 
 ### `_run`: the clock
 
@@ -338,6 +349,7 @@ whose keys are the file's columns. A failure becomes NaN plus a **flag bit**:
 | 1 | 2 | lock-in error |
 | 2 | 4 | controller error |
 | 3 | 8 | multimeter error |
+| 4 | 16 | temperature discarded just after connecting |
 
 The bits add, so `flags = 6` means the lock-in and the controller both failed that
 sample. `T_C` then comes from whichever temperature source is selected, the ramp
