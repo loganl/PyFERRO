@@ -87,6 +87,24 @@ def test_a_recognised_turn_recolours_the_points_since_the_peak(window):
     assert list(window.buffer.view("direction")) == [1] * 6 + [-1] * 5
 
 
+def test_a_long_recording_path_does_not_widen_the_window(window):
+    """The banner's path once forced the window to 2600 px, off a 1280 px screen."""
+    from PySide6.QtWidgets import QApplication
+
+    def min_width():
+        QApplication.processEvents()
+        window.layout().activate()
+        return window.minimumSizeHint().width()
+
+    before = min_width()
+    path = "C:\\Users\\LabStudent\\Documents\\FerroData\\" + "BTO_run_" * 20 + "20260929_142436.txt"
+    window.rec_label.setText(f"● REC 0:10:12  1234 rows → {path}")
+    assert min_width() == before
+    assert window.rec_label.text().endswith(".txt") and window.rec_label.toolTip().endswith(".txt")
+    shown = super(type(window.rec_label), window.rec_label).text()
+    assert "…" in shown and shown.endswith(".txt"), "the middle is elided, the file name kept"
+
+
 def test_monitor_then_record_creates_separate_files(window, qtbot, tmp_path):
     window.sample.setText("two")
     qtbot.mouseClick(window.start_btn, Qt.LeftButton)

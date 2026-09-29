@@ -40,6 +40,11 @@ to the code that produced it. The number is written in exactly one place,
   `pixi run start --skip-deps` starts without updating.
 
 ### Fixed
+- **The window ran off the right of the screen.** It opened at a fixed 1400 px, wider
+  than the lab PC's 1280 px screen, and once recording started the banner's file path
+  forced it to about 2600 px, since a window never goes narrower than its widest label.
+  It now opens at the screen's size when that is smaller, and the banner has its own
+  line and shortens the middle of the path ("…"), with the full path as its tooltip.
 - **Heating and cooling were split badly when the temperature wobbles.** The tracker
   used a 60 s slope, and a wobble of a few degrees - the controller's relay switching
   the heater - flipped it on every swing, recolouring the curves and counting a new

@@ -41,7 +41,7 @@ from .. import __version__, config, sessionlog
 from ..acquisition import Acquisition
 from ..datafile import check_writable
 from .setup_panel import SetupPanel
-from .widgets import Readout, StatusLight, format_si, run_task
+from .widgets import ElidedLabel, Readout, StatusLight, format_si, run_task
 
 THEMES = {
     "light": {
@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         cool.setAlpha(215)
         self.cool_pen = pg.mkPen(cool, width=1.6, style=Qt.DashLine)
         self.flat_pen = pg.mkPen(self.theme["flat"], width=1.4)
-        self.resize(1400, 900)
+        self._fit_to_screen(1400, 900)
         self._build()
         self._connect()
         self.setup.load(cfg)
@@ -194,6 +194,22 @@ class MainWindow(QMainWindow):
             self.log("info", f"Session log: {sessionlog.path()}")
 
     # --- layout ---------------------------------------------------------------------
+    def _fit_to_screen(self, width: int, height: int) -> None:
+        """Open at the preferred size, or the screen's usable area if that is smaller.
+
+        The lab PC's screen is 1280 x 1024; a fixed 1400 px window opened past its
+        right edge.
+        """
+        screen = QGuiApplication.primaryScreen()
+        if screen is None:
+            self.resize(width, height)
+            return
+        area = screen.availableGeometry()
+        # resize() sets the inside of the window: leave room for its frame and title bar
+        w, h = min(width, area.width() - 20), min(height, area.height() - 50)
+        self.resize(w, h)
+        self.move(area.x() + (area.width() - w) // 2, area.y() + (area.height() - h) // 2)
+
     def _build(self) -> None:
         central = QWidget()
         root = QVBoxLayout(central)
@@ -218,14 +234,16 @@ class MainWindow(QMainWindow):
         self.clear_btn = QPushButton("Clear plots")
         for b in (self.start_btn, self.record_btn, self.stop_btn, self.clear_btn):
             bar.addWidget(b)
-        self.rec_label = QLabel("")
-        self.rec_label.setObjectName("recBanner")
-        self.rec_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        bar.addWidget(self.rec_label, 1)
+        bar.addStretch(1)
         self.lights = {"lockin": StatusLight("Lock-in"), "pid": StatusLight("CND3"), "dmm": StatusLight("Multimeter")}
         for light in self.lights.values():
             bar.addWidget(light)
         root.addLayout(bar)
+        # Its own full-width line: beside the buttons and lights a 1280 px screen leaves it
+        # about 100 px. The full path is its tooltip, and in the log.
+        self.rec_label = ElidedLabel("")
+        self.rec_label.setObjectName("recBanner")
+        root.addWidget(self.rec_label)
 
         split = QSplitter(Qt.Horizontal)
         root.addWidget(split, 1)
