@@ -90,17 +90,6 @@ class SimLockinTransport(Transport):
         raise TransportError(f"SIM lock-in: unknown command {cmd!r}")
 
 
-class Sim5301ATransport(SimLockinTransport):
-    """The 5302 simulation answering ID as a 5301A is assumed to (lockin5301a.py)."""
-
-    name = "SIM:LOCKIN5301A"
-
-    def query(self, cmd: str) -> str:
-        if cmd.strip().upper() == "ID":
-            return "5301A"
-        return super().query(cmd)
-
-
 class SimSR830Transport(Transport):
     """The SR830's ASCII commands (manual ch. 5), answering from the simulated sample."""
 
@@ -209,8 +198,7 @@ class SimK199Transport(Transport):
 
 
 def lockin_transport(model: str, sample: SimulatedSample) -> Transport:
-    return {"5302": SimLockinTransport, "5301a": Sim5301ATransport,
-            "sr830": SimSR830Transport}[model](sample)
+    return {"5302": SimLockinTransport, "sr830": SimSR830Transport}[model](sample)
 
 
 def dmm_transport(model: str, sample: SimulatedSample) -> Transport:

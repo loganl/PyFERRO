@@ -10,8 +10,7 @@ controller heats and cools the chamber. Replaces the LabVIEW routine `FERRO v.2.
 | HP 34401A multimeter (optional) | NI GPIB adapter | `GPIB0::24::INSTR`, Pt100 in 4-wire Ω |
 
 Other models can be chosen on the Instruments tab, for rigs built differently: an SRS
-SR830 or an EG&G 5301A lock-in, and a Keithley 199 multimeter. The 5301A driver is
-**unverified** — see [section 6](#6-instrument-protocols).
+SR830 lock-in and a Keithley 199 multimeter.
 
 PyFERRO only **reads**. It never changes setpoints or heater power, so the controller's
 *COMMUNICATION WRITE* setting stays **OFF**.
@@ -237,12 +236,6 @@ than as its all-9s value, and anything other than `OHM` means someone changed th
 function. The 199 picks 2- or 4-terminal ohms by whether the SENSE leads are
 connected. It has no °C function, so only the Pt100 reading is offered.
 
-**EG&G 5301A — unverified.** No manual for it could be found. The driver assumes the
-5302's commands and tables (it is the model just before the 5302) and is opened like
-the 5302, with the same 50 ms reply delay. The log, the Test button and every data
-file header say so. Before trusting its data, check that `ID` answers `5301…` and that
-the reported sensitivity and time constant match the front panel.
-
 ## 7. Code layout
 
 ```
@@ -250,7 +243,7 @@ ferro/gui/          main_window.py  window, plots, readouts, log
                     setup_panel.py  instrument settings, Test / Auto-detect
                     widgets.py      status lights, readouts, background tasks
 ferro/acquisition.py   the measurement loop: open, read, log, retry
-ferro/instruments/  lockin5302.py, sr830.py, lockin5301a.py, cnd3.py,
+ferro/instruments/  lockin5302.py, sr830.py, cnd3.py,
                     hp34401a.py, keithley199.py, simulated.py
 ferro/transports.py VisaTransport (GPIB), SerialTransport (RS-232 echo + prompt)
 ferro/config.py     settings dataclasses, saved as JSON
@@ -292,8 +285,7 @@ runs: a shared fake sample ramps 25 → 150 → 25 °C at 30 °C/min with a peak
 the lock-in answers `ID`/`SEN`/`XTC`/`EX`/`FRQ`/`XY` with counts scaled to the current
 range, and the controller exposes the CND3 registers. The model chosen on the
 Instruments tab is simulated too: the SR830 answers its own commands in volts, the
-Keithley 199 gives prefixed ohms readings, and the 5301A is the 5302 simulation answering
-`ID` as a 5301A — which exercises the code, not the assumption. Simulated runs show an orange
+Keithley 199 gives prefixed ohms readings. Simulated runs show an orange
 banner and `simulation: True` in the file header. Simulation cannot reproduce timing,
 bus noise, wiring faults or GPIB itself — check those with the *Test* buttons and
 `PyFERRO-debug.bat`.

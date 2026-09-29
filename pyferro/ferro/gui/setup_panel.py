@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 
-from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -23,7 +23,6 @@ from PySide6.QtWidgets import (
 from ..acquisition import open_dmm, open_lockin, open_pid
 from ..config import AppConfig
 from ..instruments.cnd3 import BAUD_RATES, autodetect
-from ..instruments.lockin5301a import UNVERIFIED as LOCKIN_5301A_UNVERIFIED
 from ..transports import list_visa_resources
 from .widgets import PortCombo, run_task
 
@@ -59,8 +58,6 @@ class SetupPanel(QWidget):
         self.li_model = QComboBox()
         self.li_model.addItem("EG&G 5302", "5302")
         self.li_model.addItem("SRS SR830 (GPIB only)", "sr830")
-        self.li_model.addItem("EG&G 5301A — UNVERIFIED, no manual", "5301a")
-        self.li_model.setItemData(2, LOCKIN_5301A_UNVERIFIED, Qt.ItemDataRole.ToolTipRole)
         form.addRow("Model", self.li_model)
         self.li_iface = QComboBox()
         self.li_iface.addItem("GPIB (NI adapter)", "visa")
@@ -246,9 +243,7 @@ class SetupPanel(QWidget):
             f"{s['model']} found — sensitivity {s['sensitivity']}, TC {s['time_constant']}, "
             f"reference {s['frequency_hz']:.4g} Hz"
             + (f", {s['expand_name'].upper()} on" if s["expand"] else "")
-            + (f" [{s['link']}]" if s.get("link") else "")
-            + (" — UNVERIFIED driver: check these against the front panel"
-               if cfg.lockin.model == "5301a" else "")))
+            + (f" [{s['link']}]" if s.get("link") else "")))
 
     def _test_pid(self) -> None:
         cfg = self._snapshot()

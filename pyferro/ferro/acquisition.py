@@ -33,8 +33,6 @@ from .datafile import (
 from .instruments.cnd3 import CND3, PIDError
 from .instruments.hp34401a import HP34401A
 from .instruments.keithley199 import Keithley199
-from .instruments.lockin5301a import UNVERIFIED as LOCKIN_5301A_UNVERIFIED
-from .instruments.lockin5301a import Lockin5301A
 from .instruments.lockin5302 import Lockin5302
 from .instruments.sr830 import SR830
 from .instruments import simulated
@@ -50,8 +48,8 @@ LOCKIN_GAP_S = 0.05  # the 5302 loses a command sent while it is still busy
 LOCKIN_RETRIES = 2  # the GPIB link on this rig drops the odd exchange
 
 # Config value -> driver. The SR830 and the Keithley 199 are opened with the
-# terminators their manuals give; the 5302 and 5301A with the terminator search.
-LOCKIN_MODELS = {"5302": Lockin5302, "sr830": SR830, "5301a": Lockin5301A}
+# terminators their manuals give; the 5302 with the terminator search.
+LOCKIN_MODELS = {"5302": Lockin5302, "sr830": SR830}
 DMM_MODELS = {"34401a": HP34401A, "k199": Keithley199}
 
 
@@ -77,8 +75,7 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
         return driver(SerialTransport(c.serial_port, baudrate=c.baudrate, timeout_s=c.timeout_s))
 
     # The 5302's terminator is set on its own front panel and the wrong guess times
-    # out exactly like a dead instrument, so try each pair until ID answers. The
-    # 5301A is assumed to work the same way.
+    # out exactly like a dead instrument, so try each pair until ID answers.
     # Probe with a short timeout: a silent instrument otherwise costs the full
     # timeout eight times over, on the acquisition thread, which is what a Stop
     # press has to wait for. Whatever worked is tried first next time, so a
@@ -347,8 +344,6 @@ class Acquisition:
         self.on_log("info", "Acquisition started" + (" (SIMULATION)" if self.cfg.simulate else ""))
         for line in self.connections().values():
             self.on_log("info", f"  {line}")
-        if self.cfg.lockin.model == "5301a":
-            self.on_log("warning", LOCKIN_5301A_UNVERIFIED)
         next_tick = self._t0
         warned_behind = 0.0
         try:
@@ -528,8 +523,6 @@ class Acquisition:
             "session_log": sessionlog.path() or "not written",
             **{f"connection_{k}": v for k, v in self.connections().items()},
         }
-        if self.cfg.lockin.model == "5301a":
-            meta["lockin_warning"] = LOCKIN_5301A_UNVERIFIED
         for key, label in (("lockin", "lockin"), ("pid", "controller")):
             slot = self.slots[key]
             try:

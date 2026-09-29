@@ -16,11 +16,9 @@ from ferro.datafile import COLUMNS, DataWriter, check_writable, unique_path
 from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temperature
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.keithley199 import Keithley199
-from ferro.instruments.lockin5301a import Lockin5301A
 from ferro.instruments.lockin5302 import (Lockin5302, checked_index, counts_to_volts,
                                           parse_ints)
-from ferro.instruments.simulated import (Sim5301ATransport, SimLockinTransport,
-                                        SimModbusInstrument, SimulatedSample)
+from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
 from ferro.instruments.sr830 import SR830, parse_floats
 from ferro.transports import (TERMINATIONS, TransportError, VisaTransport, describe_status,
                               drain_replies, probe_terminations)
@@ -234,37 +232,8 @@ def test_keithley199_has_no_celsius_mode():
         Keithley199(FakeKeithley199Transport(), mode="celsius")
 
 
-# --- 5301A (unverified -- see lockin5301a.py) -------------------------------------
-def test_5301a_warns_that_it_is_unverified():
-    with pytest.warns(UserWarning, match="unverified"):
-        Lockin5301A(Sim5301ATransport(SimulatedSample()))
-
-
-def test_5301a_reuses_the_5302_protocol():
-    with pytest.warns(UserWarning):
-        li = Lockin5301A(Sim5301ATransport(SimulatedSample()))
-    assert "5301" in li.check()
-    assert li.read().sen_index == 17
-
-
-def test_5301a_check_rejects_an_id_that_does_not_say_5301():
-    with pytest.warns(UserWarning):
-        li = Lockin5301A(SimLockinTransport(SimulatedSample()))  # answers ID "5302"
-    with pytest.raises(TransportError):
-        li.check()
-
-
-def test_5301a_out_of_range_does_not_claim_to_know_why():
-    t = Sim5301ATransport(SimulatedSample())
-    t.sen = 25
-    with pytest.warns(UserWarning):
-        li = Lockin5301A(t)
-    with pytest.raises(TransportError, match="table differs"):
-        li.sensitivity_index()
-
-
 # --- all models, through the app's own factories --------------------------------
-@pytest.mark.parametrize("model", ["5302", "sr830", "5301a"])
+@pytest.mark.parametrize("model", ["5302", "sr830"])
 def test_every_lockin_model_opens_and_reads_in_simulation(model):
     from ferro import acquisition
 
@@ -322,54 +291,6 @@ def test_sr830_is_opened_with_its_own_terminators_and_no_5302_delays(monkeypatch
     kw = built[0].kw
     assert (kw["write_termination"], kw["read_termination"]) == ("\n", "\n")
     assert "reply_delay_s" not in kw and "gap_s" not in kw
-
-
-def test_5301a_is_opened_like_the_5302(monkeypatch):
-    """Same terminator search and reply delay: that delay is what made the 5302 work."""
-    from ferro import acquisition
-
-    built = []
-
-    class FakeVisa:
-        def __init__(self, resource, **kw):
-            self.kw = kw
-            built.append(self)
-
-        def query(self, cmd):
-            return "5301A"
-
-        def set_timeout(self, timeout_s):
-            pass
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(acquisition, "VisaTransport", FakeVisa)
-    monkeypatch.setattr(acquisition, "_DETECTED_TERMINATIONS", {})
-    cfg = config.AppConfig()
-    cfg.lockin.model = "5301a"
-    with pytest.warns(UserWarning):
-        li = acquisition.open_lockin(cfg)
-    assert isinstance(li, Lockin5301A)
-    assert all(t.kw["reply_delay_s"] == acquisition.LOCKIN_GAP_S for t in built)
-
-
-def test_the_5301a_warning_reaches_the_log_and_the_data_file(tmp_path):
-    logs = []
-    cfg = config.AppConfig(simulate=True)
-    cfg.lockin.model = "5301a"
-    cfg.run.output_dir = str(tmp_path)
-    cfg.run.interval_s = 0.1
-    cfg.run.sample = "unverified"
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append((lvl, m)))
-        acq.start(record=True)
-        time.sleep(0.5)
-        acq.stop()
-    assert any(lvl == "warning" and "unverified" in m for lvl, m in logs)
-    text = next(tmp_path.glob("unverified_*.txt")).read_text()
-    assert "# lockin_warning:" in text and "# lockin_model: 5301A" in text
 
 
 # --- CND3 ----------------------------------------------------------------------

@@ -233,8 +233,8 @@ R = R₀(1 + A·T + B·T²) for T: 109.73 Ω → 25.0 °C, 157.33 Ω → 150.0 �
 
 ### Other models: one shape, several drivers
 
-The rig uses a 5302 and a 34401A, but the Instruments tab can select an SRS SR830 or an
-EG&G 5301A lock-in and a Keithley 199 multimeter. `open_lockin` and `open_dmm` look the
+The rig uses a 5302 and a 34401A, but the Instruments tab can select an SRS SR830
+lock-in and a Keithley 199 multimeter. `open_lockin` and `open_dmm` look the
 driver up in `LOCKIN_MODELS` / `DMM_MODELS`, and nothing above them knows which one they
 got, because every lock-in driver has the same methods (`check`, `read`, `settings`,
 `time_constant_index`, `frequency_hz`, `close`) and every reading the same fields
@@ -255,11 +255,6 @@ What differs is what the manuals say, and each difference shows up somewhere spe
   it, so the driver sets its own function, and turns Zero off, every time. Its readings carry a prefix, and
   that prefix is the only place an overload shows: without it, overflow is a
   plausible-looking 9.999999E+9 Ω.
-- **5301A** ([`lockin5301a.py`](../ferro/instruments/lockin5301a.py)) has no manual. It
-  is a `Lockin5302` subclass, opened through the same terminator search with the same
-  50 ms reply delay. Its one change is the out-of-range message: for the 5302 an index
-  outside the table proves the replies are out of step, but for the 5301A it might only
-  mean the tables differ.
 
 ### Simulation
 
@@ -293,7 +288,7 @@ thread ever opens or closes the data file.
 
 `open_lockin` picks the driver for the selected model, then branches: simulated, SR830
 (GPIB with LF terminators, nothing to probe), serial, or GPIB. The GPIB path, used by
-the 5302 and the 5301A, runs the terminator probe with a short timeout and **no
+the 5302, runs the terminator probe with a short timeout and **no
 retries**, so a wrong pair fails fast; caches the winning pair per resource; then
 restores the full timeout and turns retries on. `open_pid` and `open_dmm` are simpler;
 `open_dmm` gives the Keithley 199 its CR LF terminators.

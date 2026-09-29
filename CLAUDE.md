@@ -54,7 +54,13 @@ writability test, and the git-tag test when HEAD is not on a tag.
 | EG&G 5302 lock-in | NI GPIB-USB-HS, **PAD 12**, terminator CR |
 | Omega CND3 controller | RS-485 via Dtech FTDI adapter, Modbus ASCII, address 1, 9600 7E1, **read-only** |
 | CND3 wiring | terminal **13 = D−**, **14 = D+**; probe on 10/11/12 |
-| HP 34401A | optional second thermometer, GPIB 24, currently unplugged |
+| HP 34401A | optional second thermometer, GPIB 24. On the bus 2026-09-29 but set to DC volts (`FUNC?` → `"VOLT"`); the driver does not set the function, so it needs 4-wire Ω from the front panel |
+| SRS SR830 lock-in | GPIB **8**, s/n 36537, fw 1.04. Works through the app (10/10 Test, 60/60 samples, a recorded run), 2026-09-29 |
+| Keithley 199 | driver in the app, **not on the bus** — checked only against its manual and in simulation |
+
+Lock-in and multimeter models are chosen on the Instruments tab (`LOCKIN_MODELS`,
+`DMM_MODELS` in `acquisition.py`). The EG&G 5301A was removed at the user's request —
+don't add it back.
 
 ## Things learned the hard way — don't re-derive these
 
@@ -98,7 +104,9 @@ writability test, and the git-tag test when HEAD is not on a tag.
 
 ## Current state of the hardware bring-up
 
-The controller works, and the lock-in now connects and reads through the app (15/15
+The controller has worked, but did not answer on COM5 on 2026-09-24 or 2026-09-29
+("no answer" at the saved settings) — check it is powered and the adapter is seated
+before suspecting the code. The lock-in now connects and reads through the app (15/15
 Test-button connects, 60/60 samples, 2026-09-24) since the reply delay above went in.
 The link may still be a little marginal: a few connects took 2-5 s (a retry inside),
 and one reply once came back as `55302`, a doubled byte on the bus. Ruled out: address

@@ -11,7 +11,7 @@ to the code that produced it. The number is written in exactly one place,
 
 ### Added
 - **Choice of lock-in and multimeter model** on the Instruments tab. The lock-in can be
-  an EG&G 5302 (this rig, the default), an SRS SR830 or an EG&G 5301A; the multimeter
+  an EG&G 5302 (this rig, the default) or an SRS SR830; the multimeter
   an HP 34401A (the default) or a Keithley 199. The choice is saved with the other
   settings, used in simulation, shown by the Test buttons and in the log, and written
   into every data file header (`# lockin_model:`, `# temperature_source:`). The SR830
@@ -28,11 +28,6 @@ to the code that produced it. The number is written in exactly one place,
   its saved defaults. An overload is reported
   as an error, not recorded as a huge resistance, and a reading in the wrong function
   (someone changed it on the front panel) is refused.
-- **The 5301A driver is unverified.** No manual for the 5301A could be found anywhere,
-  including from Signal Recovery, which inherited the product line. The driver assumes
-  the 5302's commands and ranges, and is opened with the 5302's 50 ms reply delay. The
-  log, the Test button and the data file header all say so. Check `ID`, the sensitivity
-  and the time constant against the front panel before trusting its data.
 
 ### Fixed
 - **Connecting to the lock-in, and the Test button, timed out.** The app asked for a

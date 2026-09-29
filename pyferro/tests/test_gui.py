@@ -74,14 +74,13 @@ def test_monitor_then_record_creates_separate_files(window, qtbot, tmp_path):
     assert len(list((tmp_path / "data").glob("two_*.txt"))) == 2
 
 
-@pytest.mark.parametrize("model, name", [("5302", "5302"), ("sr830", "SR830"), ("5301a", "5301A")])
+@pytest.mark.parametrize("model, name", [("5302", "5302"), ("sr830", "SR830")])
 def test_lockin_model_test_button(window, qtbot, model, name):
     setup = window.setup
     setup.li_model.setCurrentIndex(setup.li_model.findData(model))
     qtbot.mouseClick(setup.li_test, Qt.LeftButton)
     qtbot.waitUntil(lambda: setup.li_result.text().startswith(("✔", "✘")), timeout=10000)
     assert setup.li_result.text().startswith(f"✔ {name} found"), setup.li_result.text()
-    assert ("UNVERIFIED" in setup.li_result.text()) == (model == "5301a")
 
 
 @pytest.mark.parametrize("model, name", [("34401a", "HP 34401A"), ("k199", "Keithley 199")])
