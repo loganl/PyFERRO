@@ -48,8 +48,11 @@ writability test, and the git-tag test when HEAD is not on a tag.
   (which pulls first). **The offline bundle is not used** (user, 2026-09-29), though
   `packaging/` and README §1/§9 still describe it.
 - On this machine the folder is `PyFERRO` on disk but tracked as `pyferro`: a **new**
-  file shows as `?? PyFERRO/...` and `git add pyferro` misses it. Add new files by their
-  tracked path (`git add pyferro/tools/new.py`) and check `git status` is clean.
+  file shows as `?? PyFERRO/...`, and neither `git add pyferro` nor
+  `git add pyferro/tools/new.py` stages it (adding it as `PyFERRO/...` would split the
+  folder in two on case-sensitive systems). Stage it under the tracked name:
+  `git update-index --add --cacheinfo "100644,$(git hash-object -w PyFERRO/x/new.py),pyferro/x/new.py"`,
+  then check `git status` shows `A  pyferro/...` and nothing untracked.
 
 ## The rig, as confirmed on hardware
 
