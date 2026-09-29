@@ -40,6 +40,7 @@ from PySide6.QtWidgets import (
 from .. import __version__, config, sessionlog
 from ..acquisition import Acquisition
 from ..datafile import check_writable
+from .lockin_panel import LockinPanel
 from .setup_panel import SetupPanel
 from .widgets import ElidedLabel, Readout, StatusLight, format_si, run_task
 
@@ -124,6 +125,7 @@ class Bridge(QObject):
     log = Signal(str, str)
     status = Signal(str, str, str)
     recording = Signal(object)
+    lockin = Signal(dict)
 
 
 class PlotBuffer:
@@ -252,6 +254,10 @@ class MainWindow(QMainWindow):
         tabs.addTab(self._scroll(self._build_run_tab()), "Run")
         self.setup = SetupPanel()
         tabs.addTab(self._scroll(self.setup), "Instruments")
+        # Stays usable during a run, unlike Instruments: changes then go through the
+        # acquisition thread and into the data file.
+        self.lockin_panel = LockinPanel(self.setup._snapshot, self._running_acquisition)
+        tabs.addTab(self._scroll(self.lockin_panel), "Lock-in")
         tabs.setMinimumWidth(380)
         split.addWidget(tabs)
 
@@ -386,6 +392,8 @@ class MainWindow(QMainWindow):
         self.stop_btn.clicked.connect(self._stop)
         self.clear_btn.clicked.connect(self._clear)
         self.setup.log.connect(self.log)
+        self.lockin_panel.log.connect(self.log)
+        self.bridge.lockin.connect(self.lockin_panel.show_settings)
         self.setup.simulate.toggled.connect(lambda on: self.sim_banner.setVisible(on))
         self.bridge.sample.connect(self._on_sample)
         self.bridge.log.connect(lambda level, msg: self.log(level, msg, to_file=False))
@@ -445,6 +453,14 @@ class MainWindow(QMainWindow):
     def running(self) -> bool:
         return self.acq is not None and self.acq.running
 
+    def _running_acquisition(self) -> Acquisition | None:
+        """The measurement the Lock-in tab must go through, if one is running.
+
+        Also while it is stopping: its connection is still open, and a second one from
+        the tab would put two conversations on the bus at once.
+        """
+        return self.acq if self.running else None
+
     def _start_monitoring(self, record: bool = False) -> None:
         if self.running or self._stopping:
             return
@@ -455,7 +471,8 @@ class MainWindow(QMainWindow):
         for key, light in self.lights.items():
             light.set_state("busy" if key != "dmm" or cfg.dmm.enabled else "off", "connecting…")
         self.acq = Acquisition(cfg, on_sample=self.bridge.sample.emit, on_log=self.bridge.log.emit,
-                               on_status=self.bridge.status.emit, on_recording=self.bridge.recording.emit)
+                               on_status=self.bridge.status.emit, on_recording=self.bridge.recording.emit,
+                               on_lockin=self.bridge.lockin.emit)
         self.setup.set_locked(True)
         self.acq.start(record=record)
         self._update_buttons()

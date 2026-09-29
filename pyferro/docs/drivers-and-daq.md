@@ -398,9 +398,25 @@ temperature over the last 120 s.
 ### Watching settings
 
 `_watch_lockin` runs every sample and costs nothing, since SEN, EX and overload arrive
-with each reading. `_poll_settings` runs every 60 s for XTC, FRQ and the controller's
-mode and run state, which each need an extra exchange. Any change is **annotated** —
-logged, and written into the data file as `# HH:MM:SS …` — so the file explains itself.
+with each reading. `_poll_settings` runs every 60 s: the lock-in's full `settings()`
+(for the 5302 that includes the reference, oscillator, filter, reserve, input and
+phase — `LOCKIN_WATCHED` lists what is compared) and the controller's mode and run
+state, which each need extra exchanges. Any change is **annotated** — logged, and
+written into the data file as `# HH:MM:SS …` — so the file explains itself. Each poll
+also goes to `on_lockin`, which fills the window's Lock-in tab.
+
+### Changing lock-in settings during a run
+
+The window never talks to an instrument the acquisition thread has open: two threads
+on one GPIB device would interleave their bytes. So the Lock-in tab calls
+`set_lockin(changes)`, which only stores the request under `_req_lock`, like
+`set_recording`. At the top of its next pass the loop's `_handle_lockin_request` sends
+it with the driver's `apply()`, annotates what was sent (`Lock-in set from PyFERRO:
+filter FLAT (FLT 0)`), and brings the next poll forward, so the read-back — and any
+"changed to" line — follows at once. The file therefore shows both what was asked for
+and what took effect. `apply()` checks every value before sending the first command,
+and sends the time constant before the reserve, since a FAST time constant forces MIN
+reserve. When no run is active the tab opens its own connection instead, like Test.
 
 ### Recording
 

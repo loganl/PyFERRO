@@ -56,6 +56,9 @@ class SimLockinTransport(Transport):
         self.sen = 17  # 50 mV
         self.xtc = 7  # 200 ms
         self.expand = 0
+        # The capacitance set-up of the lab manual's 5302 table: INT, 1.000 V at 25 kHz.
+        self.setup = {"IE": "0", "OA": "1000 2", "OF": "2500 7", "DR": "1", "FLT": "0",
+                      "PREAMP": "0", "P": "0 0"}
 
     def write(self, cmd: str) -> None:
         self.query(cmd)
@@ -78,14 +81,17 @@ class SimLockinTransport(Transport):
                 return ""
             return str(self.xtc)
         if name == "EX":
+            if args:
+                self.expand = int(args[0])
+                return ""
             return str(self.expand)
         if name == "FRQ":
             return "25000000"
-        # The capacitance set-up of the lab manual's 5302 table: INT, 1.000 V at 25 kHz.
-        setup = {"IE": "0", "OA": "1000 2", "OF": "2500 7", "DR": "1", "FLT": "0",
-                 "PREAMP": "0", "P": "0 0"}
-        if name in setup:
-            return setup[name]
+        if name in self.setup:  # answers its value bare, sets it with arguments
+            if args:
+                self.setup[name] = " ".join(args)
+                return ""
+            return self.setup[name]
         if name == "XY":
             x, y = self.sample.signal_v(self.sample.temperature())
             fs = SENSITIVITIES_V[self.sen]

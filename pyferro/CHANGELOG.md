@@ -34,6 +34,16 @@ to the code that produced it. The number is written in exactly one place,
   button shows them and every data file header records them, so a file says how the
   lock-in was set. The lab manual has a matching 5302 settings table, with how to set
   each one.
+- **A Lock-in tab sets the 5302 from the program**: reference, oscillator frequency and
+  level, sensitivity, expand, time constant, filter, reserve and input. *Lab-manual
+  values* fills in the lab manual's table; *Apply* lists the commands, asks, sends only
+  what differs and reads the settings back. During a run the change is sent between
+  samples by the measurement loop and written into the data file. Checked on the rig
+  during a real run.
+- **All of the 5302's settings are recorded during a run**: every minute (and at once
+  after a change from the Lock-in tab) the reference, oscillator, filter, reserve, input
+  and phase are read with the time constant, and any change becomes a `#` line in the
+  file, as sensitivity and time-constant changes already did.
 - **Test lock-in checks the 5302 against that table**: a table under the result shows
   each setting now, the lab manual's value, and for anything that differs, which key
   changes it. Starting a recording logs any differences as a warning and writes them

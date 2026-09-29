@@ -58,6 +58,27 @@ LOCKIN_MODELS = {"5302": Lockin5302, "sr830": SR830}
 DMM_MODELS = {"34401a": HP34401A, "k199": Keithley199}
 
 
+# Lock-in settings watched by the poll: (settings key, name in the file, format,
+# relative change that counts, or None for any change).
+LOCKIN_WATCHED = (
+    ("time_constant", "time constant", str, None),
+    ("frequency_hz", "reference frequency", lambda v: f"{v:.4g} Hz", 1e-3),
+    ("reference_mode", "reference", str, None),
+    ("oscillator_hz", "oscillator frequency", lambda v: f"{v / 1000:.4g} kHz", 1e-3),
+    ("oscillator_v", "oscillator level", lambda v: f"{v:.3f} V", 5e-3),
+    ("dynamic_reserve", "dynamic reserve", str, None),
+    ("filter", "filter", str, None),
+    ("signal_input", "signal input", str, None),
+    ("phase_deg", "reference phase", lambda v: f"{v:.1f}°", None),
+)
+
+
+def _differs(before, now, rel) -> bool:
+    if rel is None:
+        return before != now
+    return abs(now - before) > rel * max(abs(before), abs(now), 1e-12)
+
+
 # Terminator pairs that have worked, by resource: a reconnect should not pay for
 # the whole search again.
 _DETECTED_TERMINATIONS: dict[str, tuple] = {}
@@ -218,9 +239,11 @@ class Acquisition:
         on_log: Callable[[str, str], None] = lambda level, msg: None,
         on_status: Callable[[str, str, str], None] = lambda name, state, msg: None,
         on_recording: Callable[[str | None], None] = lambda path: None,
+        on_lockin: Callable[[dict], None] = lambda settings: None,
     ) -> None:
         self.cfg = cfg
         self.on_sample, self.on_status, self.on_recording = on_sample, on_status, on_recording
+        self.on_lockin = on_lockin  # the lock-in's settings, after every poll or change
         # Core messages go to the session log directly, not only through the GUI, so a run
         # driven without a window (tests, scripts) still leaves a complete record.
         self.on_log = lambda level, message: (on_log(level, message),
@@ -247,8 +270,8 @@ class Acquisition:
         self._last_expand: bool | None = None
         self._overloaded = False
         self._next_settings_poll = 0.0
-        self._last_tc: int | None = None
-        self._last_freq: float | None = None
+        self._last_lockin: dict = {}  # settings at the last poll, to notice changes
+        self._lockin_changes: dict | None = None  # asked for from the window, not yet sent
         self._last_control: str | None = None
         self._last_run_state: str | None = None
 
@@ -272,6 +295,20 @@ class Acquisition:
     def set_recording(self, on: bool) -> None:
         with self._req_lock:
             self._record_request = on
+
+    def set_lockin(self, changes: dict) -> None:
+        """Change lock-in settings during a run (keys as in lockin5302.SETTABLE).
+
+        Sent by the acquisition thread between samples, so the commands cannot land in
+        the middle of a reading; then the settings are read back at once, and whatever
+        changed is written into the file.
+        """
+        with self._req_lock:
+            self._lockin_changes = {**(self._lockin_changes or {}), **changes}
+
+    def refresh_lockin(self) -> None:
+        """Read the lock-in's settings at the next sample rather than waiting for the poll."""
+        self._next_settings_poll = 0.0
 
     def stop(self, timeout: float = 10.0) -> None:
         self._stop.set()
@@ -366,6 +403,7 @@ class Acquisition:
             while not self._stop.is_set():
                 try:
                     self._handle_record_request()
+                    self._handle_lockin_request()
                     row = self._sample()
                     self.on_sample(row)
                     self._maybe_write(row)
@@ -494,14 +532,21 @@ class Acquisition:
         li = self.slots["lockin"].device
         if li is not None:
             try:
-                tc, freq = li.time_constant_index(), li.frequency_hz()
-                if self._last_tc is not None and tc != self._last_tc:
-                    self.annotate(f"Lock-in time constant changed to {li.TIME_CONSTANT_LABELS[tc]}")
-                if self._last_freq is not None and abs(freq - self._last_freq) > 0.001 * max(freq, 1):
-                    self.annotate(f"Lock-in reference frequency changed to {freq:.4g} Hz")
-                self._last_tc, self._last_freq = tc, freq
+                settings = li.settings()
             except Exception:
-                pass  # a failed poll is not worth reporting; the reading path already does
+                settings = None  # a failed poll is not worth reporting; the reading path does
+            if settings is not None:
+                # Sensitivity and expand arrive with every reading (_watch_lockin); the
+                # rest is noted here, so a front-panel change mid-run is in the file.
+                for key, label, fmt, rel in LOCKIN_WATCHED:
+                    value = settings.get(key)
+                    if value is None:
+                        continue
+                    before = self._last_lockin.get(key)
+                    if before is not None and _differs(before, value, rel):
+                        self.annotate(f"Lock-in {label} changed to {fmt(value)}")
+                    self._last_lockin[key] = value
+                self.on_lockin(settings)
         pid = self.slots["pid"].device
         if pid is not None:
             try:
@@ -527,6 +572,29 @@ class Acquisition:
         except OSError as exc:
             self.on_log("error", f"Could not write data file ({exc}); recording stopped. Check the disk/USB drive.")
             self._close_writer()
+
+    def _handle_lockin_request(self) -> None:
+        with self._req_lock:
+            changes, self._lockin_changes = self._lockin_changes, None
+        if not changes:
+            return
+        li = self.slots["lockin"].device
+        if li is None or not hasattr(li, "apply"):
+            reason = ("the lock-in is not connected" if li is None
+                      else f"the {li.MODEL} cannot be set from PyFERRO")
+            self.on_log("warning", f"Lock-in settings not changed: {reason}")
+            return
+        self._next_settings_poll = 0.0  # read back at once: the file records what took effect
+        try:
+            sent = li.apply(changes)
+        except ValueError as exc:  # checked before anything was sent
+            self.on_log("error", f"Lock-in settings not changed: {exc}")
+            return
+        except Exception as exc:
+            self.annotate(f"Lock-in: setting stopped partway ({exc}); the settings read back "
+                          "next show what took effect", level="warning")
+            return
+        self.annotate("Lock-in set from PyFERRO: " + ", ".join(sent))
 
     def _handle_record_request(self) -> None:
         with self._req_lock:

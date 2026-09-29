@@ -74,16 +74,23 @@ PyFERRO warns above that but is not a safety device; the controller and relay ar
 
 1. **Instruments tab:** check the lock-in **Model** (EG&G 5302 on this rig), pick the
    Dtech COM port (FTDI ports listed first), press **Test lock-in** and **Test controller**. A green ✔ shows sensitivity, time constant,
-   PV/SV, firmware.
-2. **Run tab:** enter a sample/run name (becomes the file name), operator, drive details,
+   PV/SV, firmware. For the 5302, a table underneath compares every setting with the
+   lab manual's and says which key changes any that differ.
+2. **Lock-in tab (5302):** *Read from lock-in* shows its settings; change them there and
+   press *Apply to lock-in* (it lists the commands and asks first), or press
+   *Lab-manual values* to fill in the lab manual's table, then Apply. Only what differs is
+   sent, and the settings are read back afterwards. This works during a run too: the
+   change is sent between samples and written into the data file. AC/DC, FLOAT/GND
+   and the phase tuning stay on the front panel.
+3. **Run tab:** enter a sample/run name (becomes the file name), operator, drive details,
    notes, and the save folder.
-3. **▶ Start monitoring** shows live data without saving. **● Record** opens a file;
+4. **▶ Start monitoring** shows live data without saving. **● Record** opens a file;
    pressing it again closes that file, and the next recording opens a new one.
    **■ Stop** disconnects.
-4. Set the **reading interval** to at least ~5× the lock-in time constant.
+5. Set the **reading interval** to at least ~5× the lock-in time constant.
    *Save only if ΔT ≥* reproduces the old LabVIEW behaviour; leave it off to record
    every reading.
-5. **Temperature from** (Run tab) selects what goes in column 1 of the file: the
+6. **Temperature from** (Run tab) selects what goes in column 1 of the file: the
    *CND3 controller* probe (normal) or the *Multimeter Pt100*. Both are recorded
    whenever available — `PV_C` from the controller, `T_dmm_C` from the multimeter.
    To use the multimeter, tick **Also read the multimeter** on the Instruments tab and
@@ -140,7 +147,9 @@ the metadata then goes to a `.json` file of the same name.
 
 **Events inside the file.** Anything that changes what the numbers mean is written into
 the data file as a `#` comment line at the moment it happens — a sensitivity or time
-constant change, an overload starting or clearing, the controller switching to STOP, a
+constant change, and on the 5302 any change of reference, oscillator level or
+frequency, filter, reserve, input or phase (checked every minute, and at once after a
+change from the Lock-in tab, which is itself recorded), an overload starting or clearing, the controller switching to STOP, a
 changed reading interval or temperature source, edited notes. `numpy.loadtxt` and pandas
 skip these lines, so nothing breaks; the header also names the port each instrument used
 (`# connection_lockin:`, `# connection_pid:`).
@@ -243,6 +252,7 @@ connected. It has no °C function, so only the Pt100 reading is offered.
 ```
 ferro/gui/          main_window.py  window, plots, readouts, log
                     setup_panel.py  instrument settings, Test / Auto-detect
+                    lockin_panel.py the Lock-in tab: read and set the 5302
                     widgets.py      status lights, readouts, background tasks
 ferro/acquisition.py   the measurement loop: open, read, log, retry
 ferro/instruments/  lockin5302.py, sr830.py, cnd3.py,

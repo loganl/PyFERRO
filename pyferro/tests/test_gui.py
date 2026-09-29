@@ -139,6 +139,47 @@ def test_lockin_test_shows_the_settings_check(window, qtbot):
     assert "Sensitivity" in table and "the left SEN key" in table  # the simulated 5302 is at 50 mV
 
 
+def test_lockin_tab_sets_the_lockin_when_idle(window, qtbot):
+    panel = window.lockin_panel
+    qtbot.mouseClick(panel.read_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: panel.status.text().startswith(("✔", "✘")), timeout=10000)
+    assert panel.status.text().startswith("✔"), panel.status.text()
+    panel.filter.setCurrentIndex(panel.filter.findData("BAND-PASS"))
+    assert panel.changes() == {"filter": "BAND-PASS"}, "only what differs is sent"
+    qtbot.mouseClick(panel.apply_btn, Qt.LeftButton)  # the fixture answers the question Yes
+    qtbot.waitUntil(lambda: "Lock-in set" in panel.status.text(), timeout=10000)
+    assert panel._known["filter"] == "BAND-PASS"  # read back from the instrument
+    assert "FLT 3" in panel.status.text()
+
+
+def test_lockin_tab_goes_through_the_running_measurement(window, qtbot):
+    panel = window.lockin_panel
+    qtbot.mouseClick(window.start_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: panel._known is not None, timeout=10000)  # the first poll
+    panel.time_constant.setCurrentIndex(8)
+    qtbot.mouseClick(panel.apply_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: panel._known["time_constant_index"] == 8, timeout=10000)
+    qtbot.waitUntil(lambda: "Lock-in time constant changed to 500 ms"
+                    in window.log_view.toPlainText(), timeout=5000)
+    assert "Lock-in set from PyFERRO: time constant 500 ms (XTC 8)" in window.log_view.toPlainText()
+    qtbot.mouseClick(window.stop_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: not window.running and not window._stopping, timeout=15000)
+
+
+def test_lockin_tab_fills_in_the_lab_manual_values_without_sending(window):
+    from ferro.instruments.lockin5302 import check_setup
+
+    panel = window.lockin_panel
+    panel.expand.setChecked(True)
+    panel.osc_v.setValue(2.0)
+    panel.manual_btn.click()
+    values = panel.values()
+    as_read = {**values, "sensitivity": panel.sensitivity.currentData(),
+               "time_constant": panel.time_constant.currentData()}
+    assert all(r.ok for r in check_setup(as_read))
+    assert panel._known is None, "nothing was read or sent"
+
+
 @pytest.mark.parametrize("model, name", [("34401a", "HP 34401A"), ("k199", "Keithley 199")])
 def test_dmm_model_test_button(window, qtbot, model, name):
     setup = window.setup

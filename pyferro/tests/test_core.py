@@ -154,6 +154,78 @@ def test_recording_header_says_how_the_lockin_differs_from_the_manual(tmp_path):
         slot.close()
 
 
+@pytest.mark.parametrize("volts, command", [(1.0, "OA 1000 2"), (0.1, "OA 1000 1"),
+                                            (0.01, "OA 1000 0"), (5.0, "OA 5000 2"),
+                                            (0.005, "OA 500 0"), (0.3, "OA 3000 1")])
+def test_5302_oscillator_level_command_round_trips(volts, command):
+    from ferro.instruments.lockin5302 import oscillator_level_command
+
+    assert oscillator_level_command(volts) == command
+    reply = command.split(" ", 1)[1]
+    assert Lockin5302(ScriptedTransport({"OA": reply})).oscillator_v() == pytest.approx(volts)
+
+
+@pytest.mark.parametrize("hz, command", [(25000, "OF 2500 7"), (1000, "OF 1000 6"),
+                                         (999, "OF 9990 5"), (1e6, "OF 10000 8"),
+                                         (0.001, "OF 1000 0")])
+def test_5302_oscillator_frequency_command_round_trips(hz, command):
+    from ferro.instruments.lockin5302 import oscillator_frequency_command
+
+    assert oscillator_frequency_command(hz) == command
+    reply = command.split(" ", 1)[1]
+    assert Lockin5302(ScriptedTransport({"OF": reply})).oscillator_hz() == pytest.approx(hz)
+
+
+def test_5302_apply_sends_the_time_constant_before_the_reserve_and_checks_first():
+    """A FAST time constant forces MIN reserve (manual 4.3), undoing a reserve set before it."""
+    sent = []
+
+    class Recorder:
+        def write(self, cmd):
+            sent.append(cmd)
+
+    li = Lockin5302(Recorder())
+    li.apply({"dynamic_reserve": "HI STAB", "time_constant_index": 8, "oscillator_v": 1.0})
+    assert sent == ["OA 1000 2", "XTC 8", "DR 1"]
+    sent.clear()
+    with pytest.raises(ValueError):
+        li.apply({"time_constant_index": 8, "oscillator_v": 9.0})  # 9 V is out of range
+    assert sent == [], "nothing is sent when any value is bad"
+
+
+def test_lockin_changes_during_a_run_are_sent_and_recorded():
+    cfg = config.AppConfig(simulate=True)
+    logs, seen = [], []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m), on_lockin=seen.append)
+    acq.slots["lockin"].get()
+    acq._poll_settings()  # the baseline
+    acq.set_lockin({"time_constant_index": 8, "filter": "BAND-PASS"})
+    acq._handle_lockin_request()
+    acq._poll_settings()  # set_lockin asks for an immediate read-back
+    assert any(m.startswith("Lock-in set from PyFERRO: time constant 500 ms (XTC 8)") for m in logs)
+    assert "Lock-in time constant changed to 500 ms" in logs
+    assert "Lock-in filter changed to BAND-PASS" in logs
+    assert seen[-1]["filter"] == "BAND-PASS"
+    for slot in acq.slots.values():
+        slot.close()
+
+
+def test_a_front_panel_change_during_a_run_is_recorded():
+    cfg = config.AppConfig(simulate=True)
+    logs = []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m))
+    li = acq.slots["lockin"].get()
+    acq._poll_settings()
+    li.t.setup["IE"] = "2"  # someone presses REF
+    li.t.setup["OA"] = "2000 2"
+    acq.refresh_lockin()
+    acq._poll_settings()
+    assert "Lock-in reference changed to EXT" in logs
+    assert "Lock-in oscillator level changed to 2.000 V" in logs
+    for slot in acq.slots.values():
+        slot.close()
+
+
 def test_lockin_xy_split_over_two_reads():
     r = Lockin5302(SplitReplyTransport()).read()
     assert (r.x_counts, r.y_counts) == (5000, -2500)

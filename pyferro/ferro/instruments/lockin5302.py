@@ -83,6 +83,62 @@ CAPACITANCE_SETUP = (
 )
 
 
+def oscillator_level_command(volts: float) -> str:
+    """OA n1 n2 for a level in volts (manual ch. 9: 5 mV to 5 V in three ranges)."""
+    if not 0.005 <= volts <= 5.0:
+        raise ValueError(f"oscillator level {volts:g} V is outside 5 mV to 5 V")
+    n2 = 0 if volts <= 0.05 else 1 if volts <= 0.5 else 2  # finest range that holds it
+    return f"OA {round(volts * 10 ** (5 - n2))} {n2}"
+
+
+def oscillator_frequency_command(hz: float) -> str:
+    """OF n1 n2 for a frequency in Hz: n1 = 1000..10000 across the decade n2 (1 mHz-1 MHz)."""
+    if not 0.001 <= hz <= 1e6:
+        raise ValueError(f"oscillator frequency {hz:g} Hz is outside 1 mHz to 1 MHz")
+    n2 = min(8, int(math.floor(math.log10(hz) + 1e-9)) + 3)
+    return f"OF {round(hz / 10 ** (n2 - 6))} {n2}"
+
+
+def _code(names: dict, value: str) -> int:
+    for code, name in names.items():
+        if name == value:
+            return code
+    raise ValueError(f"{value!r} is not one of {', '.join(names.values())}")
+
+
+# What apply() can set, in the order it sends them. The time constant goes before the
+# reserve: a FAST time constant forces MIN reserve (manual 4.3), undoing a reserve set
+# first. (settings key, command builder, description of the new value)
+SETTABLE = (
+    ("signal_input", lambda v: f"PREAMP {_code(SIGNAL_INPUTS, v)}", lambda v: f"input {v}"),
+    ("reference_mode", lambda v: f"IE {_code(REFERENCE_MODES, v)}", lambda v: f"reference {v}"),
+    ("oscillator_hz", oscillator_frequency_command, lambda v: f"oscillator {_khz(v)}"),
+    ("oscillator_v", oscillator_level_command, lambda v: f"oscillator {_volts(v)}"),
+    ("sensitivity_index", lambda v: f"SEN {int(v)}",
+     lambda v: f"sensitivity {SENSITIVITY_LABELS[int(v)]}"),
+    ("expand", lambda v: f"EX {1 if v else 0}", lambda v: f"expand {_on_off(v)}"),
+    ("time_constant_index", lambda v: f"XTC {int(v)}",
+     lambda v: f"time constant {TIME_CONSTANT_LABELS[int(v)]}"),
+    ("dynamic_reserve", lambda v: f"DR {_code(RESERVE_MODES, v)}", lambda v: f"reserve {v}"),
+    ("filter", lambda v: f"FLT {_code(FILTER_MODES, v)}", lambda v: f"filter {v}"),
+)
+
+
+def commands_for(changes: dict) -> list[tuple[str, str]]:
+    """(command, description) for each setting in ``changes``, in sending order.
+
+    Raises ValueError, before anything is sent, if any value is out of range.
+    """
+    out = []
+    for key, command, describe in SETTABLE:
+        if key in changes:
+            out.append((command(changes[key]), describe(changes[key])))
+    unknown = set(changes) - {key for key, _, _ in SETTABLE}
+    if unknown:
+        raise ValueError(f"cannot set {', '.join(sorted(unknown))}")
+    return out
+
+
 @dataclass
 class SetupCheck:
     name: str
@@ -261,6 +317,17 @@ class Lockin5302:
             except TransportError:
                 out[key] = None
         return out
+
+    def apply(self, changes: dict) -> list[str]:
+        """Send new settings (keys as in SETTABLE); returns what was sent, described.
+
+        Every value is checked before the first command goes, so a bad one sends
+        nothing. Read the settings back afterwards to confirm them.
+        """
+        commands = commands_for(changes)
+        for command, _ in commands:
+            self.t.write(command)
+        return [f"{what} ({command})" for command, what in commands]
 
     def set_sensitivity(self, index: int) -> None:
         self.t.write(f"SEN {int(index)}")
