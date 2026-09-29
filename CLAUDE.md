@@ -44,8 +44,12 @@ writability test, and the git-tag test when HEAD is not on a tag.
 - **Commits**: end with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 - **Pushing**: push work the user asked for without asking first; they pull it on the
   lab PC. Tagging and publishing a release stay separate decisions.
-- The lab PC now has internet and a git clone at `C:\PyFERRO`. The offline bundle is
-  still built and kept on a USB stick as a fallback.
+- The lab PC has internet and a git clone at `C:\PyFERRO`, started with `pixi run start`
+  (which pulls first). **The offline bundle is not used** (user, 2026-09-29), though
+  `packaging/` and README §1/§9 still describe it.
+- On this machine the folder is `PyFERRO` on disk but tracked as `pyferro`: a **new**
+  file shows as `?? PyFERRO/...` and `git add pyferro` misses it. Add new files by their
+  tracked path (`git add pyferro/tools/new.py`) and check `git status` is clean.
 
 ## The rig, as confirmed on hardware
 
