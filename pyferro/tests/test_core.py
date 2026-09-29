@@ -3,6 +3,7 @@ import json
 import math
 import sys
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -14,9 +15,13 @@ from ferro.analysis import DirectionTracker
 from ferro.datafile import COLUMNS, DataWriter, check_writable, unique_path
 from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temperature
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
+from ferro.instruments.keithley199 import Keithley199
+from ferro.instruments.lockin5301a import Lockin5301A
 from ferro.instruments.lockin5302 import (Lockin5302, checked_index, counts_to_volts,
                                           parse_ints)
-from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
+from ferro.instruments.simulated import (Sim5301ATransport, SimLockinTransport,
+                                        SimModbusInstrument, SimulatedSample)
+from ferro.instruments.sr830 import SR830, parse_floats
 from ferro.transports import (TERMINATIONS, TransportError, VisaTransport, describe_status,
                               drain_replies, probe_terminations)
 
@@ -73,6 +78,298 @@ def test_lockin_xy_split_over_two_reads():
     r = Lockin5302(SplitReplyTransport()).read()
     assert (r.x_counts, r.y_counts) == (5000, -2500)
     assert r.x_v == pytest.approx(5e-3)
+
+
+# --- SR830 ---------------------------------------------------------------------
+class FakeSR830Transport:
+    """The SR830's replies (manual ch. 5), with a status byte that latches like the real one."""
+
+    def __init__(self, sens="17", oexp="0.00,0", snap="1.234560e-03,-5.678900e-04,1.35e-03,-24.71"):
+        self.writes = []
+        self.replies = {"*IDN?": "Stanford_Research_Systems,SR830,s/n12345,ver1.07",
+                        "SNAP?1,2,3,4": snap, "SENS?": sens, "OFLT?": "9",
+                        "FREQ?": "1000.00", "OEXP?1": oexp, "OEXP?2": "0.00,0", "OEXP?3": "0.00,0"}
+        self.lias = 0
+
+    def write(self, cmd):
+        self.writes.append(cmd)
+        if cmd == "*CLS":
+            self.lias = 0
+
+    def query(self, cmd):
+        if cmd == "LIAS?":
+            value, self.lias = self.lias, 0  # reading clears every bit (manual 5-23)
+            return str(value)
+        return self.replies[cmd]
+
+    def close(self):
+        pass
+
+
+def test_sr830_against_fake_protocol():
+    transport = FakeSR830Transport()
+    li = SR830(transport)
+    assert transport.writes == ["OUTX1", "*CLS"]  # answers to GPIB; stale status cleared
+    assert "SR830" in li.check()
+    r = li.read()
+    assert (r.x_v, r.y_v) == (pytest.approx(1.23456e-3), pytest.approx(-5.6789e-4))
+    assert r.sensitivity == "1 mV" and r.full_scale_v == pytest.approx(1e-3)
+    assert r.percent_fs == pytest.approx(123.456)
+    assert not r.overloaded and not r.expand
+    s = li.settings()
+    assert (s["sensitivity"], s["time_constant"], s["expand"]) == ("1 mV", "300 ms", False)
+
+
+def test_sr830_reading_has_the_5302_reading_fields():
+    """Acquisition and the window use these; every lock-in's reading must have them."""
+    r = SR830(FakeSR830Transport()).read()
+    for name in ("x_v", "y_v", "r_v", "theta_deg", "sen_index", "sensitivity", "expand",
+                 "full_scale_v", "percent_fs", "overloaded", "EXPAND_NAME"):
+        assert hasattr(r, name), name
+
+
+def test_sr830_overload_between_samples_is_caught_once():
+    transport = FakeSR830Transport()
+    li = SR830(transport)
+    transport.lias = 1 << 2  # output overload latched since the last sample
+    assert li.read().overloaded
+    assert not li.read().overloaded  # the read cleared it; nothing new happened
+
+
+def test_sr830_status_that_needed_a_retry_is_flagged_as_overload():
+    """Reading LIAS? clears it; if the reply was lost and retried, the bits may be gone."""
+
+    class RetryingTransport(FakeSR830Transport):
+        retries_used = 0
+
+        def query(self, cmd):
+            if cmd == "LIAS?":
+                self.lias = 0  # the lost first attempt cleared the byte
+                self.retries_used += 1
+            return super().query(cmd)
+
+    li = SR830(RetryingTransport())
+    assert li.read().overloaded
+
+
+def test_sr830_offset_or_expand_is_reported():
+    li = SR830(FakeSR830Transport(oexp="50.00,1"))
+    assert li.read().expand
+    s = li.settings()
+    assert (s["x_offset_percent"], s["x_expand"], s["expand"]) == (50.0, 10, True)
+
+
+def test_sr830_out_of_step_sensitivity_is_refused_not_indexed():
+    with pytest.raises(TransportError, match="out of step"):
+        SR830(FakeSR830Transport(sens="1000")).read()
+
+
+def test_sr830_parse_floats():
+    assert parse_floats("+1.5,-2.0e-3, .25", 3) == [1.5, -2.0e-3, 0.25]
+    with pytest.raises(TransportError):
+        parse_floats("1.0", 2)
+
+
+# --- Keithley 199 ---------------------------------------------------------------
+class FakeKeithley199Transport:
+    """The 199's device-dependent commands (manual 3.9), reading ohms with a prefix."""
+
+    def __init__(self, reading="NOHM+1.100000E+2", status="199110020000000000410600000000000"):
+        self.writes = []
+        self.reading = reading
+        self.status = status
+
+    def write(self, cmd):
+        self.writes.append(cmd)
+
+    def query(self, cmd):
+        return {"U0X": self.status, "X": self.reading}[cmd]
+
+    def close(self):
+        pass
+
+
+def test_keithley199_against_fake_protocol():
+    transport = FakeKeithley199Transport()
+    dmm = Keithley199(transport, "pt100", 100.0)
+    assert transport.writes == ["F2R0T0B0Z0G0X"]  # ohms, zero off, set after the device clear
+    assert dmm.check().startswith("199")
+    assert dmm.read_raw() == pytest.approx(110.0)
+    assert dmm.read_celsius() == pytest.approx(pt100_to_celsius(110.0))
+
+
+def test_keithley199_overflow_is_an_error_not_a_reading():
+    """Without the prefix an overflow is all 9s - a large, plausible-looking number."""
+    dmm = Keithley199(FakeKeithley199Transport(reading="OOHM+9.999999E+9"))
+    with pytest.raises(TransportError, match="overflow"):
+        dmm.read_raw()
+
+
+def test_keithley199_refuses_a_zeroed_reading():
+    """Z (fig. 3-6) is a reading with a baseline subtracted: not the Pt100's resistance."""
+    dmm = Keithley199(FakeKeithley199Transport(reading="ZOHM+1.000000E+1"))
+    with pytest.raises(TransportError):
+        dmm.read_raw()
+
+
+def test_keithley199_notices_the_front_panel_function_changed():
+    dmm = Keithley199(FakeKeithley199Transport(reading="NDCV+1.100000E+0"))
+    with pytest.raises(TransportError, match="DCV"):
+        dmm.read_raw()
+
+
+@pytest.mark.parametrize("reading", ["ERROR", "", "+1.100000E+2"])
+def test_keithley199_rejects_garbage(reading):
+    with pytest.raises(TransportError):
+        Keithley199(FakeKeithley199Transport(reading=reading)).read_raw()
+
+
+def test_keithley199_check_rejects_a_non_199_status_word():
+    with pytest.raises(TransportError):
+        Keithley199(FakeKeithley199Transport(status="NOT A 199")).check()
+
+
+def test_keithley199_has_no_celsius_mode():
+    with pytest.raises(TransportError, match="temperature"):
+        Keithley199(FakeKeithley199Transport(), mode="celsius")
+
+
+# --- 5301A (unverified -- see lockin5301a.py) -------------------------------------
+def test_5301a_warns_that_it_is_unverified():
+    with pytest.warns(UserWarning, match="unverified"):
+        Lockin5301A(Sim5301ATransport(SimulatedSample()))
+
+
+def test_5301a_reuses_the_5302_protocol():
+    with pytest.warns(UserWarning):
+        li = Lockin5301A(Sim5301ATransport(SimulatedSample()))
+    assert "5301" in li.check()
+    assert li.read().sen_index == 17
+
+
+def test_5301a_check_rejects_an_id_that_does_not_say_5301():
+    with pytest.warns(UserWarning):
+        li = Lockin5301A(SimLockinTransport(SimulatedSample()))  # answers ID "5302"
+    with pytest.raises(TransportError):
+        li.check()
+
+
+def test_5301a_out_of_range_does_not_claim_to_know_why():
+    t = Sim5301ATransport(SimulatedSample())
+    t.sen = 25
+    with pytest.warns(UserWarning):
+        li = Lockin5301A(t)
+    with pytest.raises(TransportError, match="table differs"):
+        li.sensitivity_index()
+
+
+# --- all models, through the app's own factories --------------------------------
+@pytest.mark.parametrize("model", ["5302", "sr830", "5301a"])
+def test_every_lockin_model_opens_and_reads_in_simulation(model):
+    from ferro import acquisition
+
+    cfg = config.AppConfig(simulate=True)
+    cfg.lockin.model = model
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        li = acquisition.open_lockin(cfg)
+    li.check()
+    r = li.read()
+    assert math.isfinite(r.x_v) and r.sensitivity in li.SENSITIVITY_LABELS
+    s = li.settings()
+    assert {"sensitivity", "time_constant", "frequency_hz", "expand"} <= set(s)
+    assert s["time_constant"] == li.TIME_CONSTANT_LABELS[li.time_constant_index()]
+
+
+@pytest.mark.parametrize("model", ["34401a", "k199"])
+def test_every_dmm_model_opens_and_reads_in_simulation(model):
+    from ferro import acquisition
+
+    cfg = config.AppConfig(simulate=True)
+    cfg.dmm.model = model
+    dmm = acquisition.open_dmm(cfg)
+    dmm.check()
+    assert 20 < dmm.read_celsius() < 160
+
+
+def test_unknown_models_are_reported_not_crashed_on():
+    from ferro import acquisition
+
+    cfg = config.AppConfig(simulate=True)
+    cfg.lockin.model, cfg.dmm.model = "7265", "hp3458"
+    with pytest.raises(TransportError, match="7265"):
+        acquisition.open_lockin(cfg)
+    with pytest.raises(TransportError, match="hp3458"):
+        acquisition.open_dmm(cfg)
+
+
+def test_sr830_is_opened_with_its_own_terminators_and_no_5302_delays(monkeypatch):
+    from ferro import acquisition
+
+    built = []
+
+    class FakeVisa(FakeSR830Transport):
+        def __init__(self, resource, **kw):
+            super().__init__()
+            self.kw = kw
+            built.append(self)
+
+    monkeypatch.setattr(acquisition, "VisaTransport", FakeVisa)
+    cfg = config.AppConfig()
+    cfg.lockin.model = "sr830"
+    li = acquisition.open_lockin(cfg)
+    assert isinstance(li, SR830) and len(built) == 1
+    kw = built[0].kw
+    assert (kw["write_termination"], kw["read_termination"]) == ("\n", "\n")
+    assert "reply_delay_s" not in kw and "gap_s" not in kw
+
+
+def test_5301a_is_opened_like_the_5302(monkeypatch):
+    """Same terminator search and reply delay: that delay is what made the 5302 work."""
+    from ferro import acquisition
+
+    built = []
+
+    class FakeVisa:
+        def __init__(self, resource, **kw):
+            self.kw = kw
+            built.append(self)
+
+        def query(self, cmd):
+            return "5301A"
+
+        def set_timeout(self, timeout_s):
+            pass
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(acquisition, "VisaTransport", FakeVisa)
+    monkeypatch.setattr(acquisition, "_DETECTED_TERMINATIONS", {})
+    cfg = config.AppConfig()
+    cfg.lockin.model = "5301a"
+    with pytest.warns(UserWarning):
+        li = acquisition.open_lockin(cfg)
+    assert isinstance(li, Lockin5301A)
+    assert all(t.kw["reply_delay_s"] == acquisition.LOCKIN_GAP_S for t in built)
+
+
+def test_the_5301a_warning_reaches_the_log_and_the_data_file(tmp_path):
+    logs = []
+    cfg = config.AppConfig(simulate=True)
+    cfg.lockin.model = "5301a"
+    cfg.run.output_dir = str(tmp_path)
+    cfg.run.interval_s = 0.1
+    cfg.run.sample = "unverified"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append((lvl, m)))
+        acq.start(record=True)
+        time.sleep(0.5)
+        acq.stop()
+    assert any(lvl == "warning" and "unverified" in m for lvl, m in logs)
+    text = next(tmp_path.glob("unverified_*.txt")).read_text()
+    assert "# lockin_warning:" in text and "# lockin_model: 5301A" in text
 
 
 # --- CND3 ----------------------------------------------------------------------
@@ -233,7 +530,7 @@ def test_annotations_land_in_the_data_file(tmp_path):
     text = path.read_text()
     assert "# " in text and "Reading interval changed to 5 s" in text
     assert np.loadtxt(path).shape[0] >= 3, "comment lines must not break numeric loading"
-    assert "# connection_lockin: Lock-in: SIMULATED" in text
+    assert "# connection_lockin: Lock-in: 5302 SIMULATED" in text
 
 
 def test_connections_name_the_actual_ports():
@@ -264,6 +561,19 @@ def test_lockin_range_and_overload_changes_are_announced():
     assert any("sensitivity changed to 200 mV" in m for m in logs)
     assert any("OVERLOAD" in m for m in logs)
     assert any("overload cleared" in m for m in logs)
+
+
+def test_lockin_expand_already_on_at_the_start_is_announced():
+    from ferro.instruments.sr830 import SR830Reading
+
+    logs = []
+    acq = Acquisition(config.AppConfig(simulate=True), on_log=lambda lvl, m: logs.append(m))
+    reading = SR830Reading(1e-3, 0.0, 1e-3, 0.0, 17, expand=True, overloaded=False)
+    acq._watch_lockin(reading)
+    assert any("offset/expand is on" in m for m in logs)
+    logs.clear()
+    acq._watch_lockin(reading)  # unchanged: said once
+    assert logs == []
 
 
 def test_recovery_after_a_gap_is_announced():

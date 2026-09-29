@@ -9,6 +9,31 @@ to the code that produced it. The number is written in exactly one place,
 
 ## Unreleased
 
+### Added
+- **Choice of lock-in and multimeter model** on the Instruments tab. The lock-in can be
+  an EG&G 5302 (this rig, the default), an SRS SR830 or an EG&G 5301A; the multimeter
+  an HP 34401A (the default) or a Keithley 199. The choice is saved with the other
+  settings, used in simulation, shown by the Test buttons and in the log, and written
+  into every data file header (`# lockin_model:`, `# temperature_source:`). The SR830
+  and Keithley 199 manuals are in `docs/manuals/`.
+- The SR830 is read over GPIB with one query for X, Y, R and θ together. Its overload
+  status latches, so an overload between two samples still flags the later one; a
+  status read that needed a retry flags the sample too, since the retry may have missed
+  the latched bits. It
+  answers in volts, so there is no scaling. Its output offset and expand are read with
+  every sample and logged when set (including when already set at the start), because the manual does not say whether the values
+  read include them.
+- The Keithley 199 has no `*IDN?`; its status word identifies it. It is set to ohms on
+  every connection, with Zero turned off, because opening the connection resets it to
+  its saved defaults. An overload is reported
+  as an error, not recorded as a huge resistance, and a reading in the wrong function
+  (someone changed it on the front panel) is refused.
+- **The 5301A driver is unverified.** No manual for the 5301A could be found anywhere,
+  including from Signal Recovery, which inherited the product line. The driver assumes
+  the 5302's commands and ranges, and is opened with the 5302's 50 ms reply delay. The
+  log, the Test button and the data file header all say so. Check `ID`, the sensitivity
+  and the time constant against the front panel before trusting its data.
+
 ### Fixed
 - **Connecting to the lock-in, and the Test button, timed out.** The app asked for a
   query's reply the instant it had sent the query; the 5302 had not finished parsing it,

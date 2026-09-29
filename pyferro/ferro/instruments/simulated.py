@@ -7,6 +7,7 @@ that talks to the hardware.
 
 from __future__ import annotations
 
+import math
 import random
 import threading
 import time
@@ -14,6 +15,7 @@ import time
 from ..transports import Transport, TransportError
 from .hp34401a import celsius_to_pt100
 from .lockin5302 import SENSITIVITIES_V
+from .sr830 import SENSITIVITIES_V as SR830_SENSITIVITIES_V
 
 
 class SimulatedSample:
@@ -88,6 +90,64 @@ class SimLockinTransport(Transport):
         raise TransportError(f"SIM lock-in: unknown command {cmd!r}")
 
 
+class Sim5301ATransport(SimLockinTransport):
+    """The 5302 simulation answering ID as a 5301A is assumed to (lockin5301a.py)."""
+
+    name = "SIM:LOCKIN5301A"
+
+    def query(self, cmd: str) -> str:
+        if cmd.strip().upper() == "ID":
+            return "5301A"
+        return super().query(cmd)
+
+
+class SimSR830Transport(Transport):
+    """The SR830's ASCII commands (manual ch. 5), answering from the simulated sample."""
+
+    name = "SIM:SR830"
+
+    def __init__(self, sample: SimulatedSample) -> None:
+        self.sample = sample
+        self.sens = 22  # 50 mV
+        self.oflt = 9  # 300 ms
+        self.lias = 0
+
+    def write(self, cmd: str) -> None:
+        self.query(cmd)
+
+    def query(self, cmd: str) -> str:
+        cmd = cmd.strip().upper().replace(" ", "")
+        if cmd in ("OUTX1", "*CLS"):
+            self.lias = 0
+            return ""
+        if cmd == "*IDN?":
+            return "Stanford_Research_Systems,SR830,s/n00000,ver1.07"
+        if cmd == "SENS?":
+            return str(self.sens)
+        if cmd.startswith("SENS"):
+            self.sens = int(cmd[4:])
+            return ""
+        if cmd == "OFLT?":
+            return str(self.oflt)
+        if cmd.startswith("OFLT"):
+            self.oflt = int(cmd[4:])
+            return ""
+        if cmd == "FREQ?":
+            return "1000.000"
+        if cmd.startswith("OEXP?"):
+            return "0.00,0"
+        if cmd == "SNAP?1,2,3,4":
+            x, y = self.sample.signal_v(self.sample.temperature())
+            if max(abs(x), abs(y)) > SR830_SENSITIVITIES_V[self.sens]:
+                self.lias |= 1 << 2  # output overload, latched until read
+            r, theta = math.hypot(x, y), math.degrees(math.atan2(y, x))
+            return f"{x:.6e},{y:.6e},{r:.6e},{theta:.3f}"
+        if cmd == "LIAS?":
+            value, self.lias = self.lias, 0
+            return str(value)
+        raise TransportError(f"SIM SR830: unknown command {cmd!r}")
+
+
 class SimModbusInstrument:
     """Minimal stand-in for ``minimalmodbus.Instrument`` holding a CND3 register map."""
 
@@ -129,6 +189,32 @@ class SimDMMTransport(Transport):
         if cmd.upper().startswith("*IDN"):
             return "HEWLETT-PACKARD,34401A,0,SIM"
         return f"{celsius_to_pt100(self.sample.temperature()):.5f}"
+
+
+class SimK199Transport(Transport):
+    """A Keithley 199 in ohms with prefixed readings (manual 3.9)."""
+
+    name = "SIM:K199"
+
+    def __init__(self, sample: SimulatedSample) -> None:
+        self.sample = sample
+
+    def write(self, cmd: str) -> None:
+        pass
+
+    def query(self, cmd: str) -> str:
+        if "U0" in cmd.upper():
+            return "199110020000000000410600000000000"
+        return f"NOHM{celsius_to_pt100(self.sample.temperature()):+.6E}"
+
+
+def lockin_transport(model: str, sample: SimulatedSample) -> Transport:
+    return {"5302": SimLockinTransport, "5301a": Sim5301ATransport,
+            "sr830": SimSR830Transport}[model](sample)
+
+
+def dmm_transport(model: str, sample: SimulatedSample) -> Transport:
+    return {"34401a": SimDMMTransport, "k199": SimK199Transport}[model](sample)
 
 
 _shared_sample: SimulatedSample | None = None
