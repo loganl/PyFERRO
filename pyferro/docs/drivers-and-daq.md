@@ -368,9 +368,8 @@ direction updates, and the over-temperature alarm fires once, as the limit is cr
 
 Source: [`ferro/analysis.py`](../ferro/analysis.py)
 
-The rig's temperature wobbles: the controller's relay switches the heater every few
-seconds and the probe sits close to it, so readings swing by degrees around the ramp. A
-local slope follows every swing — the first version of this tracker used one and flipped
+The rig's temperature readings wobble by degrees around the ramp, whether from the
+heater cycling or a noisy probe. A local slope follows every swing — the first version of this tracker used one and flipped
 between heating and cooling on each. So the tracker does two things instead:
 
 1. **Average** the temperature over the last 120 s. Swings much faster cancel out.

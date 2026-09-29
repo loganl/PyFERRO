@@ -10,14 +10,14 @@ NAN = float("nan")
 class DirectionTracker:
     """Split a run into heating (+1) and cooling (-1) branches.
 
-    The rig's temperature is not smooth. The controller's relay switches the heater
-    every few seconds and the probe sits close to it, so readings swing by degrees
-    around the ramp (40.5 -> 44.5 -> 40.6 C within 3 s on 2026-09-29). A local slope
-    follows every swing, and the earlier slope-and-threshold tracker flipped between
-    heating and cooling on each one. Two steps make this robust:
+    The rig's temperature readings are not smooth: they swing by degrees around the
+    ramp (40.5 -> 44.5 -> 40.6 C within 3 s on 2026-09-29), whether from the heater
+    cycling or a noisy probe. A local slope follows every swing, and the earlier
+    slope-and-threshold tracker flipped between heating and cooling on each one. Two
+    steps make this robust:
 
     1. **Average** the temperature over the last ``smooth_s`` seconds. Swings much
-       faster than that - relay cycling, noise - cancel out.
+       faster than that cancel out.
     2. **Turn only at a turning point.** While heating, remember the highest averaged
        temperature reached; the ramp has turned to cooling once the average is
        ``band_c`` below it, and the mirror image while cooling. A wobble smaller than

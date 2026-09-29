@@ -53,6 +53,62 @@ REFERENCE_MODES = {0: "INT", 1: "TTL", 2: "EXT"}
 RESERVE_MODES = {0: "MIN", 1: "HI STAB", 2: "NORM", 3: "HI RES 1", 4: "HI RES 2"}
 FILTER_MODES = {0: "FLAT", 1: "NOTCH", 2: "LOW-PASS", 3: "BAND-PASS", 4: "HI-PASS"}
 SIGNAL_INPUTS = {0: "DIRECT", 1: "PREAMP"}
+
+
+def _volts(v) -> str:
+    return f"{v:.3f} V"
+
+
+def _khz(v) -> str:
+    return f"{v / 1000:.3f} kHz"
+
+
+def _on_off(v) -> str:
+    return "on" if v else "off"
+
+
+# The lab manual's 5302 table for the capacitance measurement (ptmanual/main.tex,
+# "Settings for the EG&G model 5302"): keep the two in step.
+# (settings key, name, wanted - a tuple means any of them, formatter, how to change it)
+CAPACITANCE_SETUP = (
+    ("reference_mode", "Reference", "INT", str, "REF, the rightmost key under the display"),
+    ("oscillator_hz", "Oscillator frequency", 25000.0, _khz, "OSC F with the setting knob"),
+    ("oscillator_v", "Oscillator level", 1.0, _volts, "OSC V with the setting knob"),
+    ("sensitivity", "Sensitivity", "1 V", str, "the left SEN key"),
+    ("expand", "Expand", False, _on_off, "FUNCT, then SEN/EXPAND"),
+    ("time_constant", "Time constant", ("500 ms", "200 ms"), str, "the TC keys"),
+    ("filter", "Filter", "FLAT", str, "FILT, second key from the right under the display"),
+    ("dynamic_reserve", "Dynamic reserve", "HI STAB", str, "the DYNRES/LOCAL key"),
+    ("signal_input", "Signal input", "DIRECT", str, "the SIGNAL SETUP screen"),
+)
+
+
+@dataclass
+class SetupCheck:
+    name: str
+    now: str
+    wanted: str
+    ok: bool | None  # None: the value could not be read
+    how: str
+
+
+def check_setup(settings: dict, table=CAPACITANCE_SETUP) -> list[SetupCheck]:
+    """Compare settings read from the lock-in with the lab manual's table."""
+    rows = []
+    for key, name, wanted, fmt, how in table:
+        now = settings.get(key)
+        choices = wanted if isinstance(wanted, tuple) else (wanted,)
+        if now is None:
+            ok = None
+        elif isinstance(wanted, float):
+            ok = abs(now - wanted) <= 0.005 * wanted
+        else:
+            ok = now in choices
+        rows.append(SetupCheck(name, "not read" if now is None else fmt(now),
+                               " or ".join(fmt(c) for c in choices), ok, how))
+    return rows
+
+
 FULL_SCALE_COUNTS = 10000
 OVERLOAD_COUNTS = 12000
 

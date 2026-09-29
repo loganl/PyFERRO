@@ -106,6 +106,54 @@ def test_a_setup_value_that_does_not_answer_is_left_unread_not_fatal():
     assert s["oscillator_v"] is None and s["reference_mode"] == "EXT" and s["filter"] == "BAND-PASS"
 
 
+def test_setup_check_finds_what_was_wrong_on_the_rig():
+    """The 5302 as read on 2026-09-29, against the lab manual's capacitance table."""
+    from ferro.instruments.lockin5302 import check_setup
+
+    rig = {"reference_mode": "INT", "oscillator_hz": 25000.0, "oscillator_v": 2.0,
+           "sensitivity": "500 mV", "expand": True, "time_constant": "F 100 µs",
+           "filter": "LOW-PASS", "dynamic_reserve": "MIN", "signal_input": "DIRECT"}
+    rows = {r.name: r for r in check_setup(rig)}
+    wrong = {name for name, r in rows.items() if r.ok is False}
+    assert wrong == {"Oscillator level", "Sensitivity", "Expand", "Time constant", "Filter",
+                     "Dynamic reserve"}
+    assert rows["Oscillator level"].now == "2.000 V" and rows["Oscillator level"].wanted == "1.000 V"
+    assert rows["Time constant"].wanted == "500 ms or 200 ms"
+    assert "FUNCT" in rows["Expand"].how
+    rig["oscillator_v"] = None
+    assert {r.name: r for r in check_setup(rig)}["Oscillator level"].ok is None  # unread, not wrong
+
+
+def test_setup_check_passes_a_correctly_set_lockin():
+    from ferro.instruments.lockin5302 import check_setup
+
+    good = {"reference_mode": "INT", "oscillator_hz": 25010.0, "oscillator_v": 1.001,
+            "sensitivity": "1 V", "expand": False, "time_constant": "200 ms", "filter": "FLAT",
+            "dynamic_reserve": "HI STAB", "signal_input": "DIRECT"}
+    assert all(r.ok for r in check_setup(good))
+
+
+def test_cnd3_reports_its_output_and_setpoint_configuration():
+    from ferro.gui.setup_panel import describe_controller
+
+    s = CND3("SIM", instrument=SimModbusInstrument(SimulatedSample())).status()
+    assert (s["output2_percent"], s["output1_max_percent"], s["sv_mode"]) == (0.0, 100.0, "constant")
+    text = describe_controller({**s, "sv_mode": "slope", "sv_slope_c_per_min": 2.5,
+                                "output1_max_percent": 40.0})
+    assert "ramps at 2.5 °C/min" in text and "LIMITED to 40.0%" in text
+
+
+def test_recording_header_says_how_the_lockin_differs_from_the_manual(tmp_path):
+    cfg = config.AppConfig(simulate=True)  # the simulated 5302 sits at 50 mV, not 1 V
+    logs = []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append((lvl, m)))
+    meta = acq._metadata()
+    assert "Sensitivity 50 mV (manual: 1 V)" in meta["lockin_setup_check"]
+    assert any(lvl == "warning" and "differ from the lab manual" in m for lvl, m in logs)
+    for slot in acq.slots.values():
+        slot.close()
+
+
 def test_lockin_xy_split_over_two_reads():
     r = Lockin5302(SplitReplyTransport()).read()
     assert (r.x_counts, r.y_counts) == (5000, -2500)

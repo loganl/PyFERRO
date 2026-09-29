@@ -34,7 +34,7 @@ from .datafile import (
 from .instruments.cnd3 import CND3, PIDError
 from .instruments.hp34401a import HP34401A
 from .instruments.keithley199 import Keithley199
-from .instruments.lockin5302 import Lockin5302
+from .instruments.lockin5302 import Lockin5302, check_setup
 from .instruments.sr830 import SR830
 from .instruments import simulated
 from .transports import (TERMINATIONS, SerialTransport, TransportError, VisaTransport,
@@ -560,9 +560,21 @@ class Acquisition:
                 info = dev.settings() if key == "lockin" else dev.status()
                 for k, v in info.items():
                     meta[f"{label}_{k}"] = "not read" if v is None else v
+                if key == "lockin" and "reference_mode" in info:
+                    self._check_lockin_setup(info, meta)
             except Exception as exc:
                 meta[f"{label}_error"] = str(exc)
         return meta
+
+    def _check_lockin_setup(self, settings: dict, meta: dict) -> None:
+        """Say, in the log and the header, where the 5302 differs from the lab manual."""
+        bad = [c for c in check_setup(settings) if c.ok is False]
+        if not bad:
+            meta["lockin_setup_check"] = "matches the lab manual's 5302 table"
+            return
+        text = "; ".join(f"{c.name} {c.now} (manual: {c.wanted})" for c in bad)
+        meta["lockin_setup_check"] = f"differs from the lab manual's 5302 table: {text}"
+        self.on_log("warning", f"Lock-in settings differ from the lab manual: {text}")
 
     def _open_writer(self) -> None:
         run = self.cfg.run

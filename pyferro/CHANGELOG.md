@@ -34,6 +34,11 @@ to the code that produced it. The number is written in exactly one place,
   button shows them and every data file header records them, so a file says how the
   lock-in was set. The lab manual has a matching 5302 settings table, with how to set
   each one.
+- **Test lock-in checks the 5302 against that table**: a table under the result shows
+  each setting now, the lab manual's value, and for anything that differs, which key
+  changes it. Starting a recording logs any differences as a warning and writes them
+  into the header (`# lockin_setup_check:`). **Test controller** also shows output 2,
+  whether output 1 is limited below 100 %, and the setpoint mode and ramp rate.
 - **`pixi run start` updates itself first** with `git pull --ff-only`, so the lab PC's
   clone always runs the latest code. Being offline, a local edit that blocks the pull,
   or a folder that is not a git clone never stops the program starting.
@@ -46,8 +51,8 @@ to the code that produced it. The number is written in exactly one place,
   It now opens at the screen's size when that is smaller, and the banner has its own
   line and shortens the middle of the path ("…"), with the full path as its tooltip.
 - **Heating and cooling were split badly when the temperature wobbles.** The tracker
-  used a 60 s slope, and a wobble of a few degrees - the controller's relay switching
-  the heater - flipped it on every swing, recolouring the curves and counting a new
+  used a 60 s slope, and a wobble of a few degrees in the readings flipped it on every
+  swing, recolouring the curves and counting a new
   segment each time. It now averages over 120 s and turns only once the average has come
   back 3 °C from the highest (or lowest) point reached. On synthetic runs with ±5 °C
   swings of period 5–120 s it turns exactly once, at the true peak; the old tracker

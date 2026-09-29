@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import copy
+import html
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -23,6 +24,7 @@ from PySide6.QtWidgets import (
 from ..acquisition import open_dmm, open_lockin, open_pid
 from ..config import AppConfig
 from ..instruments.cnd3 import BAUD_RATES, autodetect
+from ..instruments.lockin5302 import check_setup
 from ..transports import list_visa_resources
 from .widgets import PortCombo, run_task
 
@@ -42,6 +44,46 @@ def describe_setup(s: dict) -> str:
             + ", filter " + (s.get("filter") or unread)
             + ", input " + (s.get("signal_input") or unread)
             + ", phase " + (f"{phase:.1f}°" if phase is not None else unread))
+
+
+def describe_controller(s: dict) -> str:
+    """The CND3's output and setpoint configuration, for the Test result."""
+    parts = []
+    if s.get("output2_percent") is not None:
+        parts.append(f"output 2 {s['output2_percent']:.1f}%")
+    limit = s.get("output1_max_percent")
+    if limit is not None and limit < 100:
+        parts.append(f"output 1 LIMITED to {limit:.1f}%")
+    mode = s.get("sv_mode")
+    if mode == "slope" and s.get("sv_slope_c_per_min") is not None:
+        parts.append(f"setpoint ramps at {s['sv_slope_c_per_min']:.1f} °C/min")
+    elif mode and mode != "constant":
+        parts.append(f"setpoint mode: {mode}")
+    return ("; " + ", ".join(parts)) if parts else ""
+
+
+def setup_table_html(rows) -> str:
+    """The lock-in's settings against the lab manual's table, differences in red."""
+    if not rows:
+        return ""
+    bad = [r for r in rows if r.ok is False]
+    head = ("All settings match the lab manual's 5302 table (capacitance measurement)."
+            if not bad else
+            f"{len(bad)} setting(s) differ from the lab manual's 5302 table "
+            "(capacitance measurement):")
+    cells = []
+    for r in rows:
+        colour = {True: "#1f9d55", False: "#d64545", None: "#9aa0a6"}[r.ok]
+        mark = {True: "✔", False: "✘", None: "?"}[r.ok]
+        fix = html.escape(r.how) if r.ok is False else ""
+        cells.append(f"<tr><td style='color:{colour}'>{mark}</td><td>{html.escape(r.name)}</td>"
+                     f"<td style='color:{colour}'>{html.escape(r.now)}</td>"
+                     f"<td>{html.escape(r.wanted)}</td><td>{fix}</td></tr>")
+    return (f"<p>{html.escape(head)}</p><table cellspacing='0' cellpadding='3'>"
+            "<tr><th></th><th align='left'>Setting</th><th align='left'>Now</th>"
+            "<th align='left'>Lab manual</th><th align='left'>Change with</th></tr>"
+            + "".join(cells) + "</table><p>AC/DC and FLOAT/GND cannot be read over GPIB: "
+            "check the buttons above DIRECT INPUT (AC latched, FLOAT released).</p>")
 
 
 def _result_label() -> QLabel:
@@ -95,6 +137,10 @@ class SetupPanel(QWidget):
         self.li_test = QPushButton("Test lock-in")
         self.li_result = _result_label()
         form.addRow(self.li_test, self.li_result)
+        self.li_checks = QLabel("")
+        self.li_checks.setTextFormat(Qt.RichText)
+        self.li_checks.setWordWrap(True)
+        form.addRow(self.li_checks)
         lay.addWidget(box)
 
         # --- CND3 ---------------------------------------------------------------
@@ -254,12 +300,21 @@ class SetupPanel(QWidget):
             finally:
                 li.close()
 
-        self._start(self.li_test, self.li_result, work, lambda s: (
-            f"{s['model']} found — sensitivity {s['sensitivity']}, TC {s['time_constant']}, "
-            f"reference {s['frequency_hz']:.4g} Hz"
-            + (f", {s['expand_name'].upper()} on" if s["expand"] else "")
-            + describe_setup(s)
-            + (f" [{s['link']}]" if s.get("link") else "")))
+        def fmt(s):
+            checks = check_setup(s) if "reference_mode" in s else []
+            self.li_checks.setText(setup_table_html(checks))
+            bad = [c for c in checks if c.ok is False]
+            if bad:
+                self.log.emit("warning", "Lock-in settings differ from the lab manual: " + "; ".join(
+                    f"{c.name} {c.now} (manual: {c.wanted})" for c in bad))
+            return (f"{s['model']} found — sensitivity {s['sensitivity']}, "
+                    f"TC {s['time_constant']}, reference {s['frequency_hz']:.4g} Hz"
+                    + (f", {s['expand_name'].upper()} on" if s["expand"] else "")
+                    + describe_setup(s)
+                    + (f" [{s['link']}]" if s.get("link") else ""))
+
+        self.li_checks.setText("")
+        self._start(self.li_test, self.li_result, work, fmt)
 
     def _test_pid(self) -> None:
         cfg = self._snapshot()
@@ -273,8 +328,9 @@ class SetupPanel(QWidget):
 
         def fmt(s):
             pv = f"{s['pv_c']:.1f}" if s.get("pv_c") is not None else s.get("sensor_error", "?")
-            return (f"CND3 {s['firmware']} — PV {pv} {s['unit']}, SV {s['sv_c']:.1f} {s['unit']}, "
+            text = (f"CND3 {s['firmware']} — PV {pv} {s['unit']}, SV {s['sv_c']:.1f} {s['unit']}, "
                     f"output {s['output1_percent']:.1f}%, {s['control']}, {s['run_state']}")
+            return text + describe_controller(s)
 
         self._start(self.pid_test, self.pid_result, work, fmt)
 

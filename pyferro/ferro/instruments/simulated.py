@@ -163,9 +163,14 @@ class SimModbusInstrument:
             0x1001: word(self.sample.setpoint(now)),
             0x1005: 0,
             0x1012: 455,
+            0x1013: 0,
             0x102A: 0b0100,
             0x102F: 0x0100,
             0x103C: 1,
+            0x1104: 0,
+            0x110E: 1000,
+            0x1120: 0,
+            0x1124: 0,
         }
         return [regs.get(register + i, 0) for i in range(count)]
 

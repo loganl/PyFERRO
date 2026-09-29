@@ -129,6 +129,16 @@ def test_lockin_model_test_button(window, qtbot, model, name):
     assert setup.li_result.text().startswith(f"✔ {name} found"), setup.li_result.text()
 
 
+def test_lockin_test_shows_the_settings_check(window, qtbot):
+    setup = window.setup
+    setup.li_model.setCurrentIndex(setup.li_model.findData("5302"))
+    qtbot.mouseClick(setup.li_test, Qt.LeftButton)
+    qtbot.waitUntil(lambda: setup.li_result.text().startswith(("✔", "✘")), timeout=10000)
+    table = setup.li_checks.text()
+    assert "lab manual" in table and "<table" in table
+    assert "Sensitivity" in table and "the left SEN key" in table  # the simulated 5302 is at 50 mV
+
+
 @pytest.mark.parametrize("model, name", [("34401a", "HP 34401A"), ("k199", "Keithley 199")])
 def test_dmm_model_test_button(window, qtbot, model, name):
     setup = window.setup
