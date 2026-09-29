@@ -124,7 +124,7 @@ Settings persist in `%USERPROFILE%\.ferro\settings.json`; delete it to reset, or
 | 7–8 | `SV_C`, `PV_C` | controller setpoint and temperature |
 | 9 | `T_dmm_C` | multimeter Pt100 temperature (`nan` when unused) |
 | 10 | `sens_V` | lock-in full-scale sensitivity at that moment |
-| 11–12 | `direction`, `segment` | +1 heating, −1 cooling, 0 steady; segment increments at each turn-around |
+| 11–12 | `direction`, `segment` | +1 heating, −1 cooling, 0 not yet known; segment increments at each turn-around. The column switches 1–2 min after a turn; the `# Ramp turned … at T °C, t = … s` line in the file gives where it really was |
 | 13 | `flags` | 1 lock-in overload, 2 lock-in error, 4 controller error, 8 multimeter error, 16 temperature discarded just after connecting (added together) |
 
 Missing values are `nan`. Load with `numpy.loadtxt(path)`, or:

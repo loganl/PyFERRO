@@ -108,6 +108,11 @@ don't add it back.
   **Inferred, not caught on the wire** — COM5 was held by the running app. Now any
   value below -999.9 is a fault, and the first 3 temperatures after each connect are
   discarded (flag 16). If spikes persist, log the raw PV word to confirm the cause.
+- The recorded temperature wobbles by degrees on a ~5 s period (40.5 → 44.5 → 40.6 °C
+  in 3 s, 2026-09-29) — the relay cycling the heater near the probe. The user reports
+  ±5 °C. A slope-based heating/cooling split flips on every swing; `DirectionTracker`
+  averages 120 s and turns on a 3 °C band from the extreme instead. Don't go back to
+  a slope threshold.
 - An unpowered instrument anywhere on the GPIB chain holds NRFD/NDAC and stalls the
   bus, which also makes a scan "find" a device that never answers.
 - `ibic` (MAX → Tools → NI-488.2 → Interactive Control) needs no admin rights, unlike

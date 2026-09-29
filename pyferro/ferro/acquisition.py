@@ -442,9 +442,18 @@ class Acquisition:
             self._watch_lockin(li)
 
         row["T_C"] = row["T_dmm_C"] if self.cfg.run.temp_source == "dmm" else row["PV_C"]
-        row["direction"] = self.tracker.update(row["time_s"], row["T_C"])
-        row["segment"] = self.tracker.segment
-        row["slope_c_per_min"] = self.tracker.slope_c_per_min
+        tr = self.tracker
+        row["direction"] = tr.update(row["time_s"], row["T_C"])
+        row["segment"] = tr.segment
+        row["slope_c_per_min"] = tr.slope_c_per_min
+        row["turned_at_s"] = NAN
+        if tr.just_turned:
+            # The turn is recognised after the extreme, so the rows since then carry the
+            # old direction. Record where it really was; the plot recolours from there.
+            row["turned_at_s"] = tr.turn_time_s
+            self.annotate(f"Ramp turned to {'heating' if tr.direction > 0 else 'cooling'} at "
+                          f"{tr.turn_temp_c:.1f} °C, t = {tr.turn_time_s:.0f} s "
+                          f"(recognised at t = {row['time_s']:.0f} s)")
 
         limit = self.cfg.run.max_temp_c
         t = row["T_C"]

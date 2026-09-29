@@ -35,6 +35,16 @@ to the code that produced it. The number is written in exactly one place,
   `pixi run start --skip-deps` starts without updating.
 
 ### Fixed
+- **Heating and cooling were split badly when the temperature wobbles.** The tracker
+  used a 60 s slope, and a wobble of a few degrees - the controller's relay switching
+  the heater - flipped it on every swing, recolouring the curves and counting a new
+  segment each time. It now averages over 120 s and turns only once the average has come
+  back 3 °C from the highest (or lowest) point reached. On synthetic runs with ±5 °C
+  swings of period 5–120 s it turns exactly once, at the true peak; the old tracker
+  turned up to hundreds of times. A turn is recognised a minute or two late, so the
+  plot recolours the points back to the peak and the file gets a
+  `# Ramp turned to cooling at … °C, t = … s` line. The `direction` column's 0 now
+  means "not yet known" only; there is no separate "steady".
 - **After Clear plots, nothing new appeared on the plots.** Zooming or dragging a plot
   switches its auto-range off, which pins the view to the old time window; once the old
   points were cleared, every new one landed off-screen, so it looked as if nothing was

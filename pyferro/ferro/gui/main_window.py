@@ -143,9 +143,9 @@ class PlotBuffer:
         if self.n == len(self.data["time_s"]):
             for k in self.keys:
                 self.data[k] = np.concatenate([self.data[k], np.empty_like(self.data[k])])
-        # The direction is stored exactly as measured: 0 means the ramp direction is not
-        # established yet (the first readings) or the temperature is holding. Carrying the
-        # last direction forward would paint those points as a ramp they were not part of.
+        # The direction is stored exactly as reported: 0 means the ramp direction is not
+        # known yet (the first minutes). Points before a recognised turn are recoloured
+        # in _on_sample, never guessed ahead of time.
         for k in self.keys:
             v = row.get(k, math.nan)
             self.data[k][self.n] = math.nan if v is None else v
@@ -269,7 +269,7 @@ class MainWindow(QMainWindow):
                        self.p_time.plot(pen=self.flat_pen))
         self.c_x = (self.p_x.plot(pen=self.heat_pen, name="heating"),
                     self.p_x.plot(pen=self.cool_pen, name="cooling"),
-                    self.p_x.plot(pen=self.flat_pen, name="steady / not yet known"))
+                    self.p_x.plot(pen=self.flat_pen, name="not yet known"))
         self.c_y = (self.p_y.plot(pen=self.heat_pen), self.p_y.plot(pen=self.cool_pen),
                     self.p_y.plot(pen=self.flat_pen))
         tl.addWidget(self.plots, 1)
@@ -547,6 +547,12 @@ class MainWindow(QMainWindow):
         self._tick()
 
     def _on_sample(self, row: dict) -> None:
+        turned_at = row.get("turned_at_s", math.nan)
+        if not math.isnan(turned_at):
+            # The tracker recognises a turn a while after the real extreme: recolour the
+            # points since then onto the new branch.
+            d, t = self.buffer.view("direction"), self.buffer.view("time_s")
+            d[t >= turned_at] = row["direction"]
         self.buffer.append(row)
         self._dirty = True
         if self.acq and self.acq.writer:
@@ -561,7 +567,7 @@ class MainWindow(QMainWindow):
         self.tiles["SV"].set(f"{sv:.1f} °C" if not math.isnan(sv) else "—",
                              f"PV {pv:.1f} °C" if not math.isnan(pv) else "")
         slope = row.get("slope_c_per_min", math.nan)
-        arrow = {1: "▲ heating", -1: "▼ cooling", 0: "● steady"}[row.get("direction", 0)]
+        arrow = {1: "▲ heating", -1: "▼ cooling", 0: "● direction not yet known"}[row.get("direction", 0)]
         self.tiles["ramp"].set(f"{slope:+.2f}" if not math.isnan(slope) else "—", f"°C/min  {arrow}  seg {row.get('segment', 0)}")
         ovl = bool(row.get("flags", 0) & 1)
         pct = row.get("percent_fs", math.nan)

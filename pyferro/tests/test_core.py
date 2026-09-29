@@ -533,19 +533,67 @@ def test_legacy_format_matches_labview(tmp_path):
 
 
 # --- direction tracking ----------------------------------------------------------
+def _ramp(tr, rate_c_per_min=2.0, amp=0.0, period_s=5.0, top=150.0, dt=0.5):
+    """Heat 25 C -> top and cool back; return the directions seen and the peak time."""
+    rate = rate_c_per_min / 60
+    t_up = (top - 25) / rate
+    seen, turns, t = [], [], 0.0
+    while t < 2 * t_up:
+        base = 25 + rate * t if t < t_up else top - rate * (t - t_up)
+        d = tr.update(t, base + amp * math.sin(2 * math.pi * t / period_s))
+        if not seen or seen[-1] != d:
+            seen.append(d)
+        if tr.just_turned:
+            turns.append((tr.turn_time_s, tr.turn_temp_c, d))
+        t += dt
+    return seen, turns, t_up
+
+
 def test_direction_tracker_heating_then_cooling():
-    tr = DirectionTracker(window_s=30, threshold_c_per_min=0.5)
-    t = 0.0
-    for _ in range(120):  # 2 min heating at 3 degC/min
-        tr.update(t, 30 + 0.05 * t)
-        t += 1
-    assert tr.direction == 1
-    peak = 30 + 0.05 * t
-    for _ in range(120):
-        tr.update(t, peak - 0.05 * (t - 120))
-        t += 1
-    assert tr.direction == -1
-    assert tr.segment == 1
+    tr = DirectionTracker()
+    seen, turns, t_peak = _ramp(tr)
+    assert seen == [0, 1, -1] and tr.segment == 1
+    turn_t, turn_temp, d = turns[-1]
+    assert d == -1 and abs(turn_t - t_peak) < 10, "the recorded turn is the real peak"
+    assert turn_temp == pytest.approx(150, abs=2)
+
+
+@pytest.mark.parametrize("period_s", [5.0, 30.0, 120.0])
+def test_direction_tracker_ignores_a_five_degree_wobble(period_s):
+    """Relay cycling swings the probe by degrees; the old slope tracker flipped on each swing."""
+    tr = DirectionTracker()
+    seen, _, _ = _ramp(tr, amp=5.0, period_s=period_s)
+    assert seen == [0, 1, -1] and tr.segment == 1
+
+
+def test_direction_tracker_does_not_invent_a_ramp_from_a_wobbling_hold():
+    tr = DirectionTracker()
+    for i in range(2400):  # 20 min holding at 80 C with a +-5 C, 30 s swing
+        t = i * 0.5
+        tr.update(t, 80 + 5 * math.sin(2 * math.pi * t / 30))
+    assert tr.direction == 0 and tr.segment == 0
+    tr.update(1200.5, float("nan"))  # a missing reading changes nothing
+    assert tr.direction == 0
+
+
+def test_a_recognised_turn_is_written_to_the_file_and_recolours_the_plot(tmp_path):
+    cfg = config.AppConfig(simulate=True)
+    logs = []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m))
+
+    class Turned:
+        segment, slope_c_per_min, just_turned = 1, -2.0, True
+        direction, turn_time_s, turn_temp_c = -1, 12.5, 150.1
+
+        def update(self, t, temp):
+            return self.direction
+
+    acq.tracker = Turned()
+    row = acq._sample()
+    assert row["turned_at_s"] == 12.5 and row["direction"] == -1
+    assert any("Ramp turned to cooling at 150.1 °C, t = 12 s" in m for m in logs)
+    for slot in acq.slots.values():
+        slot.close()
 
 
 # --- settings ----------------------------------------------------------------------

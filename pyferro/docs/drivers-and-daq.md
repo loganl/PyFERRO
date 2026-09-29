@@ -359,20 +359,33 @@ direction updates, and the over-temperature alarm fires once, as the limit is cr
 
 Source: [`ferro/analysis.py`](../ferro/analysis.py)
 
-A least-squares slope over the last 60 s — at least 3 points spanning at least 10 s:
+The rig's temperature wobbles: the controller's relay switches the heater every few
+seconds and the probe sits close to it, so readings swing by degrees around the ramp. A
+local slope follows every swing — the first version of this tracker used one and flipped
+between heating and cooling on each. So the tracker does two things instead:
 
-```
-slope = Σ(t − t̄)(T − T̄) / Σ(t − t̄)²
-```
+1. **Average** the temperature over the last 120 s. Swings much faster cancel out.
+2. **Turn only at a turning point.** While heating it remembers the highest average
+   reached, and calls the ramp cooling once the average is **3 °C** below that peak;
+   the mirror image while cooling. A wobble smaller than the band never turns it,
+   however steep.
 
-| Slope | Direction |
-|---|---|
-| above +0.2 °C/min | heating |
-| below −0.2 °C/min | cooling |
-| magnitude under 0.1 °C/min | steady |
-| in between | unchanged — hysteresis, so noise at a turning point doesn't flicker |
+| State | Becomes | When |
+|---|---|---|
+| 0, not yet known | heating / cooling | the average has moved 3 °C from where it started |
+| heating | cooling | the average is 3 °C below the highest it reached |
+| cooling | heating | the average is 3 °C above the lowest it reached |
 
-`segment` counts the flips between heating and cooling.
+A turn is recognised a minute or two after the real extreme. At that moment
+`just_turned` is set and `turn_time_s` / `turn_temp_c` give the extreme, so `_sample`
+annotates the file (`# Ramp turned to cooling at 150.1 °C, t = 7512 s …`) and the
+window recolours the points since then. The rows already written keep the old label.
+
+On synthetic 25 → 150 → 25 °C runs at 1–10 °C/min with ±5 °C swings of period 5–120 s it
+turned exactly once every time, within 4 s of the true peak; the old slope tracker
+turned hundreds of times once the swings were 30 s or slower. `segment` counts the
+turns; `slope_c_per_min`, for the display only, is a least-squares slope of the averaged
+temperature over the last 120 s.
 
 ### Watching settings
 

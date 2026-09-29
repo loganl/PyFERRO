@@ -79,6 +79,14 @@ def test_new_points_are_visible_after_clear_plots_even_after_a_zoom(window, qtbo
     assert ((t >= x0) & (t <= x1) & (temp >= y0) & (temp <= y1)).any(), "new points must be on screen"
 
 
+def test_a_recognised_turn_recolours_the_points_since_the_peak(window):
+    base = {"T_C": 100.0, "X_V": 1e-3, "Y_V": 1e-3}
+    for t in range(10):
+        window._on_sample({**base, "time_s": float(t), "direction": 1})
+    window._on_sample({**base, "time_s": 10.0, "direction": -1, "turned_at_s": 6.0})
+    assert list(window.buffer.view("direction")) == [1] * 6 + [-1] * 5
+
+
 def test_monitor_then_record_creates_separate_files(window, qtbot, tmp_path):
     window.sample.setText("two")
     qtbot.mouseClick(window.start_btn, Qt.LeftButton)
