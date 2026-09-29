@@ -278,8 +278,9 @@ machine (macOS, Linux or Windows).
 
 `pixi run start` first runs `tools/update.py`, which does `git pull --ff-only` so a
 git clone (such as the lab PC's `C:\PyFERRO`) always starts on the latest code. It never
-stops the program starting: offline, a local edit in the way, or a folder that is not a
-clone each print one line and start the code as it is. If the pull changed the
+stops the program starting: offline ("update: offline", after at most 10 s), a local
+edit in the way, or a folder that is not a clone each print one line and start the code
+as it is. If the pull changed the
 dependencies, it says to close and start again so pixi can install them.
 
 | File | Covers |

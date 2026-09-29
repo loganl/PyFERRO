@@ -12,16 +12,41 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TIMEOUT_S = 20  # a slow or absent network must not hold up the start
+TIMEOUT_S = 10  # a slow or absent network must not hold up the start
+# What git says when it cannot reach GitHub: being offline is normal, not an error.
+OFFLINE_SIGNS = ("could not resolve host", "unable to access", "failed to connect",
+                 "timed out", "could not read from remote", "network is unreachable",
+                 "connection refused", "connection was reset")
+OFFLINE = "update: offline - starting without updating"
 
 
 def git(*args: str) -> subprocess.CompletedProcess:
+    """Run git, giving up after TIMEOUT_S.
+
+    Output goes to temporary files, not pipes, and a timeout kills the whole process
+    tree: on Windows git's network helper (git-remote-https) outlives git.exe and
+    holds a pipe open, which kept an unreachable network waiting ~21 s, not 10.
+    """
     env = dict(os.environ, GIT_TERMINAL_PROMPT="0")  # never wait for a password prompt
-    return subprocess.run(["git", *args], cwd=HERE, capture_output=True, text=True,
-                          timeout=TIMEOUT_S, env=env)
+    with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+        proc = subprocess.Popen(["git", *args], cwd=HERE, stdout=out, stderr=err, env=env)
+        try:
+            proc.wait(timeout=TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            if os.name == "nt":
+                subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                               capture_output=True)
+            proc.kill()
+            raise
+        out.seek(0)
+        err.seek(0)
+        return subprocess.CompletedProcess(proc.args, proc.returncode,
+                                           out.read().decode(errors="replace"),
+                                           err.read().decode(errors="replace"))
 
 
 def main() -> int:
@@ -34,11 +59,15 @@ def main() -> int:
         print("update: git is not installed - starting without updating")
         return 0
     except subprocess.TimeoutExpired:
-        print(f"update: no answer from GitHub in {TIMEOUT_S} s - starting without updating")
+        print(OFFLINE)
         return 0
 
     if pulled.returncode != 0:
-        reason = (pulled.stderr or pulled.stdout).strip().splitlines()
+        text = (pulled.stderr or pulled.stdout).strip()
+        if any(sign in text.lower() for sign in OFFLINE_SIGNS):
+            print(OFFLINE)
+            return 0
+        reason = text.splitlines()
         print("update: could not update - starting the code as it is.")
         for line in reason[:4]:
             print(f"  {line}")
