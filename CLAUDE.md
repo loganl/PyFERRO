@@ -56,7 +56,7 @@ writability test, and the git-tag test when HEAD is not on a tag.
 | CND3 wiring | terminal **13 = D−**, **14 = D+**; probe on 10/11/12 |
 | HP 34401A | optional second thermometer, GPIB 24. On the bus 2026-09-29 but set to DC volts (`FUNC?` → `"VOLT"`); the driver does not set the function, so it needs 4-wire Ω from the front panel |
 | SRS SR830 lock-in | GPIB **8**, s/n 36537, fw 1.04. Works through the app (10/10 Test, 60/60 samples, a recorded run), 2026-09-29 |
-| Keithley 199 | driver in the app, **not on the bus** — checked only against its manual and in simulation |
+| Keithley 199 | GPIB **6**. Talks through the app 2026-09-29 (status word `1991…`, set to ohms, no errors) but read `OOHM+9.999999E+9` — open circuit; `U5X` → `RF=0` = **front** inputs selected (the FRONT/REAR switch is mechanical, not settable over GPIB) |
 
 Lock-in and multimeter models are chosen on the Instruments tab (`LOCKIN_MODELS`,
 `DMM_MODELS` in `acquisition.py`). The EG&G 5301A was removed at the user's request —
