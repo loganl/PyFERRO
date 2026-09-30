@@ -1,7 +1,10 @@
 """Ask the lock-in's GPIB link a few questions and print a verdict you can read aloud.
 
     pixi run gpib                       # GPIB0::12::INSTR
-    pixi run gpib GPIB0::8::INSTR       # somewhere else
+    pixi run gpib GPIB0::7::INSTR       # a 5302 at another address
+
+It asks the 5302's ``ID``, so it is for the 5302 only: an SR830 or a multimeter
+does not answer that and would be reported as a failed link.
 
 Nothing here is clever: it is the same pyvisa the program uses, doing the smallest
 steps in order, so a failure lands on one of them instead of on "VI_ERROR_TMO".

@@ -2,24 +2,37 @@
 
 Data acquisition for the PHY445 phase-transition lab: a lock-in amplifier measures a
 sample's dielectric response while a PID controller ramps its temperature through a
-transition. Replaces `FERRO v.2.vi`, a LabVIEW 2009 routine.
+transition. Replaces `FERRO v.2.vi`, a LabVIEW 2009 routine. The repo also holds the
+lab manual (`ptmanual/`).
 
-`pyferro/README.md` is the documentation — one file, deliberately. Don't add more doc
-files; extend that one. The one exception, added at the user's request, is
-`pyferro/docs/drivers-and-daq.md`: a teaching walkthrough of the transports, drivers
-and acquisition loop. Keep it in step when those change. `pyferro/CHANGELOG.md` records each release.
+## Documentation — keep it in step with every change
+
+| File | What it is |
+|---|---|
+| `pyferro/README.md` | **the** documentation: install, wiring, taking data, file format, troubleshooting, protocols, code layout, tests, releases |
+| `pyferro/docs/drivers-and-daq.md` | teaching walkthrough of transports, drivers and the loop (the one extra doc file, added at the user's request) |
+| `pyferro/CHANGELOG.md` | every user-visible change goes under `## Unreleased` |
+| `README.md` (root) | short overview pointing at the above |
+| `ptmanual/main.tex` | the lab manual; its PyFERRO appendix (`app:pyferro`) and 5302 table describe the program |
+| module docstrings | each driver's docstring lists the commands it uses |
+
+Don't add more doc files; extend these. A code change that alters behaviour, a
+message, a command or a file column needs the matching README/CHANGELOG (and, for
+drivers or the loop, drivers-and-daq.md) edit in the same commit.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `pyferro/ferro/` | the program — `gui/`, `acquisition.py` (measurement loop), `instruments/`, `transports.py` |
-| `pyferro/tools/gpib_check.py` | GPIB diagnostics; `pixi run gpib` |
-| `pyferro/tests/` | drivers, wire-level protocol tests over a pty, GUI tests, version consistency |
-| `pyferro/packaging/` | `build_offline.sh`, `release.sh`, Windows launchers |
-| `pyferro/docs/drivers-and-daq.md` | how transports, drivers and the DAQ loop work |
+| `pyferro/ferro/` | the program — `gui/` (`main_window.py`, `setup_panel.py` = Instruments tab, `lockin_panel.py` = Lock-in tab), `acquisition.py` (loop, `LOCKIN_MODELS`/`DMM_MODELS`), `instruments/`, `transports.py`, `datafile.py`, `analysis.py`, `sessionlog.py`, `config.py` |
+| `pyferro/tools/gpib_check.py` | GPIB diagnostics for the 5302 (asks `ID`); `pixi run gpib` |
+| `pyferro/tools/update.py` | `git pull --ff-only` run by `pixi run start`; never blocks the start |
+| `pyferro/tests/` | `test_core.py` (drivers vs fakes, data files, loop), `test_protocols.py` (serial/Modbus over a pty), `test_gui.py` (pytest-qt), `test_version.py` |
 | `pyferro/docs/manuals/` | instrument manuals — **read these before guessing at instrument behaviour** |
-| `ptmanual/` | LaTeX lab manual |
+| `ptmanual/` | LaTeX lab manual. Its 5302 table must match `CAPACITANCE_SETUP` in `lockin5302.py`; `main.pdf`/`main-tagged.pdf` are committed, so rebuild them (`make`, `make tagged`; LuaLaTeX, TeX Live ≥ 2024) after editing `main.tex` |
+
+There is **no packaging**: the offline Windows bundle, `packaging/` and `release.sh`
+were removed at the user's request (2026-09-30). Don't bring them back.
 
 ## Commands
 
@@ -28,26 +41,43 @@ Run from `pyferro/`:
 ```bash
 pixi run simulate            # GUI against simulated instruments
 pixi run start               # git pull --ff-only (tools/update.py), then real instruments
-pixi run -e test test        # full suite
-pixi run gpib                # diagnose the lock-in's GPIB link
+pixi run -e test test        # full suite (QT_QPA_PLATFORM=offscreen on a headless box)
+pixi run gpib                # diagnose the 5302's GPIB link
 ```
 
+Use the pixi environment, not pip into the system Python — the user's preference.
 Three test skips are expected on Windows: the pty protocol module, the chmod
 writability test, and the git-tag test when HEAD is not on a tag.
+
+### In a Claude Code cloud session
+
+- pixi is not preinstalled and `pixi.sh` is blocked by the network policy. The binary
+  from GitHub releases works:
+  `curl -fsSL https://github.com/prefix-dev/pixi/releases/latest/download/pixi-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ~/.pixi/bin`
+  (after `mkdir -p ~/.pixi/bin`), then `~/.pixi/bin/pixi install -e test`.
+- Four tests fail in that container and pass on real machines: the chmod
+  writability test (the container runs as root) and three `test_protocols.py` CND3
+  tests (its pty refuses 7E1 framing: `termios.error: (22, 'Invalid argument')`).
+  Anything else failing is real.
+- No TeX Live and CTAN is blocked, so the lab-manual PDFs cannot be rebuilt there; say
+  so and leave `make` to the user.
 
 ## Conventions
 
 - **Version**: one line, `__version__` in `pyferro/ferro/__init__.py`. Everything else
-  derives from it and a test fails if a second copy appears. Release with
-  `./packaging/release.sh [--dry-run] [--publish]`. No scripted version syncing —
-  that was tried and rejected as overcomplicated.
+  derives from it and a test fails if a second copy appears. No scripted version
+  syncing — that was tried and rejected as overcomplicated.
+- **Releases** are by hand (README §9): test, bump `__version__`, add the CHANGELOG
+  section, commit, `git tag -a v<version>`, push. Tagging is the user's decision, not
+  part of routine work. Note: 1.0.2 was released (CHANGELOG) but never tagged, and
+  1.1.0 (2026-09-30) is not tagged yet.
 - **Commits**: end with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 - **Pushing**: push work the user asked for without asking first; they pull it on the
-  lab PC. Tagging and publishing a release stay separate decisions.
-- The lab PC has internet and a git clone at `C:\PyFERRO`, started with `pixi run start`
-  (which pulls first). **The offline bundle is not used** (user, 2026-09-29), though
-  `packaging/` and README §1/§9 still describe it.
-- On this machine the folder is `PyFERRO` on disk but tracked as `pyferro`: a **new**
+  lab PC. Sessions work on `claude/...` branches; the lab PC pulls `main`, so work
+  reaches the lab only once merged.
+- The lab PC has internet and a git clone at `C:\PyFERRO`, started with
+  `pixi run start` (which pulls first). Windows 10/11, 1280 px wide screen.
+- On the lab PC the folder is `PyFERRO` on disk but tracked as `pyferro`: a **new**
   file shows as `?? PyFERRO/...`, and neither `git add pyferro` nor
   `git add pyferro/tools/new.py` stages it (adding it as `PyFERRO/...` would split the
   folder in two on case-sensitive systems). Stage it under the tracked name:
@@ -145,3 +175,11 @@ connection per query, like a program start, with the same reply delay as the app
 
 Don't respond to intermittent failures by rearranging the command sequence. That was
 tried repeatedly and each apparent fix was noise.
+
+## Known gaps in the lab manual
+
+- The "Temperature control" section and the controller-programming appendix
+  (`app:tempcontrol`) still describe the old Omega CNi8DH44 (web interface, iSeries
+  config program), not the CND3. Needs the lab's front-panel procedure from the user.
+- The 5209 walkthrough (BNC-cable practice run, 90° button) sits beside the newer 5302
+  table; whether to rewrite it for the 5302 is the user's call.

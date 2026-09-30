@@ -9,6 +9,8 @@ to the code that produced it. The number is written in exactly one place,
 
 ## Unreleased
 
+## 1.1.0 — 2026-09-30
+
 ### Added
 - **Choice of lock-in and multimeter model** on the Instruments tab. The lock-in can be
   an EG&G 5302 (this rig, the default) or an SRS SR830; the multimeter
@@ -53,6 +55,23 @@ to the code that produced it. The number is written in exactly one place,
   clone always runs the latest code. Being offline, a local edit that blocks the pull,
   or a folder that is not a git clone never stops the program starting.
   `pixi run start --skip-deps` starts without updating.
+- **`pixi run gpib`** (`tools/gpib_check.py`) diagnoses the lock-in's GPIB link one
+  step at a time — VISA library, listeners on the bus (without MAX or admin rights),
+  serial poll, `ID` under each terminator pair, then twenty fresh connections — and ends
+  in a one-line verdict with a success rate.
+
+### Changed
+- **Installing on the lab PC is now a git clone run with pixi**, not the offline bundle:
+  the README's install section, troubleshooting and the lab manual describe that route.
+- Releasing is now by hand — test, commit, tag, push (README §9) — since there is no
+  longer a bundle to build.
+- The lab manual's data-taking appendix describes PyFERRO instead of the LabVIEW
+  routine, and its suggested protocol and temperature-measurement section follow.
+
+### Removed
+- **The offline Windows bundle and its packaging** (`packaging/`: `build_offline.sh`,
+  `release.sh`, `INSTALL.bat` and the `.bat` launchers), with its README section and
+  tests. The lab PC has internet and runs the git clone, so nothing uses it.
 
 ### Fixed
 - **The window ran off the right of the screen.** It opened at a fixed 1400 px, wider

@@ -8,10 +8,17 @@ Command reference: 5302 Instruction Manual (221490-A-MNL-F), chapter 9.
 * ``XTC`` -> output time-constant index 0..18
 * ``FRQ`` -> reference frequency in mHz
 * ``ID``  -> "5302"
+* ``IE``, ``OA``, ``OF``, ``DR``, ``FLT``, ``PREAMP``, ``P`` -> the front-panel set-up
+  (reference, oscillator level and frequency, reserve, filter, input, phase), read by
+  ``setup()`` for the Test button, the file header and the once-a-minute poll
 
 Volts are computed as ``counts / 10000 * full_scale`` using the sensitivity read
 back from the instrument, so changing SEN on the front panel mid-run (or an
 auto-sensitivity step) is picked up automatically.
+
+The same commands with a number set the value. ``apply()`` sends the ones in
+``SETTABLE`` (the Lock-in tab), and ``check_setup()`` compares the settings with
+``CAPACITANCE_SETUP``, the lab manual's 5302 table.
 """
 
 from __future__ import annotations

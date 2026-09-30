@@ -7,7 +7,9 @@ Reference: Omega CND3 Series User's Guide, "RS-485 Communication" section.
 * Function 03H reads up to 8 words.  The app only ever *reads* - it never
   writes to the controller, so it cannot change setpoints or heater power.
 * 1000H PV and 1001H SV are signed, 0.1 degree units.  PV reads 8002H..8007H
-  when the sensor has a fault.
+  when the sensor has a fault; anything below -999.9 is treated as a status code too.
+* ``status()`` and ``setup()`` read the rest for the Test button and the file header:
+  outputs, control method, run state, units, firmware, setpoint mode and ramp rate.
 """
 
 from __future__ import annotations

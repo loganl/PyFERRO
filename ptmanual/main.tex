@@ -264,9 +264,9 @@ data will be stored in the computer and need not be in the notebook.
 See the equipment manuals for details. The temperature controller has a web
 interface. Use this interface for programming the controller (see
 Appendix~\ref{app:tempcontrol}). The lock-in amplifier and the Keithley
-multimeter are connected to a computer by the IEEE~488 interface. A data-taking
-routine, written in LabVIEW, is provided for recording data
-(Appendix~\ref{app:labview}).
+multimeter are connected to a computer by the IEEE~488 (GPIB) interface, and the
+temperature controller by RS-485. A data-taking program, PyFERRO, records the
+lock-in signal and the temperature (Appendix~\ref{app:pyferro}).
 
 \begin{figure}[htbp]
   \centering
@@ -658,7 +658,7 @@ resistor: instead of being \SI{10}{\mega\ohm} it can be, for example,
 to monitor the current and to use the measured current $I_{\mathrm{meas}}$ in a
 calculation of a sample resistance at every point along the way. This can be
 done with the use of an additional computer-interfaced voltmeter, and with
-modification of a LabVIEW program.
+a modification of the data-taking program.
 
 \notebox{Do not overdrive the sample}{The current should not be increased
 indefinitely; excessive currents can produce self-heating and even damage the
@@ -1215,17 +1215,24 @@ the four terminals. (Note the two red leads go to the same side of the resistor,
 and the two black leads go to the other side. For the extension wires the reds
 are connected to browns and the blacks are connected to whites.)
 
-When the computer reads out the resistance values, it will convert them to
-temperature according to the (approximate) relation
+When the computer reads out the resistance values, it converts them to
+temperature with the standard platinum-resistor relation (IEC~60751)
 \begin{equation}
-  T = \SI{100}{\degreeCelsius}
-      + \frac{R - \SI{100}{\ohm}}{\SI{0.385}{\ohm\per\degreeCelsius}} .
+  R = R_{0}\left(1 + A\,T + B\,T^{2}\right), \qquad
+  R_{0} = \SI{100}{\ohm},\;
+  A = \SI{3.9083e-3}{\per\degreeCelsius},\;
+  B = \SI{-5.775e-7}{\per\degreeCelsius\squared},
 \end{equation}
+which near room temperature is close to
+$T \approx (R - \SI{100}{\ohm})/(\SI{0.385}{\ohm\per\degreeCelsius})$.
+To record this thermometer, tick \emph{Also read the multimeter} on PyFERRO's
+Instruments tab (Appendix~\ref{app:pyferro}); its reading is saved in the
+\texttt{T\_dmm\_C} column, next to the controller's own probe in \texttt{PV\_C}.
 
-The two data files contain (1) the time dependence of the temperature and (2) the
-temperature dependence of the lock-in output voltage. It is expected that you
-transfer the relevant data files to a thumb drive to carry out the evaluation of
-the data.
+Each recording is one data file holding both the time dependence of the
+temperature and the temperature dependence of the lock-in output voltage. It is
+expected that you transfer the relevant data files to a thumb drive to carry out
+the evaluation of the data.
 
 Before measuring the sample, study the temperature control process. Start at room
 temperature or at a temperature below \SI{50}{\degreeCelsius}. Select a set point
@@ -1242,8 +1249,9 @@ Discuss these observations in your lab report.
   \item Tune the lock-in, and set up the sample (\VOtwo\ or \BTO) in the sample
         chamber. Cover the sample chamber with the stainless steel cover (the
         dewar).
-  \item Start the \texttt{Ferro.vi} LabVIEW routine.
-  \item Start saving data in LabVIEW.
+  \item Start PyFERRO and press \emph{Start monitoring}
+        (Appendix~\ref{app:pyferro}).
+  \item Press \emph{Record} to start saving data.
   \item Program ``Set point 1'' of the temperature controller to
         \SI{90.0}{\degreeCelsius} for a \VOtwo\ measurement and
         \SI{150.0}{\degreeCelsius} for the capacitance \BTO\ measurement.
@@ -2035,33 +2043,55 @@ screen shows the ``Control Type''. Here is the place where you can change to
 
 \clearpage
 % =============================================================================
-\section{Data taking with LabVIEW}\label{app:labview}
+\section{Data taking with PyFERRO}\label{app:pyferro}
 % =============================================================================
 
+PyFERRO replaces the LabVIEW routine \texttt{Ferro.vi}. It reads the lock-in, the
+temperature controller and, optionally, the multimeter, plots the data live and
+saves them. It only reads the temperature controller: setpoints and ramps are set
+on the controller itself.
+
 \begin{enumerate}
-  \item Click on the ``Ferro'' shortcut on the desktop.
-  \item Press the right arrow in the upper left corner to start the program. The
-        communication to the voltmeter and the lock-in should start, but the data
-        is not recorded yet.
-  \item Write the file names where the data should be stored into the fields on
-        the top part of the window. Use this format:
-        \texttt{c:\textbackslash StudentData\textbackslash 2012Fall\textbackslash
-        Group1\textbackslash yourfile.txt}. The directories \texttt{Group1},
-        \texttt{Group2} and \texttt{Group3} correspond to the first, second and
-        third labs in any given semester.
-  \item If you wish to record the data, press ``Save''. Two files can be stored:
-        one is the temperature dependence of the capacitance, and the other is
-        the time dependence of the temperature. It is crucial that you write the
-        file name in your lab notes, where you also record the lock-in settings
-        and any other information you may need to reconstruct the circumstances
-        of the measurement.
-  \item Stop data taking by pressing ``Save'' again. Write in a new file name, so
-        that the next time you save data it is recorded separately. (If you do
-        not change the file name, the new data will be appended to the existing
-        data.)
-  \item To clear the screen, press stop. When you restart the measurement (right
-        arrow in the upper left corner) a blank screen will appear.
+  \item Open a terminal in \texttt{C:\textbackslash PyFERRO\textbackslash pyferro}
+        and type \texttt{pixi run start}. The program first fetches any update,
+        then opens its window. Nothing is measured yet.
+  \item On the \emph{Instruments} tab, press \emph{Test lock-in} and
+        \emph{Test controller}; each should answer with a green tick. For the
+        lock-in, a table underneath compares every setting with
+        Table~\ref{tab:lockin5302} and names the key that changes any setting that
+        differs. The \emph{Lock-in} tab can also set them: \emph{Lab-manual
+        values} fills in the table's values, and \emph{Apply to lock-in} sends
+        them. To record the Keithley thermometer as well, tick \emph{Also read the
+        multimeter}.
+  \item On the \emph{Run} tab, enter a sample or run name (it becomes the file
+        name), the operator, the drive details and any notes, and choose the save
+        folder. Set the \emph{reading interval} to at least five times the
+        lock-in time constant.
+  \item Press \emph{Start monitoring} (F5). The plots and readouts start, but
+        nothing is saved yet.
+  \item Press \emph{Record} (Ctrl+R) to save. Every recording goes to a new file,
+        \texttt{<name>\_YYYYMMDD\_HHMMSS.txt}; an existing file is never
+        overwritten or appended to. Press \emph{Record} again to close the file;
+        the next recording opens another one.
+  \item \emph{Clear plots} empties the screen without touching the file;
+        \emph{Stop} disconnects the instruments.
 \end{enumerate}
+
+The data file starts with \texttt{\#} lines that record the sample name, the
+lock-in's settings (sensitivity, time constant, reference, oscillator, filter,
+reserve and input) and the controller's, so the file itself says how the
+measurement was set up. Anything that changes during the run, such as a
+sensitivity change or an overload, is written into the file as a \texttt{\#} line
+at the moment it happens. The columns are tab-separated; the first three are the
+temperature (\si{\degreeCelsius}) and the lock-in $X$ and $Y$ (\si{\volt}), as in
+the LabVIEW files, followed by the time, $R$ and $\theta$, the controller's
+setpoint and temperature, the multimeter temperature, the lock-in full scale, the
+heating or cooling direction, a segment number and error flags. Missing readings
+are written as \texttt{nan}. The files load directly with \texttt{numpy.loadtxt} or
+with pandas (\texttt{comment="\#"}), and with most spreadsheet programs.
+
+Write the file name in your lab notes all the same, with anything else you need
+to reconstruct the circumstances of the measurement.
 
 \clearpage
 % =============================================================================

@@ -15,7 +15,7 @@ from the wires up to the measurement loop, with every example taken from this ri
 
 | Layer | Files | Job |
 |---|---|---|
-| GUI | `gui/main_window.py` | Draws plots and readouts. Never talks to an instrument. |
+| GUI | `gui/main_window.py`, `setup_panel.py`, `lockin_panel.py` | Draws plots and readouts. Never talks to an instrument the loop has open. |
 | **DAQ** | `acquisition.py` | When to read, what to do when a read fails, what to save. |
 | **Drivers** | `instruments/lockin5302.py`, `cnd3.py`, `hp34401a.py` (+ other models, §4) | What the instrument's answers mean. |
 | **Transports** | `transports.py`, minimalmodbus | How bytes get there and back. |
@@ -81,8 +81,9 @@ query(cmd) -> str   # send; return the reply text
 close()
 ```
 
-Three classes implement it: `VisaTransport`, `SerialTransport`, and `SimLockinTransport`
-in the simulator.
+`VisaTransport` and `SerialTransport` implement it for real hardware, and the simulator
+has one fake per instrument model (`SimLockinTransport` for the 5302, `SimSR830Transport`,
+`SimDMMTransport`, `SimK199Transport`).
 
 ### Terminators, as actual bytes
 
@@ -158,11 +159,28 @@ Source: [`ferro/instruments/lockin5302.py`](../ferro/instruments/lockin5302.py)
 | `OA`, `OF` | oscillator level and frequency as `n1 n2`: a count and its range |
 | `P` | reference phase as `quadrant millidegrees` |
 
-The last three rows are read only by `setup()`, for the **Test** button and the data-file
-header — a record of how the front panel was set, following the lab manual's 5302
-table. Each is read on its own and becomes `not read` if it fails, so a dropped exchange
-there cannot fail a Test or a recording. AC/DC coupling and FLOAT/GND are latching keys
-with no GPIB command and cannot be read at all.
+The last three rows are read by `setup()`, for the **Test** button, the data-file header,
+the Lock-in tab and the once-a-minute poll during a run (§5) — a record of how the front
+panel was set, following the lab manual's 5302 table. Each is read on its own and becomes
+`not read` if it fails, so a dropped exchange there cannot fail a Test or a recording.
+AC/DC coupling and FLOAT/GND are latching keys with no GPIB command and cannot be read
+at all.
+
+**Setting the 5302.** Every command above that reads a value also sets it when given a
+number: `SEN 21`, `XTC 8`, `EX 0`, `IE 0`, `OF 2500 7`, `OA 1000 2`, `DR 1`, `FLT 0`,
+`PREAMP 0`. `SETTABLE` lists what the driver can set, in the order `apply()` sends it
+— the time constant before the reserve, because a FAST time constant forces MIN reserve
+(manual §4.3). `commands_for` builds every command, checking each value, before
+`apply()` sends the first, so a bad value sends nothing. `oscillator_frequency_command`
+and `oscillator_level_command` do the count-and-range encoding: 25 kHz is `OF 2500 7`
+(2500 in the 10–100 kHz decade), 1 V is `OA 1000 2` (1000 mV steps of 1 mV).
+
+**Checking against the lab manual.** `CAPACITANCE_SETUP` is the lab manual's 5302 table
+as data — setting, wanted value, and which front-panel key changes it — and
+`check_setup(settings)` compares a `settings()` dict with it row by row: ✔, ✘, or "not
+read". The Test button shows the result as a table, a recording writes it into the
+header (`# lockin_setup_check:`), and the Lock-in tab's *Lab-manual values* fills its
+form from the same table. Keep it in step with `ptmanual/main.tex`.
 
 The instrument speaks **counts, not volts**. ±10000 counts is full scale; readings run to
 ±12000 before clipping.
@@ -232,6 +250,12 @@ interprets the answer. Its `_read` retries twice, sleeping 50 ms then 100 ms, an
 **never writes** — so it cannot touch the setpoint or the heater. `autodetect` works
 through mode × baud × framing, asking for the firmware register until something answers.
 
+Beyond PV and SV, `status()` gathers what **Test controller** shows and the data-file
+header records: firmware, output 1 level, control method (1005H), run state (103CH) and
+°C/°F, plus `setup()` — output 2, output 1's upper limit, the setpoint mode and its ramp
+rate. Like the 5302's `setup()`, each of those is read on its own and becomes `None` if
+it fails, because they explain a run rather than measure it.
+
 On the wire, 17 characters out and 19 back is about **37 ms**, plus the controller's own
 response time.
 
@@ -239,9 +263,11 @@ response time.
 
 Source: [`ferro/instruments/hp34401a.py`](../ferro/instruments/hp34401a.py)
 
-`READ?` returns ohms. The driver solves the Callendar–Van Dusen quadratic
-R = R₀(1 + A·T + B·T²) for T: 109.73 Ω → 25.0 °C, 157.33 Ω → 150.0 °C. A sanity window of
-0.5–3 × R₀ catches a meter left in the wrong mode.
+`READ?` returns whatever the meter is measuring: the driver sends no function command,
+so the meter must be put in 4-wire ohms on its front panel. The driver solves the
+Callendar–Van Dusen quadratic R = R₀(1 + A·T + B·T²) for T: 109.73 Ω → 25.0 °C,
+157.33 Ω → 150.0 °C. A sanity window of 0.5–3 × R₀ catches a meter left in the wrong
+mode — on the rig it was once found on DC volts.
 
 ### Other models: one shape, several drivers
 
@@ -249,9 +275,13 @@ The rig uses a 5302 and a 34401A, but the Instruments tab can select an SRS SR83
 lock-in and a Keithley 199 multimeter. `open_lockin` and `open_dmm` look the
 driver up in `LOCKIN_MODELS` / `DMM_MODELS`, and nothing above them knows which one they
 got, because every lock-in driver has the same methods (`check`, `read`, `settings`,
-`time_constant_index`, `frequency_hz`, `close`) and every reading the same fields
-(`x_v`, `y_v`, `r_v`, `theta_deg`, `sensitivity`, `full_scale_v`, `percent_fs`,
-`expand`, `overloaded`). The multimeters share `check`, `read_raw`, `read_celsius`.
+`close`) and attributes (`MODEL`, `SENSITIVITY_LABELS`, `TIME_CONSTANT_LABELS`,
+`EXPAND_NAME`), and every reading the same fields (`x_v`, `y_v`, `r_v`, `theta_deg`,
+`sensitivity`, `full_scale_v`, `percent_fs`, `expand`, `overloaded`). The multimeters
+share `check`, `read_raw`, `read_celsius`, `close` and `MODEL`. Only the 5302 has
+`setup()` and `apply()`: the acquisition loop checks for `apply` before sending a
+Lock-in-tab change, and the setup check runs only when `settings()` includes
+`reference_mode`.
 
 What differs is what the manuals say, and each difference shows up somewhere specific:
 
@@ -273,8 +303,9 @@ What differs is what the manuals say, and each difference shows up somewhere spe
 Source: [`ferro/instruments/simulated.py`](../ferro/instruments/simulated.py)
 
 The fakes sit **below** the drivers. `SimLockinTransport` implements the transport
-contract and answers `SEN` and `XY` as a 5302 would, so the real parsing and scaling code
-runs. `SimModbusInstrument` stands in for `minimalmodbus.Instrument`, so the real
+contract and answers `SEN`, `XY` and the rest as a 5302 would — starting in the lab
+manual's set-up, and taking new values from `SEN 21`-style commands — so the real
+parsing, scaling and setting code runs. `SimModbusInstrument` stands in for `minimalmodbus.Instrument`, so the real
 `decode_temperature` runs. One shared `SimulatedSample` keeps all three instruments
 agreeing on the temperature. `lockin_transport` and `dmm_transport` pick the fake that
 matches the selected model.
