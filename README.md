@@ -17,7 +17,7 @@ Needs [pixi](https://pixi.sh) only — it fetches Python and every dependency it
 git clone https://github.com/loganl/PyFERRO.git
 cd PyFERRO/pyferro
 pixi run simulate          # the full GUI, driven by simulated instruments
-pixi run -e test test      # 32 tests, no hardware, GUI tests run offscreen
+pixi run -e test test      # the test suite: no hardware needed, GUI tests run offscreen
 ```
 
 Simulation sits *below* the drivers, so the same parsing, scaling and file-writing code
@@ -27,39 +27,46 @@ runs as in the lab. Against real instruments it is `pixi run start`.
 
 | Path | What it is |
 |---|---|
-| `pyferro/ferro/` | the program: `gui/`, `acquisition.py` (the measurement loop), `instruments/` (drivers), `transports.py` (GPIB/serial), `config.py`, `datafile.py`, `analysis.py` |
+| `pyferro/ferro/` | the program: `gui/`, `acquisition.py` (the measurement loop), `instruments/` (drivers), `transports.py` (GPIB/serial), `config.py`, `datafile.py`, `analysis.py`, `sessionlog.py` |
+| `pyferro/tools/` | `update.py` (the `git pull` before `pixi run start`) and `gpib_check.py` (`pixi run gpib`, a GPIB link diagnostic) |
 | `pyferro/tests/` | drivers, wire-level protocol tests over a pty, GUI tests, version consistency |
-| `pyferro/packaging/` | `build_offline.sh` and the Windows launchers |
-| `pyferro/docs/` | wiring diagram and the instrument manuals |
+| `pyferro/packaging/` | `release.sh`, `build_offline.sh` and the Windows launchers for the offline bundle |
+| `pyferro/docs/` | `drivers-and-daq.md`, the wiring diagram and the instrument manuals |
 | `ptmanual/` | LaTeX source of the lab manual, its figures and standalone TikZ sources |
 
 **[`pyferro/README.md`](pyferro/README.md) is the complete documentation** — install,
 wiring, taking data, file format, instrument protocols, code layout, tests, packaging
-and releases. [`pyferro/CHANGELOG.md`](pyferro/CHANGELOG.md) records each version.
+and releases. [`pyferro/docs/drivers-and-daq.md`](pyferro/docs/drivers-and-daq.md)
+walks through the transports, drivers and measurement loop, and
+[`pyferro/CHANGELOG.md`](pyferro/CHANGELOG.md) records each version.
 
 ## The hardware it talks to
 
 | Instrument | Link | Protocol |
 |---|---|---|
-| EG&G/PAR 5302 lock-in | GPIB (NI adapter) | text commands, integer counts scaled by the instrument's own sensitivity setting |
+| EG&G/PAR 5302 lock-in | GPIB (NI adapter), address 12 | text commands, integer counts scaled by the instrument's own sensitivity setting; its settings can also be set from the program |
 | Omega CND3 PID controller | RS-485 via an FTDI USB adapter | Modbus ASCII/RTU, read-only |
-| HP 34401A multimeter (optional) | GPIB | `READ?`, Pt100 → °C (IEC 60751) |
+| HP 34401A multimeter (optional) | GPIB, address 24 | `READ?`, Pt100 → °C (IEC 60751) |
+
+The Instruments tab can also select an **SRS SR830** lock-in (GPIB 8 on this rig) and a
+**Keithley 199** multimeter (GPIB 6), for rigs built differently.
 
 The controller owns the heater; PyFERRO never writes to it. Instrument failures are
 recorded as `nan` with a flag bit and the connection is reopened automatically, so a
 dropped cable does not end a measurement.
 
-Both instrument manuals are in `pyferro/docs/manuals/`, and the protocol tests check the
-drivers against the example frames printed in them.
+The manuals for all five instruments are in `pyferro/docs/manuals/`, and the protocol
+tests check the drivers against the example frames printed in them.
 
 ## How it ships
 
-The lab PC has no internet, so releases are a zip containing a complete Windows Python
-environment; `INSTALL.bat` unpacks it, no admin rights or compiler needed.
+The lab PC runs a git clone of this repository (`C:\PyFERRO`) with pixi.
+`pixi run start` does a `git pull --ff-only` first, so the lab always runs the latest
+code on `main`; being offline just starts the copy already there.
 
-```bash
-cd pyferro && ./packaging/build_offline.sh   # dist/PyFERRO-<version>-win64-offline.zip
-```
+An offline route also exists but is not in use: `./packaging/build_offline.sh` builds a
+zip with a complete Windows Python environment that `INSTALL.bat` unpacks without
+internet or admin rights (see §9 of `pyferro/README.md`).
 
 ## Versioning
 

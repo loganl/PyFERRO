@@ -53,6 +53,17 @@ to the code that produced it. The number is written in exactly one place,
   clone always runs the latest code. Being offline, a local edit that blocks the pull,
   or a folder that is not a git clone never stops the program starting.
   `pixi run start --skip-deps` starts without updating.
+- **`pixi run gpib`** (`tools/gpib_check.py`) diagnoses the lock-in's GPIB link one
+  step at a time — VISA library, listeners on the bus (without MAX or admin rights),
+  serial poll, `ID` under each terminator pair, then twenty fresh connections — and ends
+  in a one-line verdict with a success rate.
+
+### Changed
+- **Installing on the lab PC is now a git clone run with pixi**, not the offline bundle:
+  the README's install section, troubleshooting and the lab manual describe that route.
+  The offline bundle still builds (README §9) but is not in use.
+- The lab manual's data-taking appendix describes PyFERRO instead of the LabVIEW
+  routine, and its suggested protocol and temperature-measurement section follow.
 
 ### Fixed
 - **The window ran off the right of the screen.** It opened at a fixed 1400 px, wider

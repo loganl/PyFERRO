@@ -13,13 +13,14 @@ and acquisition loop. Keep it in step when those change. `pyferro/CHANGELOG.md` 
 
 | Path | What |
 |---|---|
-| `pyferro/ferro/` | the program — `gui/`, `acquisition.py` (measurement loop), `instruments/`, `transports.py` |
-| `pyferro/tools/gpib_check.py` | GPIB diagnostics; `pixi run gpib` |
+| `pyferro/ferro/` | the program — `gui/` (incl. `lockin_panel.py`, the Lock-in tab), `acquisition.py` (measurement loop), `instruments/`, `transports.py` |
+| `pyferro/tools/gpib_check.py` | GPIB diagnostics for the 5302 (asks `ID`); `pixi run gpib` |
+| `pyferro/tools/update.py` | `git pull --ff-only` run by `pixi run start`; never blocks the start |
 | `pyferro/tests/` | drivers, wire-level protocol tests over a pty, GUI tests, version consistency |
 | `pyferro/packaging/` | `build_offline.sh`, `release.sh`, Windows launchers |
 | `pyferro/docs/drivers-and-daq.md` | how transports, drivers and the DAQ loop work |
 | `pyferro/docs/manuals/` | instrument manuals — **read these before guessing at instrument behaviour** |
-| `ptmanual/` | LaTeX lab manual |
+| `ptmanual/` | LaTeX lab manual. Its 5302 table must match `CAPACITANCE_SETUP` in `lockin5302.py`; `main.pdf`/`main-tagged.pdf` are committed, so rebuild them (`make`, `make tagged`) after editing `main.tex` |
 
 ## Commands
 
@@ -45,8 +46,9 @@ writability test, and the git-tag test when HEAD is not on a tag.
 - **Pushing**: push work the user asked for without asking first; they pull it on the
   lab PC. Tagging and publishing a release stay separate decisions.
 - The lab PC has internet and a git clone at `C:\PyFERRO`, started with `pixi run start`
-  (which pulls first). **The offline bundle is not used** (user, 2026-09-29), though
-  `packaging/` and README §1/§9 still describe it.
+  (which pulls first). **The offline bundle is not used** (user, 2026-09-29). README §1
+  describes the git + pixi install; §9 and `packaging/` keep the bundle as an unused
+  fallback.
 - On this machine the folder is `PyFERRO` on disk but tracked as `pyferro`: a **new**
   file shows as `?? PyFERRO/...`, and neither `git add pyferro` nor
   `git add pyferro/tools/new.py` stages it (adding it as `PyFERRO/...` would split the
