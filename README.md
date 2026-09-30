@@ -30,13 +30,12 @@ runs as in the lab. Against real instruments it is `pixi run start`.
 | `pyferro/ferro/` | the program: `gui/`, `acquisition.py` (the measurement loop), `instruments/` (drivers), `transports.py` (GPIB/serial), `config.py`, `datafile.py`, `analysis.py`, `sessionlog.py` |
 | `pyferro/tools/` | `update.py` (the `git pull` before `pixi run start`) and `gpib_check.py` (`pixi run gpib`, a GPIB link diagnostic) |
 | `pyferro/tests/` | drivers, wire-level protocol tests over a pty, GUI tests, version consistency |
-| `pyferro/packaging/` | `release.sh`, `build_offline.sh` and the Windows launchers for the offline bundle |
 | `pyferro/docs/` | `drivers-and-daq.md`, the wiring diagram and the instrument manuals |
 | `ptmanual/` | LaTeX source of the lab manual, its figures and standalone TikZ sources |
 
 **[`pyferro/README.md`](pyferro/README.md) is the complete documentation** — install,
-wiring, taking data, file format, instrument protocols, code layout, tests, packaging
-and releases. [`pyferro/docs/drivers-and-daq.md`](pyferro/docs/drivers-and-daq.md)
+wiring, taking data, file format, instrument protocols, code layout, tests and
+releases. [`pyferro/docs/drivers-and-daq.md`](pyferro/docs/drivers-and-daq.md)
 walks through the transports, drivers and measurement loop, and
 [`pyferro/CHANGELOG.md`](pyferro/CHANGELOG.md) records each version.
 
@@ -62,17 +61,14 @@ tests check the drivers against the example frames printed in them.
 
 The lab PC runs a git clone of this repository (`C:\PyFERRO`) with pixi.
 `pixi run start` does a `git pull --ff-only` first, so the lab always runs the latest
-code on `main`; being offline just starts the copy already there.
-
-An offline route also exists but is not in use: `./packaging/build_offline.sh` builds a
-zip with a complete Windows Python environment that `INSTALL.bat` unpacks without
-internet or admin rights (see §9 of `pyferro/README.md`).
+code on `main`; being offline just starts the copy already there. There is no
+installer or bundle to build.
 
 ## Versioning
 
 `MAJOR.MINOR.PATCH`, tagged `v<version>`. The number is written in exactly one place,
-`__version__` in `pyferro/ferro/__init__.py`; the package metadata, the bundle name, the
-window title and every data-file header derive from it, and a test fails if a second copy
+`__version__` in `pyferro/ferro/__init__.py`; the package metadata, the window title and
+every data-file header derive from it, and a test fails if a second copy
 appears or a tag disagrees. A file recorded in the lab names the version that produced
 it, so it can always be traced back to the code.
 

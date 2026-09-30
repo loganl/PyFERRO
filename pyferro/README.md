@@ -42,16 +42,14 @@ Windows 10/11 64-bit. The lab PC runs a git clone at `C:\PyFERRO`.
    * `pixi run gpib` diagnoses the lock-in's GPIB link (§5).
 
    The first start downloads Python and every dependency into `.pixi\` (allow
-   ~1.5 GB of disk); later starts reuse it.
-
-A lab PC without internet can use the offline bundle instead (§9). It is not in use at
-present.
+   ~1.5 GB of disk); later starts reuse it. After that, a start needs no internet:
+   offline, the update step says so and the program starts as it is.
 
 ## 2. Hardware and wiring
 
 ![wiring diagram](docs/wiring-diagram.png)
 
-Full size: `docs/wiring-diagram.pdf` (`wiring-diagram.pdf` in the bundle); source in
+Full size: `docs/wiring-diagram.pdf`; source in
 `docs/wiring-diagram.tex` and `ptmanual/tikz/fig-daq-wiring.tex`.
 
 **RS-485** (two-wire half-duplex; the adapter's `RXD+`, `RXD-`, `GND` stay empty):
@@ -197,10 +195,8 @@ measurement.
 | Symptom | Cause and fix |
 |---|---|
 | `update: …` line at start | `pixi run start` says what its `git pull` did. Offline, a local edit in the way, or a folder that is not a clone never stops the start; if it says the dependencies changed, close and start again. |
-| "FERRO is not installed yet" (offline bundle) | `INSTALL.bat` not run, or the folder moved. |
-| `The system cannot find the path specified` from `INSTALL.bat` (offline bundle) | It was run from inside Explorer's zip viewer, which copies only that one file, or the zip was extracted only part way. Extract the whole zip to a local folder and run it from there. |
-| `VCRUNTIME140.dll was not found` while unpacking (offline bundle) | `tools\vcruntime140.dll` is missing next to `pixi-unpack.exe`. The bundle ships it because the unpacker is an MSVC build and a bare Windows install has no Visual C++ runtime; copying the file back beside the exe fixes it without admin rights. |
-| Qt/DLL errors at start-up | Running from a network drive or inside a zip viewer; use a folder on a local disk. |
+| `pixi` or `git` is not recognised | Not installed, or the terminal was opened before installing; install it (§1) and open a new terminal. |
+| Qt/DLL errors at start-up | The clone is on a network drive; clone to a local disk. |
 | `Could not open GPIB0::12::INSTR` | NI-VISA/NI-488.2 missing, adapter unplugged, or wrong address — check NI MAX. |
 | Lock-in connects only sometimes | Run `pixi run gpib`: it opens a fresh connection twenty times, as a program start does, and reports the success rate. Use it before and after reseating a connector or swapping a cable, rather than trusting a single Test. |
 | NI MAX says the 5302 "did not respond to a \*IDN? query" | Normal: the 5302 predates `*IDN?` (it answers `ID`). The scan did find it. |
@@ -227,7 +223,7 @@ measurement.
 
 ## 6. Instrument protocols
 
-Manuals in `docs/manuals/` (`manuals/` in the bundle). `tests/test_protocols.py` checks
+Manuals in `docs/manuals/`. `tests/test_protocols.py` checks
 the code against the example frames printed there.
 
 **EG&G 5302** (manual chapters 8–9): `ID` → `5302`; `XY` → X and Y with **±10000 = full
@@ -312,7 +308,6 @@ ferro/analysis.py   ramp-direction tracking
 ferro/sessionlog.py the session log
 tools/update.py     the git pull before pixi run start
 tools/gpib_check.py pixi run gpib: step-by-step GPIB diagnosis with a verdict
-packaging/          release.sh, build_offline.sh, Windows launchers for the bundle
 ```
 
 [`docs/drivers-and-daq.md`](docs/drivers-and-daq.md) walks through the transports, the
@@ -353,7 +348,7 @@ dependencies, it says to close and start again so pixi can install them.
 | `tests/test_core.py` | scaling, parsing, register decoding, Pt100, every driver against a fake of its manual's protocol, setting the 5302 and checking it against the lab manual, data files, direction tracking, settings, a simulated run |
 | `tests/test_protocols.py` | real serial/Modbus code over a pty against manual-accurate emulators (skipped on Windows) |
 | `tests/test_gui.py` | record/stop cycles, run-name guard, one file per recording, plots after Clear, window width, the Test button for every model, other models recorded and kept in the settings, the Lock-in tab idle and during a run |
-| `tests/test_version.py` | one version everywhere, matching the git tag; CRLF Windows launchers |
+| `tests/test_version.py` | one version everywhere, matching the git tag |
 
 `tools/` has no tests: `update.py` and `gpib_check.py` are checked by running them.
 
@@ -368,44 +363,7 @@ banner and `simulation: True` in the file header. Simulation cannot reproduce ti
 bus noise, wiring faults or GPIB itself — check those with the *Test* buttons and
 `pixi run gpib`.
 
-## 9. The offline bundle
-
-Not in use at present: the lab PC has internet and runs the git clone (§1). The bundle
-remains for a PC without internet — a zip holding a complete Windows Python
-environment, unpacked by `INSTALL.bat` with no internet, admin rights or compiler.
-Extract the whole zip to a local folder (not inside the zip viewer, not a network
-drive), run `INSTALL.bat` once, and put offline driver installers in its `drivers/`.
-`PyFERRO.bat` starts the program, `PyFERRO-simulation.bat` runs it without hardware, and
-`PyFERRO-debug.bat` prints the VISA library, GPIB instruments and COM ports it can see,
-then starts with a console for errors.
-
-It is built on a Mac/Linux machine **with** internet, then carried over.
-
-```bash
-pixi global install pixi-pack     # once; pixi itself from https://pixi.sh
-cd pyferro
-pixi run -e test test
-./packaging/build_offline.sh
-```
-
-The first build downloads ~320 MB of Windows packages into `dist/.pixi-pack-cache`.
-Result:
-
-```
-dist/PyFERRO-<version>-win64-offline.zip
-├── INSTALL.bat, PyFERRO.bat, PyFERRO-simulation.bat, PyFERRO-debug.bat
-├── environment-win-64.tar   Windows Python, PySide6, pyvisa, minimalmodbus, …
-├── tools/pixi-unpack.exe    unpacker, no internet needed
-├── app/ferro/               the source that runs
-├── manuals/, wiring-diagram.pdf, README.md
-└── drivers/                 put NI-VISA / NI-488.2 / FTDI installers here
-```
-
-Updating an installed copy: for code-only changes replace `app\ferro`; after a
-dependency change delete the lab PC's `env` folder and run `INSTALL.bat` again. The
-build script is bash — on Windows use WSL or Git Bash.
-
-## 10. Versioning and releases
+## 9. Versioning and releases
 
 One number, in one place:
 
@@ -414,29 +372,19 @@ One number, in one place:
 __version__ = "1.0.2"
 ```
 
-`pyproject.toml` takes it dynamically, `packaging/build_offline.sh` reads that line for
-the zip name, the window title and every data-file header show it, `pixi.toml` has no
-version field, and the release is tagged `v<version>`. `tests/test_version.py` fails if a
-second copy appears or the tag disagrees.
+`pyproject.toml` takes it dynamically, the window title and every data-file header show
+it, `pixi.toml` has no version field, and the release is tagged `v<version>`.
+`tests/test_version.py` fails if a second copy appears or the tag disagrees.
 
-To release: edit `__version__`, add a `## 1.1.0 — <date>` section to `CHANGELOG.md`,
-commit, then run the release script — it checks, tests, tags, pushes and builds:
-
-```bash
-git commit -am "PyFERRO 1.1.0"
-./packaging/release.sh --dry-run   # prints every step, changes nothing
-./packaging/release.sh             # add --publish to attach the zip to a GitHub release
-```
-
-It refuses to continue on a dirty tree, off `main`, behind `origin`, when the tag
-already exists, when the changelog has no section for the version, or when a test fails.
-The equivalent by hand:
+The lab PC runs whatever is on `main`, so a release is a tag marking a tested state,
+not something to install. To release, on an up-to-date, clean `main`:
 
 ```bash
+# 1. edit __version__ in ferro/__init__.py, and add "## 1.1.0 — <date>" to CHANGELOG.md
 pixi run -e test test
+git commit -am "PyFERRO 1.1.0"
 git tag -a v1.1.0 -m "PyFERRO 1.1.0"
-git push && git push --tags
-./packaging/build_offline.sh
+git push origin main v1.1.0
 ```
 
 Patch: fixes and docs. Minor: features, new options, a column added on the right.
