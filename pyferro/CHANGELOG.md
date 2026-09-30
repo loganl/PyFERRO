@@ -1,10 +1,13 @@
 # Changelog
 
-Changes are recorded here as they land on `main`, newest first. There are no longer
-releases or tags (the lab PC runs `main`), so everything after 1.0.2 is under "Since
-1.0.2"; the numbered sections below it are the releases made before that.
+Versions follow `MAJOR.MINOR.PATCH`. Each release is tagged `v<version>` in git, and
+the same number appears in the window title and in every data-file header
+(`# software: pyferro <version>`), so a saved measurement can always be traced back
+to the code that produced it. The number is written in exactly one place,
+`__version__` in `ferro/__init__.py`; see "Versioning and releases" in
+[README.md](README.md).
 
-## Since 1.0.2
+## Unreleased
 
 ### Added
 - **Choice of lock-in and multimeter model** on the Instruments tab. The lock-in can be
@@ -58,6 +61,8 @@ releases or tags (the lab PC runs `main`), so everything after 1.0.2 is under "S
 ### Changed
 - **Installing on the lab PC is now a git clone run with pixi**, not the offline bundle:
   the README's install section, troubleshooting and the lab manual describe that route.
+- Releasing is now by hand — test, commit, tag, push (README §9) — since there is no
+  longer a bundle to build.
 - The lab manual's data-taking appendix describes PyFERRO instead of the LabVIEW
   routine, and its suggested protocol and temperature-measurement section follow.
 
@@ -65,9 +70,6 @@ releases or tags (the lab PC runs `main`), so everything after 1.0.2 is under "S
 - **The offline Windows bundle and its packaging** (`packaging/`: `build_offline.sh`,
   `release.sh`, `INSTALL.bat` and the `.bat` launchers), with its README section and
   tests. The lab PC has internet and runs the git clone, so nothing uses it.
-- **Releases and git tags.** The lab PC runs `main`, so there is nothing to release;
-  the test that compared the version with a git tag is gone too. `__version__` stays at
-  1.0.2.
 
 ### Fixed
 - **The window ran off the right of the screen.** It opened at a fixed 1400 px, wider
