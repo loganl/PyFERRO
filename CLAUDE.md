@@ -69,7 +69,8 @@ writability test, and the git-tag test when HEAD is not on a tag.
   syncing — that was tried and rejected as overcomplicated.
 - **Releases** are by hand (README §9): test, bump `__version__`, add the CHANGELOG
   section, commit, `git tag -a v<version>`, push. Tagging is the user's decision, not
-  part of routine work. Note: 1.0.2 was released (CHANGELOG) but never tagged.
+  part of routine work. Note: 1.0.2 was released (CHANGELOG) but never tagged, and
+  1.1.0 (2026-09-30) is not tagged yet.
 - **Commits**: end with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 - **Pushing**: push work the user asked for without asking first; they pull it on the
   lab PC. Sessions work on `claude/...` branches; the lab PC pulls `main`, so work

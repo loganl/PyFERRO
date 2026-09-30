@@ -9,6 +9,8 @@ to the code that produced it. The number is written in exactly one place,
 
 ## Unreleased
 
+## 1.1.0 — 2026-09-30
+
 ### Added
 - **Choice of lock-in and multimeter model** on the Instruments tab. The lock-in can be
   an EG&G 5302 (this rig, the default) or an SRS SR830; the multimeter

@@ -137,7 +137,7 @@ Settings persist in `%USERPROFILE%\.ferro\settings.json`; delete it to reset, or
 
 ```
 # created: 2026-09-29T15:02:11
-# software: pyferro 1.0.2
+# software: pyferro 1.1.0
 # sample: BTO_1V_37kHz
 # temperature_source: CND3 controller PV
 # lockin_model: 5302
@@ -369,7 +369,7 @@ One number, in one place:
 
 ```python
 # ferro/__init__.py
-__version__ = "1.0.2"
+__version__ = "1.1.0"
 ```
 
 `pyproject.toml` takes it dynamically, the window title and every data-file header show
