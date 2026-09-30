@@ -348,7 +348,7 @@ dependencies, it says to close and start again so pixi can install them.
 | `tests/test_core.py` | scaling, parsing, register decoding, Pt100, every driver against a fake of its manual's protocol, setting the 5302 and checking it against the lab manual, data files, direction tracking, settings, a simulated run |
 | `tests/test_protocols.py` | real serial/Modbus code over a pty against manual-accurate emulators (skipped on Windows) |
 | `tests/test_gui.py` | record/stop cycles, run-name guard, one file per recording, plots after Clear, window width, the Test button for every model, other models recorded and kept in the settings, the Lock-in tab idle and during a run |
-| `tests/test_version.py` | one version everywhere, matching the git tag |
+| `tests/test_version.py` | the version number is written in one place only |
 
 `tools/` has no tests: `update.py` and `gpib_check.py` are checked by running them.
 
@@ -363,29 +363,10 @@ banner and `simulation: True` in the file header. Simulation cannot reproduce ti
 bus noise, wiring faults or GPIB itself — check those with the *Test* buttons and
 `pixi run gpib`.
 
-## 9. Versioning and releases
+## 9. Version number
 
-One number, in one place:
-
-```python
-# ferro/__init__.py
-__version__ = "1.0.2"
-```
-
-`pyproject.toml` takes it dynamically, the window title and every data-file header show
-it, `pixi.toml` has no version field, and the release is tagged `v<version>`.
-`tests/test_version.py` fails if a second copy appears or the tag disagrees.
-
-The lab PC runs whatever is on `main`, so a release is a tag marking a tested state,
-not something to install. To release, on an up-to-date, clean `main`:
-
-```bash
-# 1. edit __version__ in ferro/__init__.py, and add "## 1.1.0 — <date>" to CHANGELOG.md
-pixi run -e test test
-git commit -am "PyFERRO 1.1.0"
-git tag -a v1.1.0 -m "PyFERRO 1.1.0"
-git push origin main v1.1.0
-```
-
-Patch: fixes and docs. Minor: features, new options, a column added on the right.
-Major: data-layout or workflow changes that break existing analysis scripts.
+There are no releases or tags: the lab PC runs whatever is on `main`, and
+[`CHANGELOG.md`](CHANGELOG.md) records the changes as they land. The number in
+`ferro/__init__.py` (`__version__`, still 1.0.2) is shown in the window title and in
+every data-file header; `pyproject.toml` takes it from there and `tests/test_version.py`
+fails if a second copy appears.

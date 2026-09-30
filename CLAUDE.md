@@ -9,9 +9,9 @@ lab manual (`ptmanual/`).
 
 | File | What it is |
 |---|---|
-| `pyferro/README.md` | **the** documentation: install, wiring, taking data, file format, troubleshooting, protocols, code layout, tests, releases |
+| `pyferro/README.md` | **the** documentation: install, wiring, taking data, file format, troubleshooting, protocols, code layout, tests |
 | `pyferro/docs/drivers-and-daq.md` | teaching walkthrough of transports, drivers and the loop (the one extra doc file, added at the user's request) |
-| `pyferro/CHANGELOG.md` | every user-visible change goes under `## Unreleased` |
+| `pyferro/CHANGELOG.md` | every user-visible change goes under `## Since 1.0.2` |
 | `README.md` (root) | short overview pointing at the above |
 | `ptmanual/main.tex` | the lab manual; its PyFERRO appendix (`app:pyferro`) and 5302 table describe the program |
 | module docstrings | each driver's docstring lists the commands it uses |
@@ -46,8 +46,8 @@ pixi run gpib                # diagnose the 5302's GPIB link
 ```
 
 Use the pixi environment, not pip into the system Python — the user's preference.
-Three test skips are expected on Windows: the pty protocol module, the chmod
-writability test, and the git-tag test when HEAD is not on a tag.
+Two test skips are expected on Windows: the pty protocol module and the chmod
+writability test.
 
 ### In a Claude Code cloud session
 
@@ -64,12 +64,10 @@ writability test, and the git-tag test when HEAD is not on a tag.
 
 ## Conventions
 
-- **Version**: one line, `__version__` in `pyferro/ferro/__init__.py`. Everything else
-  derives from it and a test fails if a second copy appears. No scripted version
-  syncing — that was tried and rejected as overcomplicated.
-- **Releases** are by hand (README §9): test, bump `__version__`, add the CHANGELOG
-  section, commit, `git tag -a v<version>`, push. Tagging is the user's decision, not
-  part of routine work. Note: 1.0.2 was released (CHANGELOG) but never tagged.
+- **No releases, no tags** (user, 2026-09-30): the lab PC runs `main`. Don't bump the
+  version, add release sections, tag, or reintroduce release tooling. `__version__` in
+  `pyferro/ferro/__init__.py` stays at 1.0.2 (window title, data-file header); a test
+  fails if a second copy of it appears. Old tags `v1.0.0`/`v1.0.1` remain on GitHub.
 - **Commits**: end with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 - **Pushing**: push work the user asked for without asking first; they pull it on the
   lab PC. Sessions work on `claude/...` branches; the lab PC pulls `main`, so work
