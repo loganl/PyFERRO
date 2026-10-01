@@ -841,7 +841,7 @@ Before measuring the sample, we do a practice run by measuring the capacitance
 of a piece of BNC cable. See Appendix~\ref{app:ac} for the relevant phasor
 diagrams.
 
-\begin{figure}[htbp]                                                                               %take a photo on Tuesday
+\begin{figure}[htbp]
   \centering
   \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
   Photograph of the instrument setup. On top is an HP 34401A digital
@@ -982,22 +982,28 @@ the wire to the painted upper face of the sample. The two painted faces
 are thus connected to separate PCB pads and separate connector terminals.
 Check for a short circuit again through the two connector terminals.
 Be careful not to let the silver paint or paste bridge the two faces:
-you are making a capacitor.
+you are making a capacitor. When the sample is installed in the chamber,
+the entire PCB is secured in place by the metal clip.
+The two black two-pin connectors on the PCB plug onto the four white
+connector pins in the sample chamber, providing
+the electrical connections to the two painted faces of the sample.
 
 \notebox{The paint dries very quickly}{Do not leave the silver-paint container
 open for an extended period of time; open it for as short an interval as
 possible, just to get the paint onto a piece of wire.}
 
-\begin{figure}[htbp]                                                                         %  photo of board, no sample board, connector
+\begin{figure}[htbp]
   \centering
-  \photo[width=0.48\linewidth]{two-pin-connectors.png}{%
-    Photograph of three small black two-pin connectors side by side. The one on
-    the right is empty, with two bare gold pins. The one in the center has a
-    translucent chip of ceramic barium titanate mounted between its pins. The one
-    on the left has a small test capacitor soldered across its pins.}
-  \caption{An empty two-pin connector (right), a mounted \BTO\ sample (center),
-    and a \SI{100}{\pico\farad} test capacitor soldered to the connector (left).}
-  \label{fig:connectors}
+  \photo[width=0.48\linewidth]{sample.png}{%
+    Photograph of two green sample-mounting PCBs. The PCB on the left is
+    unloaded, showing its contact pads and through-holes. The PCB on the right
+    has a \BTO\ sample mounted near the center and two black two-pin connectors.
+    One painted face of the sample is attached to a PCB pad with silver paste,
+    while a fine wire connects the other painted face to the second contact.
+    The two connectors plug onto the four pins in the sample chamber.}
+  \caption{An unloaded sample-mounting PCB (left) and a PCB with a mounted
+    \BTO\ sample and two two-pin connectors (right).}
+  \label{fig:sample}
 \end{figure}
 
 A stereo microscope is provided for mounting the sample, although with good eyes
@@ -1007,18 +1013,15 @@ and eye--hand coordination it can be done without the microscope.
 for the studies should be returned with your final lab report. Simply attach the
 sample with Scotch tape to the first page of your report.}
 
-\begin{figure}[htbp]                                                                          % change photo
+\begin{figure}[htbp]
   \centering
-  \photo[width=0.6\linewidth]{bnc-connections.png}{%
-    Photograph of the bench-top wiring. The bottom of the aluminum sample
-    chamber stands at the top of the frame on a white insulating base, with a
-    white Teflon-insulated cable and red and black wires running from it down to
-    a metal panel carrying four BNC bulkhead connectors. One BNC is fitted with a
-    black coaxial cable and another carries a short-circuit termination.}
-  \caption{Connecting the apparatus. One BNC cable runs from the signal source to              %short circuit? connection
-    input~A of the lock-in, and another from the lock-in to the BNC leading to
-    the sample. When the sample is in place, the other BNC must be terminated
-    with a short circuit to ground, as shown.}
+  \photo[angle=-90, width=0.6\linewidth]{bnc-connections.png}{%
+    Photograph of the wiring beside the cylindrical sample chamber.
+    Four BNC bulkhead connectors are mounted on a metal panel, with
+    colored wires running between the panel and the chamber. Red and
+    black lead adapters are attached to the BNC connectors.}
+  \caption{Wiring between the sample chamber and the four-connector
+    BNC panel.}
   \label{fig:bnc}
 \end{figure}
 
@@ -1026,7 +1029,7 @@ Connect the experimental apparatus: one BNC cable from the signal source to
 input~A of the lock-in, and another cable from the lock-in to the BNC leading to
 the sample. Check that there is no sample in the sample chamber. (For later use,
 when you put in the sample, you need to terminate the other BNC with a short
-circuit to ground, as shown in the photograph.)
+circuit to ground.)
 
 The Y reading (the out-of-phase component) that you see now is due to
 all of the capacitances leading to the sample, including the capacitance
@@ -1118,9 +1121,7 @@ control adjusts the heater output, reducing it when necessary to
 limit the rate of heating. This helps the sample temperature follow
 the measured chamber temperature and is important for obtaining
 reliable data. Try different heating rates, examine the data, and
-choose a suitable rate based on their quality. When the target
-temperature is reached, \texttt{SLOP} mode continues to hold that
-setpoint, so stop heating before recording the cooling data. The
+choose a suitable rate based on their quality. The
 CN08D3 also has a Program SV (\texttt{PROG}) mode for scheduling
 multiple heating and holding steps, but it is optional for this
 experiment.
@@ -1129,35 +1130,63 @@ experiment.
 ``I'' in PID?}
 
 \paragraph{Front-panel operation.}
-The gear-symbol key at the lower left of Figure~\ref{fig:tcguts}
-is \texttt{SET}. It enters setting modes and saves changes. The
-key beside it, marked with two left-pointing arrows, moves
-between menu items or selects a parameter. The down and up arrow
-keys change a value or option. F1 and F2 have user-defined
-functions and are not needed here. On the normal display, PV is
-the measured temperature and SV is the setpoint.
+The controller is operated using the gear-symbol key, the curved-arrow
+key, and the down and up arrow keys. From the normal PV/SV display, a
+brief press of the gear-symbol key enters Regulation Mode; holding it
+for more than three seconds enters Initial Setting Mode. The curved-arrow
+key moves through the menu items, and the arrow keys change a value or
+option. Press the gear-symbol key to save a setting. The \texttt{F1}
+and \texttt{F2} keys have user-defined functions and are not needed here.
+On the normal display, PV is the measured temperature and SV is the
+setpoint.
 
-To heat at a specified rate and then record cooling, hold
-\texttt{SET} for more than three seconds from the PV/SV display.
-In Initial Setting Mode, use the selection key to find
-\texttt{CTRL} and select \texttt{PID}; then find \texttt{CRTS},
-select \texttt{SLOP}, and press \texttt{SET} to save. Return to
-the normal display and press \texttt{SET} briefly to enter
-Regulation Mode. Find \texttt{SVSL} (SV Slope), set the heating
-rate with the arrow keys, and press \texttt{SET} to save. Check
-whether the rate is in \si{\degreeCelsius\per\minute} or
-\si{\degreeCelsius\per\second}. Return to the PV/SV display,
-set the target temperature SV, and check that the controller is
-in \texttt{RUN}. Watch PV and the measurement data during
-heating. At the target temperature, use the selection key from
-the normal display to find \texttt{R-S} (Run/Stop). Select
-\texttt{STOP} with the arrow keys and press \texttt{SET} to
-save. Confirm that the heating output is off, then continue
-recording as the sample cools.
+To set the temperature unit to Celsius, hold the gear-symbol key for
+more than three seconds to enter Initial Setting Mode. Use the
+curved-arrow key to find \texttt{tPUN}, then use the up or down arrow
+to select \si{\degreeCelsius}. Press the gear-symbol key to save the
+setting and return to the normal display. Confirm that the display
+shows \si{\degreeCelsius}, and check that SV is set to the desired
+temperature.
+
+To select slope heating, hold the gear-symbol key for more than three
+seconds to enter Initial Setting Mode. Press the curved-arrow key until
+\texttt{CRTS} appears, use the up or down arrow to change \texttt{CONS}
+to \texttt{SLOP}, and press the gear-symbol key to save and return to the
+normal display. The slope-rate unit is set separately in Initial Setting
+Mode using \texttt{EVEC}: its third digit from the left is \(0\) for
+\si{\degreeCelsius\per\minute} or \(1\) for
+\si{\degreeCelsius\per\second}. Change only this digit if the rate unit
+needs to be changed. To set the heating rate, briefly press the
+gear-symbol key to enter Regulation Mode, use the curved-arrow key to
+find \texttt{SVSL}, set the desired rate with the up or down arrow, and
+press the gear-symbol key to save, as shown in Figure~\ref{fig:pid-slope}.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[angle=-90, width=0.48\linewidth]{temperature-controller-slop.png}{%
+    Close-up photograph of the front panel of the
+    CN08D3 temperature controller. The display shows the
+    \texttt{SVSL} setting for the setpoint slope, with the current value
+    shown in green. The gear-symbol, curved-arrow, down-arrow, and
+    up-arrow keys are visible below the display.}
+  \caption{The OMEGA CN08D3-SR-2U-CM-AC front-panel display for setting
+    the SV slope (heating rate).}
+  \label{fig:pid-slope}
+\end{figure}
+
+To begin heating, press the curved-arrow key from the normal display
+until \texttt{R-S} appears. Select \texttt{RUN} with the arrow keys and
+press the gear-symbol key to save. Monitor PV and the measurement data
+during heating. When the target temperature is reached and cooling data
+collection is to begin, use the curved-arrow key to find \texttt{R-S}
+again, select \texttt{STOP}, and press the gear-symbol key to save.
+Confirm that the heating output is off, then continue recording as the
+sample cools. In \texttt{SLOP} mode, reaching the target temperature
+does not automatically stop the controller.
 
 \notebox{Hot surfaces and overheating}{Most of the capacitance measurements are
 made at temperatures over \SI{100}{\degreeCelsius}. Be careful: the sample
-chamber will be hot. Do not exceed \SI{160}{\degreeCelsius}, because the                          %temperature?
+chamber will be hot. Do not exceed \SI{160}{\degreeCelsius}, because the
 sample chamber may be damaged. The sample chamber can be seriously overheated
 if left unattended with the heater on. Always switch off the temperature
 controller when the measurement is done. When using \texttt{SLOP} mode,
@@ -1167,58 +1196,66 @@ before recording the cooling data.}
 
 \subsection{Temperature measurement}
 
-In measurements of temperature-dependent properties it is a good practice to
-have two thermometers: one to control the temperature (described above) and
-another one to measure the actual temperature of the sample. This second thermometer is often
-directly attached to the sample. In our case, for the sake of easy sample
-changes, the thermometer is simply inserted into the center of the sample
-chamber. This thermometer is also a platinum resistor.
+The temperature is measured by a Pt100 probe installed in the aluminum
+block of the sample chamber and connected to the temperature input of
+the Omega CN08D3 controller. A Pt100 detects temperature through the
+change in its electrical resistance. For a standard Pt100 at
+\(T \geq \SI{0}{\degreeCelsius}\), the resistance-to-temperature
+conversion is
+\begin{equation}
+  T(R) =
+  \frac{-A+\sqrt{A^2-4B\left(1-R/R_0\right)}}{2B},
+\end{equation}
+where \(R\) is the measured resistance, \(R_0=\SI{100}{\ohm}\) is the
+Pt100 resistance at \(\SI{0}{\degreeCelsius}\),
+\(A=3.9083\times10^{-3}\,\si{\per\degreeCelsius}\), and
+\(B=-5.775\times10^{-7}\,\si{\per\degreeCelsius\squared}\).
 
-We use a Keithley 199 multimeter in four-probe resistivity mode to read out the
-resistance of the temperature probe. Learn about the four-probe method in
-Appendix~\ref{app:fourprobe}.
+The CN08D3 measures the probe resistance and converts it to the process
+temperature (PV) using its configured Pt100 input. PyFERRO reads the PV
+and setpoint (SV) from the controller over RS-485 and records them with
+the lock-in measurements. The controller uses the PV as feedback to
+regulate the heater. Because the probe measures the aluminum block, its
+reading may differ slightly from the temperature at the sample.
 
 \notebox{Question}{Be ready to answer this question: what is the advantage of the
 four-terminal method over the two-terminal method, and how is this advantage
 achieved?}
 
-The multimeter is set to ``Ohm'' mode and the four leads should be connected to
-the four terminals. (Note the two red leads go to the same side of the resistor,
-and the two black leads go to the other side. For the extension wires the reds
-are connected to browns and the blacks are connected to whites.)
+The PyFERRO data file contains (1) the time dependence of the
+temperature and (2) the temperature dependence of the lock-in output
+signals \(X\) and \(Y\). Copy the data file to a thumb drive for
+analysis.
 
-When the computer reads out the resistance values, it will convert them to
-temperature according to the (approximate) relation
-\begin{equation}
-  T = \SI{100}{\degreeCelsius}
-      + \frac{R - \SI{100}{\ohm}}{\SI{0.385}{\ohm\per\degreeCelsius}} .
-\end{equation}
-
-The two data files contain (1) the time dependence of the temperature and (2) the
-temperature dependence of the lock-in output voltage. It is expected that you
-transfer the relevant data files to a thumb drive to carry out the evaluation of
-the data.
-
-Before measuring the sample, study the temperature control process. Start at room
-temperature or at a temperature below \SI{50}{\degreeCelsius}. Select a set point
-of \SI{70}{\degreeCelsius}. Record the time dependence of the temperature. Put
-the temperature controller into ``on/off'' mode and keep recording. Temperature
-oscillations will develop. Put the temperature controller into ``PID'' mode.
-Discuss these observations in your lab report.
+Before measuring the sample, use PyFERRO to study the temperature
+control process. On the Instruments tab, turn off Simulation mode and
+check the connections to the lock-in amplifier and the Omega CN08D3
+temperature controller. On the Run tab, select the CN08D3 controller as
+the temperature source. Start at room temperature or below
+\SI{50}{\degreeCelsius}. On the CN08D3, select constant setpoint mode
+(\texttt{CONS}) and set the setpoint to \SI{70}{\degreeCelsius}. Set
+the controller's \texttt{CONTROL} mode to \texttt{ON-OFF}. Start
+monitoring and recording in PyFERRO, then set the controller to
+\texttt{RUN}. Continue recording as the temperature rises and
+oscillations develop. Then change the CN08D3's \texttt{CONTROL} mode
+from \texttt{ON-OFF} to \texttt{PID} without stopping the recording.
+Compare the temperature-versus-time data for the two modes and discuss
+your observations in your lab report.
 
 % =============================================================================
 \section{Suggested protocol for a measurement}                                         % check pyferro/README.md
 % =============================================================================
 
 \begin{enumerate}
-  \item Tune the lock-in, and set up the sample (\VOtwo\ or \BTO) in the sample
-        chamber. Cover the sample chamber with the stainless steel cover (the
-        dewar).
-  \item Start the \texttt{Ferro.vi} LabVIEW routine.
-  \item Start saving data in LabVIEW.
-  \item Program ``Set point 1'' of the temperature controller to
-        \SI{90.0}{\degreeCelsius} for a \VOtwo\ measurement and
-        \SI{150.0}{\degreeCelsius} for the capacitance \BTO\ measurement.
+  \item Tune the lock-in amplifier and place the \VOtwo\ or \BTO\ sample
+        in the sample chamber. Close the chamber with its fitted cover. If
+        additional thermal insulation is needed, place the larger stainless-steel
+        dewar over the covered chamber.
+  \item Start the PyFERRO routine.
+  \item Start saving data in PyFERRO.
+  \item Set the temperature-controller setpoint on the front panel to
+  \SI{90.0}{\degreeCelsius} for a \VOtwo\ measurement or
+  \SI{150.0}{\degreeCelsius} for the capacitance measurement of \BTO.
   \item Program the ramp rate. Change the ramp rate and examine the data: you
         want to make sure that your ramp rate is slow enough for the data to be
         reliable. Discuss with the laboratory staff what this means.
@@ -1876,164 +1913,133 @@ able to measure such a sample with the four-probe method.}
 
 \clearpage
 % =============================================================================
-\section{Programming the temperature controller}\label{app:tempcontrol}             %remove
-% =============================================================================
-
-The temperature controller can be programmed from the front panel (see the
-manual) or by using its web interface. Front panel programming is cumbersome and
-not recommended. There are two ways to access the web interface:
-
-\subsection{If you want to change the setpoint only}
-
-Open ``Shortcut to internet'' on the desktop (Internet Explorer). The home page
-is served by the temperature controller (the IP address is
-\texttt{192.168.1.200}). An ``I Server'' page will appear, with Device Type
-Selection. No need to change anything, just click on ``Update''. On the next
-page (``Server Home Page'') click on ``Read Devices''. The current temperature
-readout of the controller should appear. Click on ``1.'' right before ``Omega''
-on the screen. A login screen will appear, enter \texttt{12345678} for
-password. You reach the ``Device Setpoints'' screen.
-
-Change ``Setpoint~\#1'' and press update. The temperature controller should show
-the new setpoint in the lower left side of the display. As long as you keep the
-window open you can change setpoints many times without going through the login
-process.
-
-\subsection{If you want to change other settings}
-
-Click on the ``iSeries and MICRO INFINITY Config'' icon on the desktop. The
-opening screen will look like Figure~\ref{fig:tc1}.
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-config-open.png}{%
-    Screenshot of the iSeries/MICRO-INFINITY Configuration program. The Setpoints
-    tab is selected, showing text fields for Setpoint 1 and Setpoint 2, both
-    reading 000.0, a drop-down for the display color in the non-alarm state set
-    to Green, and a Set Point Deviation checkbox. A column of buttons down the
-    right-hand side is labeled Hardware, Read, Write, Help and Quit, and a row
-    of tabs along the bottom includes ID code, Setpoints, Input type, Reading,
-    Alarm 1, Alarm 2, LB alarm, Out1, Out2, Ramp/Soak, Analog and Comm.}
-  \caption{The configuration program as it opens.}
-  \label{fig:tc1}
-\end{figure}
-
-Click on ``Read'' and on the next screen click on ``File''. The default settings
-of our temperature controller are stored in the
-\texttt{temperature\_controller.cfg} file (in the ``My Documents'' folder). Click
-on the file and the next screen will be like Figure~\ref{fig:tc2}. If the Model\#
-and the options come up correctly, click OK.
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-config-file.png}{%
-    Screenshot of the configuration program's file-selection dialogue, listing
-    the stored configuration file for the temperature controller together with
-    the model number and the installed options read back from that file.}
-  \caption{Opening the stored configuration file.}
-  \label{fig:tc2}
-\end{figure}
-
-Next the software needs to establish connection with the temperature controller.
-Click on the ``Comm.'' tab and click on the ``Connect'' button under Connection
-Wizard. The IP address should be \texttt{192.168.1.200}. Next, the screen shown
-in Figure~\ref{fig:tc3} appears. In this window the RS-232 is the default value,
-and you need to change it to RS-485. In a few seconds the connection
-should be established, and you need to push ``Finish''.
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.85\linewidth]{tc-comm-wizard.png}{%
-    Screenshot of the Connection Wizard dialogue. It shows the network address
-    field containing the controller IP address and a selection between the RS-232
-    and RS-485 serial standards, with RS-232 selected by default, plus Back, Next
-    and Finish buttons.}
-  \caption{The connection wizard. Change RS-232 to RS-485.}
-  \label{fig:tc3}
-\end{figure}
-
-To select a new setpoint, click on the ``Setpoints'' tab and enter the new value
-to ``Setpoint 1''.
-
-To activate the ramp mode click the ``Ramp/Soak'' tab on the main window. The
-window shown in Figure~\ref{fig:tc4} should appear. Now you can click ``enable''
-for the ramp option. The Ramp option allows you to control the rate of heating in
-the sample chamber. For example if you set the ramp to 1 hour then it will take
-1 hour to get to your setpoint~1, etc. This is important since you
-want to keep your sample thermometer consistent with your cavity thermometer.
-
-\notebox{Always enable soak with ramp}{If you decide to use the ramp option you
-\textbf{MUST} enable the soak option as well. The soak option will guarantee that
-once your temperature is reached and your soak time is complete that the heater
-will turn off.}
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-rampsoak.png}{%
-    Screenshot of the Ramp/Soak tab of the configuration program, showing enable
-    checkboxes and time fields for the ramp and soak phases associated with each
-    setpoint.}
-  \caption{The Ramp/Soak tab.}
-  \label{fig:tc4}
-\end{figure}
-
-After that you upload the change to the controller by pressing ``Write'' and
-selecting ``Network'' in the screen shown in Figure~\ref{fig:tc5}. During the
-upload process hit OK several times when the software stops for confirmation.
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-write-network.png}{%
-    Screenshot of the Write dialogue, offering a choice between writing the
-    configuration to a File and writing it over the Network to the connected
-    controller.}
-  \caption{Writing the configuration back to the controller over the network.}
-  \label{fig:tc5}
-\end{figure}
-
-To access the PID control parameters click on the ``Output 1'' tab. The next
-screen shows the ``Control Type''. Here is the place where you can change to
-``On/Off Control'' (Figure~\ref{fig:tc6}).
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-output1-pid.png}{%
-    Screenshot of the Output 1 tab, showing the Control Type selector with
-    entries for PID control and On/Off control, together with the associated
-    proportional, integral and derivative parameter fields.}
-  \caption{The Output~1 tab, where the control type is selected.}
-  \label{fig:tc6}
-\end{figure}
-
-\clearpage
-% =============================================================================
-\section{Data taking with LabVIEW}\label{app:labview}                             %update
+\section{Data taking with PyFERRO}\label{app:pyferro}
 % =============================================================================
 
 \begin{enumerate}
-  \item Click on the ``Ferro'' shortcut on the desktop.
-  \item Press the right arrow in the upper left corner to start the program. The
-        communication to the voltmeter and the lock-in should start, but the data
-        is not recorded yet.
-  \item Write the file names where the data should be stored into the fields on
-        the top part of the window. Use this format:
-        \texttt{c:\textbackslash StudentData\textbackslash 2012Fall\textbackslash
-        Group1\textbackslash yourfile.txt}. The directories \texttt{Group1},
-        \texttt{Group2} and \texttt{Group3} correspond to the first, second and
-        third labs in any given semester.
-  \item If you wish to record the data, press ``Save''. Two files can be stored:
-        one is the temperature dependence of the capacitance, and the other is
-        the time dependence of the temperature. It is crucial that you write the
-        file name in your lab notes, where you also record the lock-in settings
-        and any other information you may need to reconstruct the circumstances
-        of the measurement.
-  \item Stop data taking by pressing ``Save'' again. Write in a new file name, so
-        that the next time you save data it is recorded separately. (If you do
-        not change the file name, the new data will be appended to the existing
-        data.)
-  \item To clear the screen, press stop. When you restart the measurement (right
-        arrow in the upper left corner) a blank screen will appear.
-\end{enumerate}
+  \item Starting PyFERRO.
+  The \texttt{PyFERRO} folder on the desktop contains information about the
+  app. To start PyFERRO, open a terminal in
+  \texttt{C:\textbackslash PyFERRO\textbackslash pyferro} and run one of the
+  following commands:
+  \begin{itemize}
+    \item \texttt{pixi run start} updates the code to the latest version,
+    then starts PyFERRO with the instruments.
+    \item \texttt{pixi run simulate} starts PyFERRO without hardware.
+    \item \texttt{pixi run gpib} checks the lock-in amplifier's GPIB connection.
+  \end{itemize}
+  The first run downloads Python and all dependencies into the
+  \texttt{.pixi\textbackslash} directory and requires about
+  \SI{1.5}{\giga\byte} of free disk space. Later runs reuse these files.
+  Once setup is complete, PyFERRO can start without an internet connection.
+  If the update step cannot reach the internet, it reports this and starts
+  using the code already present.
+
+    \item Instruments tab: Check the lock-in Model
+      (EG\&G 5302 on this rig), pick the DTECH COM port (FTDI ports listed
+      first), and press \texttt{Test lock-in} and \texttt{Test controller}.
+      For a hardware run, make sure Simulation mode is off. A green check
+      shows the sensitivity, time constant and reference frequency, and PV/SV,
+      output level, control mode and firmware. For the 5302, a table underneath
+      compares every setting with the lab manual's and says which key changes
+      any that differ; starting a recording repeats the check and logs any
+      difference as a warning.
+
+
+    \begin{figure}[htbp]
+      \centering
+      \photo[width=0.42\linewidth]{pyferro-instruments.png}{%
+        Screenshot of the PyFERRO Instruments tab in simulation mode, showing
+        the lock-in model and connection settings, the lock-in test result,
+        and the comparison with the lab-manual settings.}
+      \caption{The PyFERRO Instruments tab, shown in simulation mode.}
+      \label{fig:pyferro-instruments}
+    \end{figure}
+
+    \item Lock-in tab (5302): \texttt{Read from lock-in} shows its
+    settings; change them there and press \texttt{Apply to lock-in} (it lists
+    the commands and asks first), or press \texttt{Lab-manual values} to fill
+    in the lab manual's table, then Apply. Only what differs is sent, and
+    the settings are read back afterwards. This works during a run too: the
+    change is sent between samples and written into the data file. AC/DC,
+    FLOAT/GND and the phase tuning stay on the front panel.
+
+    \begin{figure}[htbp]
+      \centering
+      \photo[width=0.48\linewidth]{pyferro-lockin.png}{%
+        Screenshot of the PyFERRO Lock-in tab for the EG\&G 5302, showing
+        the controls for its settings and the buttons for reading, applying,
+        and loading the lab-manual values.}
+      \caption{The PyFERRO Lock-in tab for the EG\&G 5302.}
+      \label{fig:pyferro-lockin}
+    \end{figure}
+
+    \item Run tab: Enter a sample/run name (becomes the file name),
+    operator, drive details, notes, and the save folder.
+
+    \begin{figure}[htbp]
+      \centering
+      \photo[width=0.48\linewidth]{pyferro-run.png}{%
+        Screenshot of the PyFERRO Run tab, showing the sample/run name,
+        operator, drive/circuit details, notes, save-folder selection,
+        reading interval, saving condition, and temperature-source menu.}
+      \caption{The PyFERRO Run tab and its data-file settings.}
+      \label{fig:pyferro-run}
+    \end{figure}
+
+    \item Monitoring and recording:
+    \texttt{Start monitoring} (F5) shows live data without saving. Before
+    starting a new run, press \texttt{Clear plots} if you want to clear the
+    displayed plots. Press \texttt{Record} (Ctrl+R) to open a file, starting
+    monitoring if needed; pressing it again closes that file, and the next
+    recording opens a new one. \texttt{Stop} disconnects.
+
+    \item Reading interval and saving: Set the reading interval to
+    at least about five times the lock-in time constant.
+    \texttt{Save only if $\Delta T \geq$} reproduces the old LabVIEW
+    behaviour; leave it off to record every reading.
+
+    \item Temperature source and multimeter:
+    \texttt{Temperature from} (Run tab) selects what goes in column 1 of
+    the file: the CN08D3 controller probe (normal) or the multimeter Pt100.
+    Both are recorded whenever available---\texttt{PV\_C} from the
+    controller, \texttt{T\_dmm\_C} from the multimeter. To use the
+    multimeter, tick \texttt{Also read the multimeter} on the Instruments
+    tab and check its model, its GPIB address
+    (\texttt{GPIB0::24::INSTR} for the 34401A,
+    \texttt{GPIB0::6::INSTR} for the Keithley 199 on this rig), and whether
+    the reading is ohms (a Pt100, converted here) or already
+    \si{\degreeCelsius} (34401A only).
+  \end{enumerate}
+
+  The tiles above the plots show the sample temperature, setpoint, ramp
+  direction and rate, \(X\), \(Y\) and \(R/\theta\); the plots show
+  temperature against time and \(X\) and \(Y\) against temperature, heating
+  and cooling in different colours. The PyFERRO data file contains
+  (1) the time dependence of the temperature and (2) the temperature
+  dependence of the lock-in output signals \(X\) and \(Y\). Copy the data
+  file to a thumb drive for analysis.
+
+  \begin{figure}[htbp]
+    \centering
+    \photo[width=0.75\linewidth]{pyferro-overview.png}{%
+      Cropped screenshot of the PyFERRO main window, showing the acquisition
+      controls, readout tiles, and measurement plots.}
+    \caption{The PyFERRO main window during a simulated run.}
+    \label{fig:pyferro-overview}
+  \end{figure}
+
+  A green status light indicates that the instrument is responding;
+  red means that it is not responding (hover over the light for the reason),
+  and grey means that the instrument is unused.
+  A failed reading never stops a run---the value becomes
+  \texttt{nan}, a flag is set, and the instrument is reopened after three
+  consecutive failures. The first three temperatures after the controller
+  or multimeter connects are discarded (\texttt{nan}, flag 16) so a
+  start-up glitch cannot squash the plot. The temperature tile turns red
+  above the chamber limit (default \SI{160}{\degreeCelsius}).
+  Settings persist in \verb|%USERPROFILE%\.ferro\settings.json|; delete it
+  to reset, or set \texttt{FERRO\_CONFIG\_DIR} for a per-group file.
 
 \clearpage
 % =============================================================================
