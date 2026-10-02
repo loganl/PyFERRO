@@ -56,9 +56,10 @@ class SimLockinTransport(Transport):
         self.sen = 17  # 50 mV
         self.xtc = 7  # 200 ms
         self.expand = 0
-        # The capacitance set-up of the lab manual's 5302 table: INT, 1.000 V at 25 kHz.
-        self.setup = {"IE": "0", "OA": "1000 2", "OF": "2500 7", "DR": "1", "FLT": "0",
-                      "PREAMP": "0", "P": "0 0"}
+        # The capacitance set-up of the lab manual's 5302 table: INT, 0.500 V at 25 kHz,
+        # preamplifier input.
+        self.setup = {"IE": "0", "OA": "5000 1", "OF": "2500 7", "DR": "1", "FLT": "0",
+                      "PREAMP": "1", "P": "0 0"}
 
     def write(self, cmd: str) -> None:
         self.query(cmd)

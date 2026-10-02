@@ -80,13 +80,13 @@ def _on_off(v) -> str:
 CAPACITANCE_SETUP = (
     ("reference_mode", "Reference", "INT", str, "REF, the rightmost key under the display"),
     ("oscillator_hz", "Oscillator frequency", 25000.0, _khz, "OSC F with the setting knob"),
-    ("oscillator_v", "Oscillator level", 1.0, _volts, "OSC V with the setting knob"),
+    ("oscillator_v", "Oscillator level", 0.5, _volts, "OSC V with the setting knob"),
     ("sensitivity", "Sensitivity", "1 V", str, "the left SEN key"),
     ("expand", "Expand", False, _on_off, "FUNCT, then SEN/EXPAND"),
     ("time_constant", "Time constant", ("500 ms", "200 ms"), str, "the TC keys"),
     ("filter", "Filter", "FLAT", str, "FILT, second key from the right under the display"),
     ("dynamic_reserve", "Dynamic reserve", "HI STAB", str, "the DYNRES/LOCAL key"),
-    ("signal_input", "Signal input", "DIRECT", str, "the SIGNAL SETUP screen"),
+    ("signal_input", "Signal input", "PREAMP", str, "the SIGNAL SETUP screen"),
 )
 
 

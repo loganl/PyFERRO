@@ -167,13 +167,13 @@ AC/DC coupling and FLOAT/GND are latching keys with no GPIB command and cannot b
 at all.
 
 **Setting the 5302.** Every command above that reads a value also sets it when given a
-number: `SEN 21`, `XTC 8`, `EX 0`, `IE 0`, `OF 2500 7`, `OA 1000 2`, `DR 1`, `FLT 0`,
-`PREAMP 0`. `SETTABLE` lists what the driver can set, in the order `apply()` sends it
+number: `SEN 21`, `XTC 8`, `EX 0`, `IE 0`, `OF 2500 7`, `OA 5000 1`, `DR 1`, `FLT 0`,
+`PREAMP 1`. `SETTABLE` lists what the driver can set, in the order `apply()` sends it
 — the time constant before the reserve, because a FAST time constant forces MIN reserve
 (manual §4.3). `commands_for` builds every command, checking each value, before
 `apply()` sends the first, so a bad value sends nothing. `oscillator_frequency_command`
 and `oscillator_level_command` do the count-and-range encoding: 25 kHz is `OF 2500 7`
-(2500 in the 10–100 kHz decade), 1 V is `OA 1000 2` (1000 mV steps of 1 mV).
+(2500 in the 10–100 kHz decade), 0.5 V is `OA 5000 1` (5000 steps of 0.1 mV).
 
 **Checking against the lab manual.** `CAPACITANCE_SETUP` is the lab manual's 5302 table
 as data — setting, wanted value, and which front-panel key changes it — and
