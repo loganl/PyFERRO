@@ -5,8 +5,9 @@ from __future__ import annotations
 import math
 import traceback
 
-from PySide6.QtCore import QObject, QRunnable, Qt, QThreadPool, Signal
-from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtCore import QObject, QRunnable, QSize, Qt, QThreadPool, Signal
+from PySide6.QtWidgets import (QComboBox, QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout,
+                               QWidget)
 
 COLORS = {"ok": "#1f9d55", "error": "#d64545", "off": "#9aa0a6", "busy": "#d69e2e"}
 
@@ -37,6 +38,41 @@ def list_serial_ports() -> list[tuple[str, str]]:
             desc = f"{desc} — FTDI (likely the Dtech RS-485 adapter)"
         ports.append((p.vid != 0x0403, p.device, desc))
     return [(dev, desc) for _, dev, desc in sorted(ports)]
+
+
+class ElidedLabel(QLabel):
+    """A one-line label that shortens its text with "…" rather than widen the window.
+
+    A plain QLabel's minimum width is its whole text, and a window never goes narrower
+    than its widest label: the recording banner's file path pushed the window to
+    2600 px, off the right of the lab PC's 1280 px screen. The middle is elided so the
+    start ("● REC …") and the file name stay visible; the full text is the tooltip.
+    """
+
+    def __init__(self, text: str = "", parent=None) -> None:
+        super().__init__(parent)
+        self._full = ""
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.setText(text)
+
+    def setText(self, text: str) -> None:  # noqa: N802 - Qt naming
+        self._full = text
+        self.setToolTip(text)
+        self._elide()
+
+    def text(self) -> str:
+        return self._full
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        return QSize(0, super().minimumSizeHint().height())
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._elide()
+
+    def _elide(self) -> None:
+        shown = self.fontMetrics().elidedText(self._full, Qt.ElideMiddle, max(self.width(), 1))
+        super().setText(shown)
 
 
 class StatusLight(QWidget):

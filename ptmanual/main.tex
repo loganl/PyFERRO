@@ -276,7 +276,7 @@ in real time.
     terminals; the oscillator drives the sample through resistor R-zero and the
     measuring input sits across the sample. Below it a dashed box marks the
     sample chamber, containing the sample capacitor, a heater winding and a
-    Pt100 probe. The probe runs to the PID controller box, an Omega CN08D3, which
+    thermocouple. The thermocouple runs to the PID controller box, an Omega CN08D3, which
     lists probe input terminals 10, 11 and 12, output OUT1 on terminals 8 and 9,
     and RS-485 on terminals 13 (D minus) and 14 (D plus). OUT1 switches a
     solid-state relay that powers the heater from AC mains. On the right, the
@@ -837,6 +837,89 @@ The standard settings of the EG\&G Princeton Applied Research Model 5302 are:
 \end{tabular}
 \end{center}
 
+\paragraph{Settings for the EG\&G model 5302.}
+The rig now uses a model 5302 (Figure~\ref{fig:daqwiring}), which differs from the 5209
+in ways that matter here. Table~\ref{tab:lockin5302} gives its settings for the
+capacitance measurement, where to find each one on the front panel, and the
+equivalent GPIB command. The same command sent without a number makes the lock-in
+reply with the current value, which is how PyFERRO reads these settings back and
+records them in the data-file header.
+
+\notebox{Two numbers differ from the 5209}{The 5302's oscillator output resistance is
+$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not \SI{600}{\ohm}: use
+\SI{450}{\ohm} in $C = \delta/(\omega R_0)$ and wherever this manual writes $R_0$.
+And its least sensitive range is \SI{1}{\volt}, with no \SI{3}{\volt} range, so set the
+oscillator to $V_0 = \SI{1.000}{\volt}$ instead of \SI{1.999}{\volt}: the in-phase signal is close
+to $V_0$ and would overload the \SI{1}{\volt} range. Nothing is lost, since
+$C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{@{}p{2.3cm}p{2.3cm}p{7.6cm}p{2.1cm}@{}}
+    \toprule
+    \textbf{Setting} & \textbf{Value} & \textbf{How to set it on the front panel}
+      & \textbf{GPIB} \\
+    \midrule
+    Signal input & DIRECT INPUT, AC, FLOAT
+      & Cable to the DIRECT INPUT connector (lower left). Of the two buttons above it,
+        latch the upper one (AC) and release the lower one (FLOAT). The display shows
+        DIR at the upper right; if it shows PRE, select DIRECT INPUT on the SIGNAL
+        SETUP screen.
+      & \texttt{PREAMP 0} (AC and FLOAT: front panel only) \\
+    Reference & INT
+      & Press REF, the rightmost of the five keys under the display, until INT shows
+        in the upper-left window. The INT light above the meter comes on.
+      & \texttt{IE 0} \\
+    Oscillator frequency & \SI{25.000}{\kilo\hertz}
+      & Press the keys to the right of the large setting knob until OSC F is in the
+        middle of the lower-right window, then turn the knob. The KNOB ACTIVE light
+        must be on; if it is off, press either key once.
+      & \texttt{OF 2500 7} \\
+    Oscillator level & \SI{1.000}{\volt}
+      & As for the frequency, with OSC V selected.
+      & \texttt{OA 1000 2} \\
+    Sensitivity & \SI{1}{\volt}
+      & The SEN keys, at the top of the two key columns to the right of the display:
+        the left one moves to a larger full scale (less sensitive).
+      & \texttt{SEN 21} \\
+    Expand & off
+      & When it is on, EX shows at the upper right. Press FUNCT and then the right SEN
+        key (SEN/EXPAND) to toggle it.
+      & \texttt{EX 0} \\
+    Time constant & \SI{500}{\milli\second} (or \SI{200}{\milli\second})
+      & The TC keys, below the SEN keys. The 5302 has no \SI{300}{\milli\second}.
+      & \texttt{XTC 8} (\texttt{XTC 7}) \\
+    Filter & FLAT
+      & Press FILT, the second key from the right under the display, until FLAT
+        shows at the upper left.
+      & \texttt{FLT 0} \\
+    Dynamic reserve & HI STAB
+      & The DYNRES/LOCAL key, to the left of the display near its bottom edge.
+      & \texttt{DR 1} \\
+    Reference phase & $Y = 0$ with the sample disconnected
+      & Press AUTO and then the left PHASE key (Auto-Phase); repeat once the outputs
+        have settled. For fine tuning, select PHASE with the keys by the setting knob
+        and turn the knob.
+      & \texttt{AQN} \\
+    Display & X-Y\%
+      & The DISP keys, to the right of the display.
+      & --- \\
+    \bottomrule
+  \end{tabular}
+  \caption{EG\&G model 5302 settings for the capacitance measurement. The GPIB
+    commands are from chapter~9 of the 5302 manual; \texttt{OF 2500 7} means 2500 in
+    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 1000 2} means
+    \SI{1000}{\milli\volt} in the \SIrange{250}{5000}{\milli\volt} range.}
+  \label{tab:lockin5302}
+\end{table}
+
+The 5302 is a dual-phase lock-in: it shows the in-phase signal as $X$ and the
+out-of-phase signal as $Y$ at the same time, so there is no \textsc{90 deg} button to
+press. Tune the phase with the sample disconnected until $Y$ is as close to zero as
+possible (Auto-Phase does this), then connect the sample and read $V_{\mathrm{meas}}$
+from $Y$.
+
 Before measuring the sample, we do a practice run by measuring the capacitance
 of a piece of BNC cable. See Appendix~\ref{app:ac} for the relevant phasor
 diagrams.
@@ -1077,13 +1160,12 @@ turn, switches the separate power circuit that drives the heater
 wrapped around the sample chamber (see the photograph of the sample
 chamber above). In PID operation, changing the fraction of time that
 the relay is on adjusts the average power delivered to the heater.
-The input for the temperature controller is a platinum resistor
-that is placed in the aluminum block of the sample chamber. The
-resistance of platinum (and all other metals) depends on the
-temperature, and this resistor has a resistance of
-\SI{100}{\ohm} at \SI{0}{\degreeCelsius}. Near this temperature,
-a \SI{1}{\degreeCelsius} increase changes its resistance by
-approximately \SI{0.38}{\ohm}.
+The input for the temperature controller is a thermocouple
+that is placed in the aluminum block of the sample chamber. A
+thermocouple is a pair of wires made of two different metals, joined
+at one end. When the joined end is at a different temperature from
+the free ends, a small voltage appears between the free ends (the
+Seebeck effect), typically tens of microvolts per degree Celsius.
 
 \begin{figure}[htbp]
   \centering
@@ -1196,23 +1278,17 @@ before recording the cooling data.}
 
 \subsection{Temperature measurement}
 
-The temperature is measured by a Pt100 probe installed in the aluminum
+The temperature is measured by a thermocouple installed in the aluminum
 block of the sample chamber and connected to the temperature input of
-the Omega CN08D3 controller. A Pt100 detects temperature through the
-change in its electrical resistance. For a standard Pt100 at
-\(T \geq \SI{0}{\degreeCelsius}\), the resistance-to-temperature
-conversion is
-\begin{equation}
-  T(R) =
-  \frac{-A+\sqrt{A^2-4B\left(1-R/R_0\right)}}{2B},
-\end{equation}
-where \(R\) is the measured resistance, \(R_0=\SI{100}{\ohm}\) is the
-Pt100 resistance at \(\SI{0}{\degreeCelsius}\),
-\(A=3.9083\times10^{-3}\,\si{\per\degreeCelsius}\), and
-\(B=-5.775\times10^{-7}\,\si{\per\degreeCelsius\squared}\).
+the Omega CN08D3 controller. A thermocouple detects temperature through
+the small voltage between its two wires, which grows with the
+temperature difference between the junction in the block and the
+controller's terminals.
 
-The CN08D3 measures the probe resistance and converts it to the process
-temperature (PV) using its configured Pt100 input. PyFERRO reads the PV
+The CN08D3 measures the thermocouple voltage, corrects for the
+temperature of its own terminals, and converts the result to the process
+temperature (PV). Its input-type setting must match the thermocouple
+type. PyFERRO reads the PV
 and setpoint (SV) from the controller over RS-485 and records them with
 the lock-in measurements. The controller uses the PV as feedback to
 regulate the heater. Because the probe measures the aluminum block, its
@@ -1916,6 +1992,11 @@ able to measure such a sample with the four-probe method.}
 \section{Data taking with PyFERRO}\label{app:pyferro}
 % =============================================================================
 
+PyFERRO replaces the LabVIEW routine \texttt{Ferro.vi}. It reads the lock-in, the
+temperature controller and, optionally, the multimeter, plots the data live and
+saves them. It only reads the temperature controller: setpoints and ramps are set
+on the controller itself.
+
 \begin{enumerate}
   \item Starting PyFERRO.
   The \texttt{PyFERRO} folder on the desktop contains information about the
@@ -2040,6 +2121,22 @@ able to measure such a sample with the four-probe method.}
   above the chamber limit (default \SI{160}{\degreeCelsius}).
   Settings persist in \verb|%USERPROFILE%\.ferro\settings.json|; delete it
   to reset, or set \texttt{FERRO\_CONFIG\_DIR} for a per-group file.
+
+The data file starts with \texttt{\#} lines that record the sample name, the
+lock-in's settings (sensitivity, time constant, reference, oscillator, filter,
+reserve and input) and the controller's, so the file itself says how the
+measurement was set up. Anything that changes during the run, such as a
+sensitivity change or an overload, is written into the file as a \texttt{\#} line
+at the moment it happens. The columns are tab-separated; the first three are the
+temperature (\si{\degreeCelsius}) and the lock-in $X$ and $Y$ (\si{\volt}), as in
+the LabVIEW files, followed by the time, $R$ and $\theta$, the controller's
+setpoint and temperature, the multimeter temperature, the lock-in full scale, the
+heating or cooling direction, a segment number and error flags. Missing readings
+are written as \texttt{nan}. The files load directly with \texttt{numpy.loadtxt} or
+with pandas (\texttt{comment="\#"}), and with most spreadsheet programs.
+
+Write the file name in your lab notes all the same, with anything else you need
+to reconstruct the circumstances of the measurement.
 
 \clearpage
 % =============================================================================

@@ -1,8 +1,10 @@
 """HP/Agilent 34401A multimeter reading a Pt100 sample thermometer (optional).
 
-The LabVIEW routine sent ``read?`` to GPIB0::24::INSTR.  The meter should be in
-4-wire ohms (Omega) mode; the resistance is converted to temperature with the
-IEC 60751 Callendar-Van Dusen equation (valid 0-850 degC, which covers this lab).
+The LabVIEW routine sent ``read?`` to GPIB0::24::INSTR.  The meter must be put in
+4-wire ohms (Omega) mode on its front panel - this driver sends no function command,
+so ``READ?`` returns whatever the meter is set to measure.  The resistance is
+converted to temperature with the IEC 60751 Callendar-Van Dusen equation (valid
+0-850 degC, which covers this lab).
 """
 
 from __future__ import annotations

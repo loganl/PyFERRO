@@ -27,32 +27,56 @@ from .datafile import (
     FLAG_LOCKIN_ERROR,
     FLAG_LOCKIN_OVERLOAD,
     FLAG_PID_ERROR,
+    FLAG_TEMP_DISCARDED,
     DataWriter,
     unique_path,
 )
 from .instruments.cnd3 import CND3, PIDError
 from .instruments.hp34401a import HP34401A
 from .instruments.keithley199 import Keithley199
-from .instruments.lockin5301a import UNVERIFIED as LOCKIN_5301A_UNVERIFIED
-from .instruments.lockin5301a import Lockin5301A
-from .instruments.lockin5302 import Lockin5302
+from .instruments.lockin5302 import Lockin5302, check_setup
 from .instruments.sr830 import SR830
 from .instruments import simulated
 from .transports import (TERMINATIONS, SerialTransport, TransportError, VisaTransport,
                          probe_terminations)
 
 NAN = float("nan")
+DISCARDED = object()  # what _read returns for a reading thrown away just after connecting
 REOPEN_AFTER_FAILURES = 3
 REOPEN_BACKOFF_S = 5.0
 POLL_SETTINGS_S = 60.0  # how often to re-read settings that are not read every sample
 BEHIND_WARN_S = 30.0  # how often to say the loop cannot keep up with the interval
 LOCKIN_GAP_S = 0.05  # the 5302 loses a command sent while it is still busy
 LOCKIN_RETRIES = 2  # the GPIB link on this rig drops the odd exchange
+# Temperatures thrown away after each (re)connect: the first ones can be nonsense
+# (-3000 C spikes on the CND3) and would squash the plot's temperature axis.
+DISCARD_TEMPERATURES_AFTER_OPEN = 3
 
 # Config value -> driver. The SR830 and the Keithley 199 are opened with the
-# terminators their manuals give; the 5302 and 5301A with the terminator search.
-LOCKIN_MODELS = {"5302": Lockin5302, "sr830": SR830, "5301a": Lockin5301A}
+# terminators their manuals give; the 5302 with the terminator search.
+LOCKIN_MODELS = {"5302": Lockin5302, "sr830": SR830}
 DMM_MODELS = {"34401a": HP34401A, "k199": Keithley199}
+
+
+# Lock-in settings watched by the poll: (settings key, name in the file, format,
+# relative change that counts, or None for any change).
+LOCKIN_WATCHED = (
+    ("time_constant", "time constant", str, None),
+    ("frequency_hz", "reference frequency", lambda v: f"{v:.4g} Hz", 1e-3),
+    ("reference_mode", "reference", str, None),
+    ("oscillator_hz", "oscillator frequency", lambda v: f"{v / 1000:.4g} kHz", 1e-3),
+    ("oscillator_v", "oscillator level", lambda v: f"{v:.3f} V", 5e-3),
+    ("dynamic_reserve", "dynamic reserve", str, None),
+    ("filter", "filter", str, None),
+    ("signal_input", "signal input", str, None),
+    ("phase_deg", "reference phase", lambda v: f"{v:.1f}°", None),
+)
+
+
+def _differs(before, now, rel) -> bool:
+    if rel is None:
+        return before != now
+    return abs(now - before) > rel * max(abs(before), abs(now), 1e-12)
 
 
 # Terminator pairs that have worked, by resource: a reconnect should not pay for
@@ -77,8 +101,7 @@ def open_lockin(cfg: AppConfig, on_log: Callable[[str, str], None] | None = None
         return driver(SerialTransport(c.serial_port, baudrate=c.baudrate, timeout_s=c.timeout_s))
 
     # The 5302's terminator is set on its own front panel and the wrong guess times
-    # out exactly like a dead instrument, so try each pair until ID answers. The
-    # 5301A is assumed to work the same way.
+    # out exactly like a dead instrument, so try each pair until ID answers.
     # Probe with a short timeout: a silent instrument otherwise costs the full
     # timeout eight times over, on the acquisition thread, which is what a Stop
     # press has to wait for. Whatever worked is tried first next time, so a
@@ -170,6 +193,8 @@ class InstrumentSlot:
     next_attempt: float = 0.0
     state: str = "off"  # off | ok | error
     message: str = ""
+    discard_after_open: int = 0  # readings to throw away after each successful open
+    to_discard: int = 0
 
     def get(self):
         if self.device is None and time.monotonic() >= self.next_attempt:
@@ -178,6 +203,7 @@ class InstrumentSlot:
             except Exception as exc:
                 self.next_attempt = time.monotonic() + REOPEN_BACKOFF_S
                 raise
+            self.to_discard = self.discard_after_open
         if self.device is None:
             raise TransportError(f"{self.name}: waiting to reconnect")
         return self.device
@@ -213,9 +239,11 @@ class Acquisition:
         on_log: Callable[[str, str], None] = lambda level, msg: None,
         on_status: Callable[[str, str, str], None] = lambda name, state, msg: None,
         on_recording: Callable[[str | None], None] = lambda path: None,
+        on_lockin: Callable[[dict], None] = lambda settings: None,
     ) -> None:
         self.cfg = cfg
         self.on_sample, self.on_status, self.on_recording = on_sample, on_status, on_recording
+        self.on_lockin = on_lockin  # the lock-in's settings, after every poll or change
         # Core messages go to the session log directly, not only through the GUI, so a run
         # driven without a window (tests, scripts) still leaves a complete record.
         self.on_log = lambda level, message: (on_log(level, message),
@@ -229,10 +257,11 @@ class Acquisition:
         self.tracker = DirectionTracker()
         self.slots = {
             "lockin": InstrumentSlot("Lock-in", lambda: open_lockin(cfg, self.on_log, self._stop.is_set)),
-            "pid": InstrumentSlot("CND3", lambda: open_pid(cfg)),
+            "pid": InstrumentSlot("CND3", lambda: open_pid(cfg),
+                                  discard_after_open=DISCARD_TEMPERATURES_AFTER_OPEN),
         }
         if cfg.dmm.enabled or cfg.run.temp_source == "dmm":
-            self.slots["dmm"] = InstrumentSlot("Multimeter", lambda: open_dmm(cfg))
+            self.slots["dmm"] = self._dmm_slot()
         self._last_logged_t = NAN
         self._over_temp = False
         self._t0 = 0.0
@@ -241,8 +270,8 @@ class Acquisition:
         self._last_expand: bool | None = None
         self._overloaded = False
         self._next_settings_poll = 0.0
-        self._last_tc: int | None = None
-        self._last_freq: float | None = None
+        self._last_lockin: dict = {}  # settings at the last poll, to notice changes
+        self._lockin_changes: dict | None = None  # asked for from the window, not yet sent
         self._last_control: str | None = None
         self._last_run_state: str | None = None
 
@@ -266,6 +295,20 @@ class Acquisition:
     def set_recording(self, on: bool) -> None:
         with self._req_lock:
             self._record_request = on
+
+    def set_lockin(self, changes: dict) -> None:
+        """Change lock-in settings during a run (keys as in lockin5302.SETTABLE).
+
+        Sent by the acquisition thread between samples, so the commands cannot land in
+        the middle of a reading; then the settings are read back at once, and whatever
+        changed is written into the file.
+        """
+        with self._req_lock:
+            self._lockin_changes = {**(self._lockin_changes or {}), **changes}
+
+    def refresh_lockin(self) -> None:
+        """Read the lock-in's settings at the next sample rather than waiting for the poll."""
+        self._next_settings_poll = 0.0
 
     def stop(self, timeout: float = 10.0) -> None:
         self._stop.set()
@@ -312,6 +355,10 @@ class Acquisition:
             except OSError:
                 pass
 
+    def _dmm_slot(self) -> InstrumentSlot:
+        return InstrumentSlot("Multimeter", lambda: open_dmm(self.cfg),
+                              discard_after_open=DISCARD_TEMPERATURES_AFTER_OPEN)
+
     def _set_status(self, key: str, state: str, message: str = "") -> None:
         slot = self.slots[key]
         if (state, message) != (slot.state, slot.message):
@@ -329,6 +376,9 @@ class Acquisition:
             slot.failures = 0
             slot.failing_since = 0.0
             self._set_status(key, "ok")
+            if slot.to_discard:
+                slot.to_discard -= 1  # the link works; the value is not trusted yet
+                return DISCARDED
             return value
         except Exception as exc:
             if slot.state != "error":
@@ -347,14 +397,13 @@ class Acquisition:
         self.on_log("info", "Acquisition started" + (" (SIMULATION)" if self.cfg.simulate else ""))
         for line in self.connections().values():
             self.on_log("info", f"  {line}")
-        if self.cfg.lockin.model == "5301a":
-            self.on_log("warning", LOCKIN_5301A_UNVERIFIED)
         next_tick = self._t0
         warned_behind = 0.0
         try:
             while not self._stop.is_set():
                 try:
                     self._handle_record_request()
+                    self._handle_lockin_request()
                     row = self._sample()
                     self.on_sample(row)
                     self._maybe_write(row)
@@ -398,18 +447,23 @@ class Acquisition:
         row = {"time_s": time.monotonic() - self._t0, "flags": 0}
 
         pid = self._read("pid", lambda d: d.read())
+        if pid is DISCARDED:
+            row["flags"] |= FLAG_TEMP_DISCARDED
+            pid = None
+        elif pid is None:
+            row["flags"] |= FLAG_PID_ERROR
         row["PV_C"] = pid.pv_c if pid else NAN
         row["SV_C"] = pid.sv_c if pid else NAN
-        if pid is None:
-            row["flags"] |= FLAG_PID_ERROR
 
         row["T_dmm_C"] = NAN
         if "dmm" not in self.slots and (self.cfg.dmm.enabled or self.cfg.run.temp_source == "dmm"):
             # The multimeter was switched on (or selected) after the run started.
-            self.slots["dmm"] = InstrumentSlot("Multimeter", lambda: open_dmm(self.cfg))
+            self.slots["dmm"] = self._dmm_slot()
         if "dmm" in self.slots:
             t_dmm = self._read("dmm", lambda d: d.read_celsius())
-            if t_dmm is None:
+            if t_dmm is DISCARDED:
+                row["flags"] |= FLAG_TEMP_DISCARDED
+            elif t_dmm is None:
                 row["flags"] |= FLAG_DMM_ERROR
             else:
                 row["T_dmm_C"] = t_dmm
@@ -426,9 +480,18 @@ class Acquisition:
             self._watch_lockin(li)
 
         row["T_C"] = row["T_dmm_C"] if self.cfg.run.temp_source == "dmm" else row["PV_C"]
-        row["direction"] = self.tracker.update(row["time_s"], row["T_C"])
-        row["segment"] = self.tracker.segment
-        row["slope_c_per_min"] = self.tracker.slope_c_per_min
+        tr = self.tracker
+        row["direction"] = tr.update(row["time_s"], row["T_C"])
+        row["segment"] = tr.segment
+        row["slope_c_per_min"] = tr.slope_c_per_min
+        row["turned_at_s"] = NAN
+        if tr.just_turned:
+            # The turn is recognised after the extreme, so the rows since then carry the
+            # old direction. Record where it really was; the plot recolours from there.
+            row["turned_at_s"] = tr.turn_time_s
+            self.annotate(f"Ramp turned to {'heating' if tr.direction > 0 else 'cooling'} at "
+                          f"{tr.turn_temp_c:.1f} °C, t = {tr.turn_time_s:.0f} s "
+                          f"(recognised at t = {row['time_s']:.0f} s)")
 
         limit = self.cfg.run.max_temp_c
         t = row["T_C"]
@@ -469,14 +532,21 @@ class Acquisition:
         li = self.slots["lockin"].device
         if li is not None:
             try:
-                tc, freq = li.time_constant_index(), li.frequency_hz()
-                if self._last_tc is not None and tc != self._last_tc:
-                    self.annotate(f"Lock-in time constant changed to {li.TIME_CONSTANT_LABELS[tc]}")
-                if self._last_freq is not None and abs(freq - self._last_freq) > 0.001 * max(freq, 1):
-                    self.annotate(f"Lock-in reference frequency changed to {freq:.4g} Hz")
-                self._last_tc, self._last_freq = tc, freq
+                settings = li.settings()
             except Exception:
-                pass  # a failed poll is not worth reporting; the reading path already does
+                settings = None  # a failed poll is not worth reporting; the reading path does
+            if settings is not None:
+                # Sensitivity and expand arrive with every reading (_watch_lockin); the
+                # rest is noted here, so a front-panel change mid-run is in the file.
+                for key, label, fmt, rel in LOCKIN_WATCHED:
+                    value = settings.get(key)
+                    if value is None:
+                        continue
+                    before = self._last_lockin.get(key)
+                    if before is not None and _differs(before, value, rel):
+                        self.annotate(f"Lock-in {label} changed to {fmt(value)}")
+                    self._last_lockin[key] = value
+                self.on_lockin(settings)
         pid = self.slots["pid"].device
         if pid is not None:
             try:
@@ -503,6 +573,29 @@ class Acquisition:
             self.on_log("error", f"Could not write data file ({exc}); recording stopped. Check the disk/USB drive.")
             self._close_writer()
 
+    def _handle_lockin_request(self) -> None:
+        with self._req_lock:
+            changes, self._lockin_changes = self._lockin_changes, None
+        if not changes:
+            return
+        li = self.slots["lockin"].device
+        if li is None or not hasattr(li, "apply"):
+            reason = ("the lock-in is not connected" if li is None
+                      else f"the {li.MODEL} cannot be set from PyFERRO")
+            self.on_log("warning", f"Lock-in settings not changed: {reason}")
+            return
+        self._next_settings_poll = 0.0  # read back at once: the file records what took effect
+        try:
+            sent = li.apply(changes)
+        except ValueError as exc:  # checked before anything was sent
+            self.on_log("error", f"Lock-in settings not changed: {exc}")
+            return
+        except Exception as exc:
+            self.annotate(f"Lock-in: setting stopped partway ({exc}); the settings read back "
+                          "next show what took effect", level="warning")
+            return
+        self.annotate("Lock-in set from PyFERRO: " + ", ".join(sent))
+
     def _handle_record_request(self) -> None:
         with self._req_lock:
             request, self._record_request = self._record_request, None
@@ -528,18 +621,28 @@ class Acquisition:
             "session_log": sessionlog.path() or "not written",
             **{f"connection_{k}": v for k, v in self.connections().items()},
         }
-        if self.cfg.lockin.model == "5301a":
-            meta["lockin_warning"] = LOCKIN_5301A_UNVERIFIED
         for key, label in (("lockin", "lockin"), ("pid", "controller")):
             slot = self.slots[key]
             try:
                 dev = slot.get()
                 info = dev.settings() if key == "lockin" else dev.status()
                 for k, v in info.items():
-                    meta[f"{label}_{k}"] = v
+                    meta[f"{label}_{k}"] = "not read" if v is None else v
+                if key == "lockin" and "reference_mode" in info:
+                    self._check_lockin_setup(info, meta)
             except Exception as exc:
                 meta[f"{label}_error"] = str(exc)
         return meta
+
+    def _check_lockin_setup(self, settings: dict, meta: dict) -> None:
+        """Say, in the log and the header, where the 5302 differs from the lab manual."""
+        bad = [c for c in check_setup(settings) if c.ok is False]
+        if not bad:
+            meta["lockin_setup_check"] = "matches the lab manual's 5302 table"
+            return
+        text = "; ".join(f"{c.name} {c.now} (manual: {c.wanted})" for c in bad)
+        meta["lockin_setup_check"] = f"differs from the lab manual's 5302 table: {text}"
+        self.on_log("warning", f"Lock-in settings differ from the lab manual: {text}")
 
     def _open_writer(self) -> None:
         run = self.cfg.run

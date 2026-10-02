@@ -15,7 +15,7 @@ from the wires up to the measurement loop, with every example taken from this ri
 
 | Layer | Files | Job |
 |---|---|---|
-| GUI | `gui/main_window.py` | Draws plots and readouts. Never talks to an instrument. |
+| GUI | `gui/main_window.py`, `setup_panel.py`, `lockin_panel.py` | Draws plots and readouts. Never talks to an instrument the loop has open. |
 | **DAQ** | `acquisition.py` | When to read, what to do when a read fails, what to save. |
 | **Drivers** | `instruments/lockin5302.py`, `cnd3.py`, `hp34401a.py` (+ other models, §4) | What the instrument's answers mean. |
 | **Transports** | `transports.py`, minimalmodbus | How bytes get there and back. |
@@ -81,8 +81,9 @@ query(cmd) -> str   # send; return the reply text
 close()
 ```
 
-Three classes implement it: `VisaTransport`, `SerialTransport`, and `SimLockinTransport`
-in the simulator.
+`VisaTransport` and `SerialTransport` implement it for real hardware, and the simulator
+has one fake per instrument model (`SimLockinTransport` for the 5302, `SimSR830Transport`,
+`SimDMMTransport`, `SimK199Transport`).
 
 ### Terminators, as actual bytes
 
@@ -154,6 +155,32 @@ Source: [`ferro/instruments/lockin5302.py`](../ferro/instruments/lockin5302.py)
 | `XTC` | time-constant index 0–18 |
 | `FRQ` | reference frequency in **mHz** |
 | `XY` | X and Y as integer **counts** |
+| `IE`, `DR`, `FLT`, `PREAMP` | codes for reference mode, dynamic reserve, filter, signal input |
+| `OA`, `OF` | oscillator level and frequency as `n1 n2`: a count and its range |
+| `P` | reference phase as `quadrant millidegrees` |
+
+The last three rows are read by `setup()`, for the **Test** button, the data-file header,
+the Lock-in tab and the once-a-minute poll during a run (§5) — a record of how the front
+panel was set, following the lab manual's 5302 table. Each is read on its own and becomes
+`not read` if it fails, so a dropped exchange there cannot fail a Test or a recording.
+AC/DC coupling and FLOAT/GND are latching keys with no GPIB command and cannot be read
+at all.
+
+**Setting the 5302.** Every command above that reads a value also sets it when given a
+number: `SEN 21`, `XTC 8`, `EX 0`, `IE 0`, `OF 2500 7`, `OA 1000 2`, `DR 1`, `FLT 0`,
+`PREAMP 0`. `SETTABLE` lists what the driver can set, in the order `apply()` sends it
+— the time constant before the reserve, because a FAST time constant forces MIN reserve
+(manual §4.3). `commands_for` builds every command, checking each value, before
+`apply()` sends the first, so a bad value sends nothing. `oscillator_frequency_command`
+and `oscillator_level_command` do the count-and-range encoding: 25 kHz is `OF 2500 7`
+(2500 in the 10–100 kHz decade), 1 V is `OA 1000 2` (1000 mV steps of 1 mV).
+
+**Checking against the lab manual.** `CAPACITANCE_SETUP` is the lab manual's 5302 table
+as data — setting, wanted value, and which front-panel key changes it — and
+`check_setup(settings)` compares a `settings()` dict with it row by row: ✔, ✘, or "not
+read". The Test button shows the result as a table, a recording writes it into the
+header (`# lockin_setup_check:`), and the Lock-in tab's *Lab-manual values* fills its
+form from the same table. Keep it in step with `ptmanual/main.tex`.
 
 The instrument speaks **counts, not volts**. ±10000 counts is full scale; readings run to
 ±12000 before clipping.
@@ -211,7 +238,10 @@ The reply is `:01 03 04 05DC 0640 D1`: four data bytes, where `05DC` = 1500 →
 **150.0 °C** process value and `0640` = 1600 → **160.0 °C** setpoint.
 
 `decode_temperature` checks the fault codes 8002H–8007H first, then reads the word as
-signed 16-bit and divides by ten: `FFF6` → 65526 − 65536 = −10 → **−1.0 °C**.
+signed 16-bit and divides by ten: `FFF6` → 65526 − 65536 = −10 → **−1.0 °C**. Anything
+below −999.9 °C is refused as a status code: no input goes that low, and an unlisted
+code such as `8000` would otherwise become **−3276.8 °C** — the "−3000 °C" spikes once
+seen on the first readings of a run.
 
 **Who does what.** minimalmodbus builds the frame, computes the LRC (or CRC-16 for RTU,
 the same content in raw binary), sends it through pyserial, and validates the reply's
@@ -220,6 +250,12 @@ interprets the answer. Its `_read` retries twice, sleeping 50 ms then 100 ms, an
 **never writes** — so it cannot touch the setpoint or the heater. `autodetect` works
 through mode × baud × framing, asking for the firmware register until something answers.
 
+Beyond PV and SV, `status()` gathers what **Test controller** shows and the data-file
+header records: firmware, output 1 level, control method (1005H), run state (103CH) and
+°C/°F, plus `setup()` — output 2, output 1's upper limit, the setpoint mode and its ramp
+rate. Like the 5302's `setup()`, each of those is read on its own and becomes `None` if
+it fails, because they explain a run rather than measure it.
+
 On the wire, 17 characters out and 19 back is about **37 ms**, plus the controller's own
 response time.
 
@@ -227,19 +263,25 @@ response time.
 
 Source: [`ferro/instruments/hp34401a.py`](../ferro/instruments/hp34401a.py)
 
-`READ?` returns ohms. The driver solves the Callendar–Van Dusen quadratic
-R = R₀(1 + A·T + B·T²) for T: 109.73 Ω → 25.0 °C, 157.33 Ω → 150.0 °C. A sanity window of
-0.5–3 × R₀ catches a meter left in the wrong mode.
+`READ?` returns whatever the meter is measuring: the driver sends no function command,
+so the meter must be put in 4-wire ohms on its front panel. The driver solves the
+Callendar–Van Dusen quadratic R = R₀(1 + A·T + B·T²) for T: 109.73 Ω → 25.0 °C,
+157.33 Ω → 150.0 °C. A sanity window of 0.5–3 × R₀ catches a meter left in the wrong
+mode — on the rig it was once found on DC volts.
 
 ### Other models: one shape, several drivers
 
-The rig uses a 5302 and a 34401A, but the Instruments tab can select an SRS SR830 or an
-EG&G 5301A lock-in and a Keithley 199 multimeter. `open_lockin` and `open_dmm` look the
+The rig uses a 5302 and a 34401A, but the Instruments tab can select an SRS SR830
+lock-in and a Keithley 199 multimeter. `open_lockin` and `open_dmm` look the
 driver up in `LOCKIN_MODELS` / `DMM_MODELS`, and nothing above them knows which one they
 got, because every lock-in driver has the same methods (`check`, `read`, `settings`,
-`time_constant_index`, `frequency_hz`, `close`) and every reading the same fields
-(`x_v`, `y_v`, `r_v`, `theta_deg`, `sensitivity`, `full_scale_v`, `percent_fs`,
-`expand`, `overloaded`). The multimeters share `check`, `read_raw`, `read_celsius`.
+`close`) and attributes (`MODEL`, `SENSITIVITY_LABELS`, `TIME_CONSTANT_LABELS`,
+`EXPAND_NAME`), and every reading the same fields (`x_v`, `y_v`, `r_v`, `theta_deg`,
+`sensitivity`, `full_scale_v`, `percent_fs`, `expand`, `overloaded`). The multimeters
+share `check`, `read_raw`, `read_celsius`, `close` and `MODEL`. Only the 5302 has
+`setup()` and `apply()`: the acquisition loop checks for `apply` before sending a
+Lock-in-tab change, and the setup check runs only when `settings()` includes
+`reference_mode`.
 
 What differs is what the manuals say, and each difference shows up somewhere specific:
 
@@ -255,19 +297,15 @@ What differs is what the manuals say, and each difference shows up somewhere spe
   it, so the driver sets its own function, and turns Zero off, every time. Its readings carry a prefix, and
   that prefix is the only place an overload shows: without it, overflow is a
   plausible-looking 9.999999E+9 Ω.
-- **5301A** ([`lockin5301a.py`](../ferro/instruments/lockin5301a.py)) has no manual. It
-  is a `Lockin5302` subclass, opened through the same terminator search with the same
-  50 ms reply delay. Its one change is the out-of-range message: for the 5302 an index
-  outside the table proves the replies are out of step, but for the 5301A it might only
-  mean the tables differ.
 
 ### Simulation
 
 Source: [`ferro/instruments/simulated.py`](../ferro/instruments/simulated.py)
 
 The fakes sit **below** the drivers. `SimLockinTransport` implements the transport
-contract and answers `SEN` and `XY` as a 5302 would, so the real parsing and scaling code
-runs. `SimModbusInstrument` stands in for `minimalmodbus.Instrument`, so the real
+contract and answers `SEN`, `XY` and the rest as a 5302 would — starting in the lab
+manual's set-up, and taking new values from `SEN 21`-style commands — so the real
+parsing, scaling and setting code runs. `SimModbusInstrument` stands in for `minimalmodbus.Instrument`, so the real
 `decode_temperature` runs. One shared `SimulatedSample` keeps all three instruments
 agreeing on the temperature. `lockin_transport` and `dmm_transport` pick the fake that
 matches the selected model.
@@ -293,7 +331,7 @@ thread ever opens or closes the data file.
 
 `open_lockin` picks the driver for the selected model, then branches: simulated, SR830
 (GPIB with LF terminators, nothing to probe), serial, or GPIB. The GPIB path, used by
-the 5302 and the 5301A, runs the terminator probe with a short timeout and **no
+the 5302, runs the terminator probe with a short timeout and **no
 retries**, so a wrong pair fails fast; caches the winning pair per resource; then
 restores the full timeout and turns retries on. `open_pid` and `open_dmm` are simpler;
 `open_dmm` gives the Keithley 199 its CR LF terminators.
@@ -312,6 +350,11 @@ restores the full timeout and turns retries on. `open_pid` and `open_dmm` are si
 to reconnect" instead. `failed()` counts failures, and on the third closes the device and
 schedules a reopen.
 
+The two thermometer slots, controller and multimeter, also have `discard_after_open`
+(`DISCARD_TEMPERATURES_AFTER_OPEN`, 3). Every successful open, at the start of a run or
+on a reconnect, resets `to_discard` to it, and that many readings are thrown away before
+any is trusted.
+
 ### `_read`: the wrapper around every instrument call
 
 - It times the call — the source of the "falling behind" message's numbers.
@@ -319,6 +362,9 @@ schedules a reopen.
   something breaks, not one per sample.
 - When a device recovers it logs "answering again after N s".
 - On failure it returns `None`, and the caller records NaN plus a flag.
+- While a slot still has readings to discard it returns `DISCARDED`: the instrument
+  answered (its light stays green), but the caller records NaN with flag 16, not the
+  error flag.
 
 ### `_run`: the clock
 
@@ -343,6 +389,7 @@ whose keys are the file's columns. A failure becomes NaN plus a **flag bit**:
 | 1 | 2 | lock-in error |
 | 2 | 4 | controller error |
 | 3 | 8 | multimeter error |
+| 4 | 16 | temperature discarded just after connecting |
 
 The bits add, so `flags = 6` means the lock-in and the controller both failed that
 sample. `T_C` then comes from whichever temperature source is selected, the ramp
@@ -352,27 +399,55 @@ direction updates, and the over-temperature alarm fires once, as the limit is cr
 
 Source: [`ferro/analysis.py`](../ferro/analysis.py)
 
-A least-squares slope over the last 60 s — at least 3 points spanning at least 10 s:
+The rig's temperature readings wobble by degrees around the ramp, whether from the
+heater cycling or a noisy probe. A local slope follows every swing — the first version of this tracker used one and flipped
+between heating and cooling on each. So the tracker does two things instead:
 
-```
-slope = Σ(t − t̄)(T − T̄) / Σ(t − t̄)²
-```
+1. **Average** the temperature over the last 120 s. Swings much faster cancel out.
+2. **Turn only at a turning point.** While heating it remembers the highest average
+   reached, and calls the ramp cooling once the average is **3 °C** below that peak;
+   the mirror image while cooling. A wobble smaller than the band never turns it,
+   however steep.
 
-| Slope | Direction |
-|---|---|
-| above +0.2 °C/min | heating |
-| below −0.2 °C/min | cooling |
-| magnitude under 0.1 °C/min | steady |
-| in between | unchanged — hysteresis, so noise at a turning point doesn't flicker |
+| State | Becomes | When |
+|---|---|---|
+| 0, not yet known | heating / cooling | the average has moved 3 °C from where it started |
+| heating | cooling | the average is 3 °C below the highest it reached |
+| cooling | heating | the average is 3 °C above the lowest it reached |
 
-`segment` counts the flips between heating and cooling.
+A turn is recognised a minute or two after the real extreme. At that moment
+`just_turned` is set and `turn_time_s` / `turn_temp_c` give the extreme, so `_sample`
+annotates the file (`# Ramp turned to cooling at 150.1 °C, t = 7512 s …`) and the
+window recolours the points since then. The rows already written keep the old label.
+
+On synthetic 25 → 150 → 25 °C runs at 1–10 °C/min with ±5 °C swings of period 5–120 s it
+turned exactly once every time, within 4 s of the true peak; the old slope tracker
+turned hundreds of times once the swings were 30 s or slower. `segment` counts the
+turns; `slope_c_per_min`, for the display only, is a least-squares slope of the averaged
+temperature over the last 120 s.
 
 ### Watching settings
 
 `_watch_lockin` runs every sample and costs nothing, since SEN, EX and overload arrive
-with each reading. `_poll_settings` runs every 60 s for XTC, FRQ and the controller's
-mode and run state, which each need an extra exchange. Any change is **annotated** —
-logged, and written into the data file as `# HH:MM:SS …` — so the file explains itself.
+with each reading. `_poll_settings` runs every 60 s: the lock-in's full `settings()`
+(for the 5302 that includes the reference, oscillator, filter, reserve, input and
+phase — `LOCKIN_WATCHED` lists what is compared) and the controller's mode and run
+state, which each need extra exchanges. Any change is **annotated** — logged, and
+written into the data file as `# HH:MM:SS …` — so the file explains itself. Each poll
+also goes to `on_lockin`, which fills the window's Lock-in tab.
+
+### Changing lock-in settings during a run
+
+The window never talks to an instrument the acquisition thread has open: two threads
+on one GPIB device would interleave their bytes. So the Lock-in tab calls
+`set_lockin(changes)`, which only stores the request under `_req_lock`, like
+`set_recording`. At the top of its next pass the loop's `_handle_lockin_request` sends
+it with the driver's `apply()`, annotates what was sent (`Lock-in set from PyFERRO:
+filter FLAT (FLT 0)`), and brings the next poll forward, so the read-back — and any
+"changed to" line — follows at once. The file therefore shows both what was asked for
+and what took effect. `apply()` checks every value before sending the first command,
+and sends the time constant before the reserve, since a FAST time constant forces MIN
+reserve. When no run is active the tab opens its own connection instead, like Test.
 
 ### Recording
 

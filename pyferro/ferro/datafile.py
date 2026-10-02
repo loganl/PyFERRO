@@ -34,9 +34,11 @@ COLUMNS = [
     ("PV_C", "controller temperature (degC)"),
     ("T_dmm_C", "multimeter Pt100 temperature (degC)"),
     ("sens_V", "lock-in full-scale sensitivity (V)"),
-    ("direction", "+1 heating, -1 cooling, 0 steady"),
+    ("direction", "+1 heating, -1 cooling, 0 not yet known; switches a while after each "
+                  "turn - see the '# Ramp turned' lines for where each turn really was"),
     ("segment", "ramp segment number"),
-    ("flags", "bitmask: 1 lock-in overload, 2 lock-in error, 4 controller error, 8 multimeter error"),
+    ("flags", "bitmask: 1 lock-in overload, 2 lock-in error, 4 controller error, 8 multimeter error, "
+              "16 temperature discarded just after connecting"),
 ]
 LEGACY_COLUMNS = ["T_C", "X_V", "Y_V"]
 
@@ -44,6 +46,7 @@ FLAG_LOCKIN_OVERLOAD = 1
 FLAG_LOCKIN_ERROR = 2
 FLAG_PID_ERROR = 4
 FLAG_DMM_ERROR = 8
+FLAG_TEMP_DISCARDED = 16  # first readings after (re)connecting a thermometer, not trusted
 
 
 def check_writable(folder: str | Path) -> None:

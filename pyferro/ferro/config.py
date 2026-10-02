@@ -25,7 +25,7 @@ def default_data_dir() -> str:
 
 @dataclass
 class LockinConfig:
-    model: str = "5302"  # "5302", "sr830" or "5301a"
+    model: str = "5302"  # "5302" or "sr830"
     interface: str = "visa"  # "visa" (GPIB) or "serial" (RS-232)
     resource: str = "GPIB0::12::INSTR"
     serial_port: str = ""

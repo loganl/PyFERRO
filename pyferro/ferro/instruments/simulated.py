@@ -56,6 +56,9 @@ class SimLockinTransport(Transport):
         self.sen = 17  # 50 mV
         self.xtc = 7  # 200 ms
         self.expand = 0
+        # The capacitance set-up of the lab manual's 5302 table: INT, 1.000 V at 25 kHz.
+        self.setup = {"IE": "0", "OA": "1000 2", "OF": "2500 7", "DR": "1", "FLT": "0",
+                      "PREAMP": "0", "P": "0 0"}
 
     def write(self, cmd: str) -> None:
         self.query(cmd)
@@ -78,9 +81,17 @@ class SimLockinTransport(Transport):
                 return ""
             return str(self.xtc)
         if name == "EX":
+            if args:
+                self.expand = int(args[0])
+                return ""
             return str(self.expand)
         if name == "FRQ":
             return "25000000"
+        if name in self.setup:  # answers its value bare, sets it with arguments
+            if args:
+                self.setup[name] = " ".join(args)
+                return ""
+            return self.setup[name]
         if name == "XY":
             x, y = self.sample.signal_v(self.sample.temperature())
             fs = SENSITIVITIES_V[self.sen]
@@ -88,17 +99,6 @@ class SimLockinTransport(Transport):
             # Expand X raises the x channel's gain tenfold; y is unaffected.
             return f"{clip(x, fs / 10 if self.expand else fs)},{clip(y, fs)}"
         raise TransportError(f"SIM lock-in: unknown command {cmd!r}")
-
-
-class Sim5301ATransport(SimLockinTransport):
-    """The 5302 simulation answering ID as a 5301A is assumed to (lockin5301a.py)."""
-
-    name = "SIM:LOCKIN5301A"
-
-    def query(self, cmd: str) -> str:
-        if cmd.strip().upper() == "ID":
-            return "5301A"
-        return super().query(cmd)
 
 
 class SimSR830Transport(Transport):
@@ -169,9 +169,14 @@ class SimModbusInstrument:
             0x1001: word(self.sample.setpoint(now)),
             0x1005: 0,
             0x1012: 455,
+            0x1013: 0,
             0x102A: 0b0100,
             0x102F: 0x0100,
             0x103C: 1,
+            0x1104: 0,
+            0x110E: 1000,
+            0x1120: 0,
+            0x1124: 0,
         }
         return [regs.get(register + i, 0) for i in range(count)]
 
@@ -209,8 +214,7 @@ class SimK199Transport(Transport):
 
 
 def lockin_transport(model: str, sample: SimulatedSample) -> Transport:
-    return {"5302": SimLockinTransport, "5301a": Sim5301ATransport,
-            "sr830": SimSR830Transport}[model](sample)
+    return {"5302": SimLockinTransport, "sr830": SimSR830Transport}[model](sample)
 
 
 def dmm_transport(model: str, sample: SimulatedSample) -> Transport:

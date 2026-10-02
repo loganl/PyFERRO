@@ -7,7 +7,9 @@ Reference: Omega CND3 Series User's Guide, "RS-485 Communication" section.
 * Function 03H reads up to 8 words.  The app only ever *reads* - it never
   writes to the controller, so it cannot change setpoints or heater power.
 * 1000H PV and 1001H SV are signed, 0.1 degree units.  PV reads 8002H..8007H
-  when the sensor has a fault.
+  when the sensor has a fault; anything below -999.9 is treated as a status code too.
+* ``status()`` and ``setup()`` read the rest for the Test button and the file header:
+  outputs, control method, run state, units, firmware, setpoint mode and ramp rate.
 """
 
 from __future__ import annotations
@@ -24,6 +26,12 @@ REG_OUTPUT1 = 0x1012
 REG_LED = 0x102A
 REG_VERSION = 0x102F
 REG_RUN_STOP = 0x103C
+REG_OUTPUT2 = 0x1013
+REG_OUT1_MAX = 0x110E  # upper limit of output 1, 0.1 %
+REG_SLOPE = 0x1104  # SV slope, 0.1 degree per REG_SLOPE_UNIT
+REG_SV_MODE = 0x1120
+REG_SLOPE_UNIT = 0x1124  # 0 per minute, 1 per second
+SV_MODES = {0: "constant", 1: "slope", 2: "program", 3: "remote"}
 
 PV_ERRORS = {
     0x8002: "controller initialising (no temperature yet)",
@@ -46,12 +54,22 @@ class PIDSensorError(PIDError):
     """Controller answered, but reports a sensor fault instead of a temperature."""
 
 
+# No input reads below this (the manual's sensor table bottoms out at -200 C, the
+# analog inputs at -999.9), so anything lower is a status code, not a temperature.
+LOWEST_READING_C = -999.9
+
+
 def decode_temperature(raw: int) -> float:
     if raw in PV_ERRORS:
         raise PIDSensorError(PV_ERRORS[raw])
     if raw >= 0x8000:
         raw -= 0x10000
-    return raw / 10.0
+    value = raw / 10.0
+    if value < LOWEST_READING_C:
+        # e.g. 8000H decodes to -3276.8: a code outside the manual's list, seen as a
+        # "-3000 C" spike on the first readings after connecting.
+        raise PIDSensorError(f"controller sent {raw & 0xFFFF:04X}H, a status code, not a temperature")
+    return value
 
 
 @dataclass
@@ -144,7 +162,32 @@ class CND3:
         info["run_state"] = RUN_STATES.get(self._read(REG_RUN_STOP)[0], "?")
         led = self._read(REG_LED)[0]
         info["unit"] = "°F" if led & 0b1000 else "°C"
+        info.update(self.setup())
         return info
+
+    def setup(self) -> dict:
+        """How the outputs and setpoint are configured, each value read on its own.
+
+        These explain a run (why the heater stays on, why the setpoint creeps) rather
+        than measure it, so one that does not answer is None, not a failed Test.
+        """
+        def slope():
+            per = 60.0 if self._read(REG_SLOPE_UNIT)[0] == 1 else 1.0
+            return self._read(REG_SLOPE)[0] / 10.0 * per
+
+        reads = {
+            "output2_percent": lambda: self._read(REG_OUTPUT2)[0] / 10.0,
+            "output1_max_percent": lambda: self._read(REG_OUT1_MAX)[0] / 10.0,
+            "sv_mode": lambda: SV_MODES.get(self._read(REG_SV_MODE)[0], "?"),
+            "sv_slope_c_per_min": slope,
+        }
+        out = {}
+        for key, read in reads.items():
+            try:
+                out[key] = read()
+            except PIDError:
+                out[key] = None
+        return out
 
     def close(self) -> None:
         try:

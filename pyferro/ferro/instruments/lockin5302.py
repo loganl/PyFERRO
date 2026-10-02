@@ -8,10 +8,17 @@ Command reference: 5302 Instruction Manual (221490-A-MNL-F), chapter 9.
 * ``XTC`` -> output time-constant index 0..18
 * ``FRQ`` -> reference frequency in mHz
 * ``ID``  -> "5302"
+* ``IE``, ``OA``, ``OF``, ``DR``, ``FLT``, ``PREAMP``, ``P`` -> the front-panel set-up
+  (reference, oscillator level and frequency, reserve, filter, input, phase), read by
+  ``setup()`` for the Test button, the file header and the once-a-minute poll
 
 Volts are computed as ``counts / 10000 * full_scale`` using the sensitivity read
 back from the instrument, so changing SEN on the front panel mid-run (or an
 auto-sensitivity step) is picked up automatically.
+
+The same commands with a number set the value. ``apply()`` sends the ones in
+``SETTABLE`` (the Lock-in tab), and ``check_setup()`` compares the settings with
+``CAPACITANCE_SETUP``, the lab manual's 5302 table.
 """
 
 from __future__ import annotations
@@ -46,6 +53,125 @@ TIME_CONSTANT_LABELS = [
     "500 ms", "1 s", "2 s", "5 s", "10 s", "20 s", "50 s", "100 s", "200 s", "500 s",
     "1000 s",
 ]
+# Front-panel set-up, read back so the Test button and the data file show how the
+# instrument was set (manual ch. 9: IE, DR, FLT, PREAMP). AC/DC coupling and
+# FLOAT/GND are latching front-panel keys with no GPIB command, so they cannot be read.
+REFERENCE_MODES = {0: "INT", 1: "TTL", 2: "EXT"}
+RESERVE_MODES = {0: "MIN", 1: "HI STAB", 2: "NORM", 3: "HI RES 1", 4: "HI RES 2"}
+FILTER_MODES = {0: "FLAT", 1: "NOTCH", 2: "LOW-PASS", 3: "BAND-PASS", 4: "HI-PASS"}
+SIGNAL_INPUTS = {0: "DIRECT", 1: "PREAMP"}
+
+
+def _volts(v) -> str:
+    return f"{v:.3f} V"
+
+
+def _khz(v) -> str:
+    return f"{v / 1000:.3f} kHz"
+
+
+def _on_off(v) -> str:
+    return "on" if v else "off"
+
+
+# The lab manual's 5302 table for the capacitance measurement (ptmanual/main.tex,
+# "Settings for the EG&G model 5302"): keep the two in step.
+# (settings key, name, wanted - a tuple means any of them, formatter, how to change it)
+CAPACITANCE_SETUP = (
+    ("reference_mode", "Reference", "INT", str, "REF, the rightmost key under the display"),
+    ("oscillator_hz", "Oscillator frequency", 25000.0, _khz, "OSC F with the setting knob"),
+    ("oscillator_v", "Oscillator level", 1.0, _volts, "OSC V with the setting knob"),
+    ("sensitivity", "Sensitivity", "1 V", str, "the left SEN key"),
+    ("expand", "Expand", False, _on_off, "FUNCT, then SEN/EXPAND"),
+    ("time_constant", "Time constant", ("500 ms", "200 ms"), str, "the TC keys"),
+    ("filter", "Filter", "FLAT", str, "FILT, second key from the right under the display"),
+    ("dynamic_reserve", "Dynamic reserve", "HI STAB", str, "the DYNRES/LOCAL key"),
+    ("signal_input", "Signal input", "DIRECT", str, "the SIGNAL SETUP screen"),
+)
+
+
+def oscillator_level_command(volts: float) -> str:
+    """OA n1 n2 for a level in volts (manual ch. 9: 5 mV to 5 V in three ranges)."""
+    if not 0.005 <= volts <= 5.0:
+        raise ValueError(f"oscillator level {volts:g} V is outside 5 mV to 5 V")
+    n2 = 0 if volts <= 0.05 else 1 if volts <= 0.5 else 2  # finest range that holds it
+    return f"OA {round(volts * 10 ** (5 - n2))} {n2}"
+
+
+def oscillator_frequency_command(hz: float) -> str:
+    """OF n1 n2 for a frequency in Hz: n1 = 1000..10000 across the decade n2 (1 mHz-1 MHz)."""
+    if not 0.001 <= hz <= 1e6:
+        raise ValueError(f"oscillator frequency {hz:g} Hz is outside 1 mHz to 1 MHz")
+    n2 = min(8, int(math.floor(math.log10(hz) + 1e-9)) + 3)
+    return f"OF {round(hz / 10 ** (n2 - 6))} {n2}"
+
+
+def _code(names: dict, value: str) -> int:
+    for code, name in names.items():
+        if name == value:
+            return code
+    raise ValueError(f"{value!r} is not one of {', '.join(names.values())}")
+
+
+# What apply() can set, in the order it sends them. The time constant goes before the
+# reserve: a FAST time constant forces MIN reserve (manual 4.3), undoing a reserve set
+# first. (settings key, command builder, description of the new value)
+SETTABLE = (
+    ("signal_input", lambda v: f"PREAMP {_code(SIGNAL_INPUTS, v)}", lambda v: f"input {v}"),
+    ("reference_mode", lambda v: f"IE {_code(REFERENCE_MODES, v)}", lambda v: f"reference {v}"),
+    ("oscillator_hz", oscillator_frequency_command, lambda v: f"oscillator {_khz(v)}"),
+    ("oscillator_v", oscillator_level_command, lambda v: f"oscillator {_volts(v)}"),
+    ("sensitivity_index", lambda v: f"SEN {int(v)}",
+     lambda v: f"sensitivity {SENSITIVITY_LABELS[int(v)]}"),
+    ("expand", lambda v: f"EX {1 if v else 0}", lambda v: f"expand {_on_off(v)}"),
+    ("time_constant_index", lambda v: f"XTC {int(v)}",
+     lambda v: f"time constant {TIME_CONSTANT_LABELS[int(v)]}"),
+    ("dynamic_reserve", lambda v: f"DR {_code(RESERVE_MODES, v)}", lambda v: f"reserve {v}"),
+    ("filter", lambda v: f"FLT {_code(FILTER_MODES, v)}", lambda v: f"filter {v}"),
+)
+
+
+def commands_for(changes: dict) -> list[tuple[str, str]]:
+    """(command, description) for each setting in ``changes``, in sending order.
+
+    Raises ValueError, before anything is sent, if any value is out of range.
+    """
+    out = []
+    for key, command, describe in SETTABLE:
+        if key in changes:
+            out.append((command(changes[key]), describe(changes[key])))
+    unknown = set(changes) - {key for key, _, _ in SETTABLE}
+    if unknown:
+        raise ValueError(f"cannot set {', '.join(sorted(unknown))}")
+    return out
+
+
+@dataclass
+class SetupCheck:
+    name: str
+    now: str
+    wanted: str
+    ok: bool | None  # None: the value could not be read
+    how: str
+
+
+def check_setup(settings: dict, table=CAPACITANCE_SETUP) -> list[SetupCheck]:
+    """Compare settings read from the lock-in with the lab manual's table."""
+    rows = []
+    for key, name, wanted, fmt, how in table:
+        now = settings.get(key)
+        choices = wanted if isinstance(wanted, tuple) else (wanted,)
+        if now is None:
+            ok = None
+        elif isinstance(wanted, float):
+            ok = abs(now - wanted) <= 0.005 * wanted
+        else:
+            ok = now in choices
+        rows.append(SetupCheck(name, "not read" if now is None else fmt(now),
+                               " or ".join(fmt(c) for c in choices), ok, how))
+    return rows
+
+
 FULL_SCALE_COUNTS = 10000
 OVERLOAD_COUNTS = 12000
 
@@ -157,6 +283,59 @@ class Lockin5302:
     def frequency_hz(self) -> float:
         return parse_ints(self.t.query("FRQ"), 1)[0] / 1000.0
 
+    def oscillator_v(self) -> float:
+        """OA answers ``n1 n2``: n1 in steps of 10 uV, 100 uV or 1 mV for n2 = 0, 1, 2."""
+        n1, n2 = parse_ints(self.t.query("OA"), 2)
+        return n1 * 10.0 ** (n2 - 5)
+
+    def oscillator_hz(self) -> float:
+        """OF answers ``n1 n2``: n1 = 1000..10000 across the decade 10**(n2-3) Hz."""
+        n1, n2 = parse_ints(self.t.query("OF"), 2)
+        return n1 * 10.0 ** (n2 - 6)
+
+    def phase_deg(self) -> float:
+        """P answers ``quadrant millidegrees``."""
+        quadrant, mdeg = parse_ints(self.t.query("P"), 2)
+        return (quadrant * 90000 + mdeg) / 1000.0 % 360.0
+
+    def setup(self) -> dict:
+        """The front-panel set-up, each value read on its own.
+
+        A value that cannot be read is None rather than a failed Test or header:
+        these describe the run, they are not measurements.
+        """
+        def code(command, names):
+            value = parse_ints(self.t.query(command), 1)[0]
+            return names.get(value, f"? ({value})")
+
+        reads = {
+            "reference_mode": lambda: code("IE", REFERENCE_MODES),
+            "oscillator_v": self.oscillator_v,
+            "oscillator_hz": self.oscillator_hz,
+            "dynamic_reserve": lambda: code("DR", RESERVE_MODES),
+            "filter": lambda: code("FLT", FILTER_MODES),
+            "signal_input": lambda: code("PREAMP", SIGNAL_INPUTS),
+            "phase_deg": self.phase_deg,
+        }
+        out = {}
+        for key, read in reads.items():
+            try:
+                out[key] = read()
+            except TransportError:
+                out[key] = None
+        return out
+
+    def apply(self, changes: dict) -> list[str]:
+        """Send new settings (keys as in SETTABLE); returns what was sent, described.
+
+        Every value is checked before the first command goes, so a bad one sends
+        nothing. Read the settings back afterwards to confirm them.
+        """
+        commands = commands_for(changes)
+        for command, _ in commands:
+            self.t.write(command)
+        return [f"{what} ({command})" for command, what in commands]
+
     def set_sensitivity(self, index: int) -> None:
         self.t.write(f"SEN {int(index)}")
 
@@ -174,6 +353,7 @@ class Lockin5302:
             "time_constant_s": TIME_CONSTANTS_S[tc],
             "expand": self.expand(),
             "frequency_hz": self.frequency_hz(),
+            **self.setup(),
         }
 
     # --- data ----------------------------------------------------------
