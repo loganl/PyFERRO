@@ -41,9 +41,8 @@
   \draw[wire] (2.9,2.00) -- (2.9,1.15);
   \node[lead,anchor=west] at (3.55,2.15) {sample};
 
-  % Pt100 probe in the block
+  % thermocouple in the block
   \draw[wire,fill=white] (5.15,1.55) rectangle (5.85,2.05);
-  \node[lead,anchor=south] at (5.5,2.10) {Pt100};
   \draw[wire] (5.85,1.80) -- (6.4,1.80);
 
   % drive branch through R0, the return, and the measuring leads
@@ -67,9 +66,9 @@
 
   \node[small instr] (ssr) at (9.6,0.55) {Solid-state relay};
 
-  % Pt100 -> controller input
+  % thermocouple -> controller input
   \draw[wire] (6.4,1.80) -- (6.9,1.80) -- (6.9,4.30) -- (8.6,4.30);
-  \node[lead,anchor=south] at (7.75,4.36) {Pt100};
+  \node[lead,anchor=west] at (7.0,2.55) {thermocouple};
 
   % heater -> relay (straight into the left-hand side of the relay)
   \draw[wire] (6.4,0.67) -- ($(ssr.west)+(0,0.12)$);

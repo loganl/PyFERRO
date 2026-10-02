@@ -276,7 +276,7 @@ lock-in signal and the temperature (Appendix~\ref{app:pyferro}).
     terminals; the oscillator drives the sample through resistor R-zero and the
     measuring input sits across the sample. Below it a dashed box marks the
     sample chamber, containing the sample capacitor, a heater winding and a
-    Pt100 probe. The probe runs to the PID controller box, an Omega CND3, which
+    thermocouple. The thermocouple runs to the PID controller box, an Omega CND3, which
     lists probe input terminals 10, 11 and 12, output OUT1 on terminals 8 and 9,
     and RS-485 on terminals 13 (D minus) and 14 (D plus). OUT1 switches a
     solid-state relay that powers the heater from AC mains. On the right, the
@@ -1003,12 +1003,12 @@ least initially.
     Photograph looking down into the open sample chamber. A cylindrical aluminum
     block, wrapped on the outside with many turns of copper heater wire, has a
     circular well in the middle. Inside the well lie small samples with red and
-    black wires soldered to metal clips. A platinum resistor for temperature
+    black wires soldered to metal clips. A thermocouple for temperature
     control is visible at the upper right, and the edge of the aluminum cup
     cover appears at the top right of the frame.}
   \caption{The sample chamber, opened. A heater is wrapped around the aluminum
-    block; the platinum resistor for temperature control is visible at the upper
-    right. A second platinum resistor (barely visible) sits in the center of the
+    block; the thermocouple for temperature control is visible at the upper
+    right. A platinum resistor (barely visible) sits in the center of the
     chamber and is used to measure the temperature of the samples.}
   \label{fig:chamber}
 \end{figure}
@@ -1138,12 +1138,13 @@ solid-state relay (on the left) and other circuitry, like fuses and connection
 pads. The solid-state relay converts the low-power output of the converter into
 the high power that drives the heater wrapped around the sample chamber (see the
 photograph of the sample chamber above). The input for the temperature controller
-is a platinum resistor that is placed in the aluminum block of the sample
-chamber. The resistance of platinum (and all other metals) depends on the
-temperature, and this resistor has a resistance of \SI{100}{\ohm} at temperature
-\SI{0}{\degreeCelsius}. For
-platinum, a \SI{1}{\degreeCelsius} increment of temperature changes the
-resistance by \SI{0.38}{\ohm}.
+is a thermocouple that is placed in the aluminum block of the sample
+chamber. A thermocouple is a pair of wires made of two different metals, joined
+at one end. When the joined end is at a different temperature from the free
+ends, a small voltage appears between the free ends (the Seebeck effect),
+typically tens of microvolts per degree Celsius. The controller measures this
+voltage, corrects for the temperature of its own terminals, and converts the
+result to the temperature of the junction.
 
 \begin{figure}[htbp]
   \centering
@@ -1200,7 +1201,11 @@ have two thermometers: one to control the temperature (described above) and
 another one to measure the actual temperature of the sample. This second thermometer is often
 directly attached to the sample. In our case, for the sake of easy sample
 changes, the thermometer is simply inserted into the center of the sample
-chamber. This thermometer is also a platinum resistor.
+chamber. This thermometer is a platinum resistor. The resistance of platinum
+(and all other metals) depends on the temperature, and this resistor has a
+resistance of \SI{100}{\ohm} at temperature \SI{0}{\degreeCelsius}. For
+platinum, a \SI{1}{\degreeCelsius} increment of temperature changes the
+resistance by \SI{0.38}{\ohm}.
 
 We use a Keithley 199 multimeter in four-probe resistivity mode to read out the
 resistance of the temperature probe. Learn about the four-probe method in
