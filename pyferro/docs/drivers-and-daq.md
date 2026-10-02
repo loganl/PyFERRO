@@ -161,7 +161,7 @@ Source: [`ferro/instruments/lockin5302.py`](../ferro/instruments/lockin5302.py)
 
 The last three rows are read by `setup()`, for the **Test** button, the data-file header,
 the Lock-in tab and the once-a-minute poll during a run (§5) — a record of how the front
-panel was set, following the lab manual's 5302 table. Each is read on its own and becomes
+panel was set, following the 5302 capacitance set-up. Each is read on its own and becomes
 `not read` if it fails, so a dropped exchange there cannot fail a Test or a recording.
 AC/DC coupling and FLOAT/GND are latching keys with no GPIB command and cannot be read
 at all.
@@ -175,12 +175,14 @@ number: `SEN 21`, `XTC 8`, `EX 0`, `IE 0`, `OF 2500 7`, `OA 5000 1`, `DR 1`, `FL
 and `oscillator_level_command` do the count-and-range encoding: 25 kHz is `OF 2500 7`
 (2500 in the 10–100 kHz decade), 0.5 V is `OA 5000 1` (5000 steps of 0.1 mV).
 
-**Checking against the lab manual.** `CAPACITANCE_SETUP` is the lab manual's 5302 table
-as data — setting, wanted value, and which front-panel key changes it — and
+**Checking the set-up.** `CAPACITANCE_SETUP` is the 5302's capacitance set-up as data
+— setting, wanted value, and which front-panel key changes it — and
 `check_setup(settings)` compares a `settings()` dict with it row by row: ✔, ✘, or "not
 read". The Test button shows the result as a table, a recording writes it into the
 header (`# lockin_setup_check:`), and the Lock-in tab's *Lab-manual values* fills its
-form from the same table. Keep it in step with `ptmanual/main.tex`.
+form from the same table. It was the lab manual's 5302 table until the manual moved to
+the SR830 and dropped the 5302; the SR830 driver's `CAPACITANCE_SETUP` is the one to keep
+in step with `ptmanual/main.tex` now.
 
 The instrument speaks **counts, not volts**. ±10000 counts is full scale; readings run to
 ±12000 before clipping.

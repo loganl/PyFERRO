@@ -18,7 +18,7 @@ auto-sensitivity step) is picked up automatically.
 
 The same commands with a number set the value. ``apply()`` sends the ones in
 ``SETTABLE`` (the Lock-in tab), and ``check_setup()`` compares the settings with
-``CAPACITANCE_SETUP``, the lab manual's 5302 table. ``check_setup``, ``commands_for``
+``CAPACITANCE_SETUP``, the 5302 capacitance set-up. ``check_setup``, ``commands_for``
 and ``SetupCheck`` are shared with the SR830 driver.
 """
 
@@ -75,8 +75,9 @@ def _on_off(v) -> str:
     return "on" if v else "off"
 
 
-# The lab manual's 5302 table for the capacitance measurement (ptmanual/main.tex,
-# tab:lockin5302, in the appendix on the 5302): keep the two in step.
+# The 5302 set-up for the capacitance measurement. It was the lab manual's 5302 table
+# (tab:lockin5302) until the manual moved to the SR830 and dropped the 5302
+# (2026-10-02); that table is in ptmanual/main.tex's git history.
 # (settings key, name, wanted - a tuple means any of them, formatter, how to change it)
 CAPACITANCE_SETUP = (
     ("reference_mode", "Reference", "INT", str, "REF, the rightmost key under the display"),
@@ -275,7 +276,7 @@ class Lockin5302:
     EXPAND_NAME = LockinReading.EXPAND_NAME
     # What the Test button, the file header and the Lock-in tab need to know.
     SETUP_TABLE = CAPACITANCE_SETUP
-    SETUP_NAME = "the lab manual's 5302 table"
+    SETUP_NAME = "the 5302 capacitance set-up"
     SETUP_NOTE = ("The preamplifier's coupling and grounding buttons cannot be read over "
                   "GPIB: check them on its front panel.")
     PANEL = PANEL

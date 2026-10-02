@@ -19,9 +19,11 @@ to the code that produced it. The number is written in exactly one place,
 - The Lock-in tab rebuilds its controls for the model chosen on the Instruments tab.
 
 ### Changed
-- **The SR830 is now the default lock-in**, at GPIB address 8; the lab manual describes
-  it, and moves the 5302 to an appendix. A settings file that already names a model
-  keeps it: choose *SRS SR830* once on the Instruments tab.
+- **The SR830 is now the default lock-in**, at GPIB address 8, and the lab manual
+  describes only the SR830. The 5302 is still supported: its checks now name it "the
+  5302 capacitance set-up", the values of the manual's former 5302 table. A settings
+  file that already names a model keeps it: choose *SRS SR830* once on the Instruments
+  tab.
 - Choosing a lock-in model moves the address to that model's on this rig (8 for the
   SR830, 12 for the 5302), unless the address was typed in by hand.
 - The lab-manual set-up that *Test lock-in*, the recording check and *Lab-manual values*

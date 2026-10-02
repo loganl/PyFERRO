@@ -74,7 +74,8 @@ are the OUT1/OUT2 types (`R` relay, `V` voltage pulse, `C` current, `L` linear v
 
 **Lock-in:** the SR830, GPIB address 8. The sensitivity and expand settings are read
 from the instrument with every reading, so X and Y are always scaled correctly. The rest
-of the set-up follows the lab manual's SR830 table (its 5302 table, for the 5302):
+of the set-up follows the lab manual's SR830 table (for the 5302, the set-up from the
+manual's former 5302 table):
 *Test lock-in* compares the instrument with it, and the Lock-in tab can set it (§3).
 
 **Multimeter (optional):** the HP 34401A must be switched to **4-wire Ω** on its front

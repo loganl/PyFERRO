@@ -1987,329 +1987,94 @@ able to measure such a sample with the four-probe method.}
 \section{Data taking with PyFERRO}\label{app:pyferro}
 % =============================================================================
 
-PyFERRO replaces the LabVIEW routine \texttt{Ferro.vi}. It reads the lock-in, the
-temperature controller and, optionally, the multimeter, plots the data live and
-saves them. It only reads the temperature controller: setpoints and ramps are set
-on the controller itself.
+PyFERRO replaces the LabVIEW routine \texttt{Ferro.vi}. It reads the lock-in and
+the temperature controller, plots the data live and saves them. It only reads the
+temperature controller: setpoints and ramps are set on the controller itself.
+Everything not covered here (installation, troubleshooting, the data-file format
+in full) is in PyFERRO's README, \texttt{README.md} in
+\texttt{C:\textbackslash PyFERRO\textbackslash pyferro}.
 
 \begin{enumerate}
-  \item Starting PyFERRO.
-  The \texttt{PyFERRO} folder on the desktop contains information about the
-  app. To start PyFERRO, open a terminal in
-  \texttt{C:\textbackslash PyFERRO\textbackslash pyferro} and run one of the
-  following commands:
-  \begin{itemize}
-    \item \texttt{pixi run start} updates the code to the latest version,
-    then starts PyFERRO with the instruments.
-    \item \texttt{pixi run simulate} starts PyFERRO without hardware.
-    \item \texttt{pixi run gpib} checks the GPIB connection of the EG\&G 5302
-    (Appendix~\ref{app:lockin5302}); for the SR830, use the Test button below.
-  \end{itemize}
-  The first run downloads Python and all dependencies into the
-  \texttt{.pixi\textbackslash} directory and requires about
-  \SI{1.5}{\giga\byte} of free disk space. Later runs reuse these files.
-  Once setup is complete, PyFERRO can start without an internet connection.
-  If the update step cannot reach the internet, it reports this and starts
-  using the code already present.
+  \item Starting PyFERRO. Open a terminal in
+  \texttt{C:\textbackslash PyFERRO\textbackslash pyferro} and run
+  \texttt{pixi run start}, which updates the code and starts PyFERRO with the
+  instruments, or \texttt{pixi run simulate} to practise without hardware.
 
-    \item Instruments tab: Check the lock-in Model
-      (SRS SR830, at GPIB address 8, on this rig), pick the DTECH COM port (FTDI
-      ports listed first), and press \texttt{Test lock-in} and
-      \texttt{Test controller}.
-      For a hardware run, make sure Simulation mode is off. A green check
-      shows the sensitivity, time constant and reference frequency, and PV/SV,
-      output level, control mode and firmware. A table underneath
-      compares every lock-in setting with the lab manual's
-      (Table~\ref{tab:lockinsr830}) and says which key changes
-      any that differ; starting a recording repeats the check and logs any
-      difference as a warning.
-
-
-    \begin{figure}[htbp]
-      \centering
-      \photo[width=0.42\linewidth]{pyferro-instruments.png}{%
-        Screenshot of the PyFERRO Instruments tab in simulation mode, showing
-        the lock-in model and connection settings, the lock-in test result,
-        and the comparison with the lab-manual settings.}
-      \caption{The PyFERRO Instruments tab, shown in simulation mode.}
-      \label{fig:pyferro-instruments}
-    \end{figure}
-
-    \item Lock-in tab: \texttt{Read from lock-in} shows its
-    settings; change them there and press \texttt{Apply to lock-in} (it lists
-    the commands and asks first), or press \texttt{Lab-manual values} to fill
-    in the lab manual's table, then Apply. Only what differs is sent, and
-    the settings are read back afterwards. This works during a run too: the
-    change is sent between samples and written into the data file. The phase
-    tuning, and turning an offset or expand on, stay on the front panel.
-
-    \begin{figure}[htbp]
-      \centering
-      \photo[width=0.48\linewidth]{pyferro-lockin.png}{%
-        Screenshot of the PyFERRO Lock-in tab for the SRS SR830, showing
-        the controls for its settings and the buttons for reading, applying,
-        and loading the lab-manual values.}
-      \caption{The PyFERRO Lock-in tab for the SRS SR830.}
-      \label{fig:pyferro-lockin}
-    \end{figure}
-
-    \item Run tab: Enter a sample/run name (becomes the file name),
-    operator, drive details, notes, and the save folder.
-
-    \begin{figure}[htbp]
-      \centering
-      \photo[width=0.48\linewidth]{pyferro-run.png}{%
-        Screenshot of the PyFERRO Run tab, showing the sample/run name,
-        operator, drive/circuit details, notes, save-folder selection,
-        reading interval, saving condition, and temperature-source menu.}
-      \caption{The PyFERRO Run tab and its data-file settings.}
-      \label{fig:pyferro-run}
-    \end{figure}
-
-    \item Monitoring and recording:
-    \texttt{Start monitoring} (F5) shows live data without saving. Before
-    starting a new run, press \texttt{Clear plots} if you want to clear the
-    displayed plots. Press \texttt{Record} (Ctrl+R) to open a file, starting
-    monitoring if needed; pressing it again closes that file, and the next
-    recording opens a new one. \texttt{Stop} disconnects.
-
-    \item Reading interval and saving: Set the reading interval to
-    at least about five times the lock-in time constant.
-    \texttt{Save only if $\Delta T \geq$} reproduces the old LabVIEW
-    behaviour; leave it off to record every reading.
-
-    \item Temperature source and multimeter:
-    \texttt{Temperature from} (Run tab) selects what goes in column 1 of
-    the file: the CN08D3 controller probe (normal) or the multimeter Pt100.
-    Both are recorded whenever available---\texttt{PV\_C} from the
-    controller, \texttt{T\_dmm\_C} from the multimeter. To use the
-    multimeter, tick \texttt{Also read the multimeter} on the Instruments
-    tab and check its model, its GPIB address
-    (\texttt{GPIB0::24::INSTR} for the 34401A,
-    \texttt{GPIB0::6::INSTR} for the Keithley 199 on this rig), and whether
-    the reading is ohms (a Pt100, converted here) or already
-    \si{\degreeCelsius} (34401A only).
-  \end{enumerate}
-
-  The tiles above the plots show the sample temperature, setpoint, ramp
-  direction and rate, \(X\), \(Y\) and \(R/\theta\); the plots show
-  temperature against time and \(X\) and \(Y\) against temperature, heating
-  and cooling in different colours. The PyFERRO data file contains
-  (1) the time dependence of the temperature and (2) the temperature
-  dependence of the lock-in output signals \(X\) and \(Y\). Copy the data
-  file to a thumb drive for analysis.
+  \item Instruments tab: check that the lock-in Model is the SRS SR830 and
+  Simulation mode is off, pick the DTECH COM port, and press
+  \texttt{Test lock-in} and \texttt{Test controller}. A table under the lock-in
+  test compares its settings with Table~\ref{tab:lockinsr830} and says which key
+  changes any that differ.
 
   \begin{figure}[htbp]
     \centering
-    \photo[width=0.75\linewidth]{pyferro-overview.png}{%
-      Cropped screenshot of the PyFERRO main window, showing the acquisition
-      controls, readout tiles, and measurement plots.}
-    \caption{The PyFERRO main window during a simulated run.}
-    \label{fig:pyferro-overview}
+    \photo[width=0.42\linewidth]{pyferro-instruments.png}{%
+      Screenshot of the PyFERRO Instruments tab in simulation mode, showing
+      the lock-in model and connection settings, the lock-in test result,
+      and the comparison with the lab-manual settings.}
+    \caption{The PyFERRO Instruments tab, shown in simulation mode.}
+    \label{fig:pyferro-instruments}
   \end{figure}
 
-  A green status light indicates that the instrument is responding;
-  red means that it is not responding (hover over the light for the reason),
-  and grey means that the instrument is unused.
-  A failed reading never stops a run---the value becomes
-  \texttt{nan}, a flag is set, and the instrument is reopened after three
-  consecutive failures. The first three temperatures after the controller
-  or multimeter connects are discarded (\texttt{nan}, flag 16) so a
-  start-up glitch cannot squash the plot. The temperature tile turns red
-  above the chamber limit (default \SI{160}{\degreeCelsius}).
-  Settings persist in \verb|%USERPROFILE%\.ferro\settings.json|; delete it
-  to reset, or set \texttt{FERRO\_CONFIG\_DIR} for a per-group file.
+  \item Lock-in tab: \texttt{Read from lock-in} shows its settings. Change
+  them there, or press \texttt{Lab-manual values} to fill in
+  Table~\ref{tab:lockinsr830}, then \texttt{Apply to lock-in}. This works
+  during a run too, and the change is written into the data file. The phase
+  tuning stays on the front panel.
 
-The data file starts with \texttt{\#} lines that record the sample name, the
-lock-in's settings (sensitivity, time constant, reference, oscillator, input,
-filters and reserve) and the controller's, so the file itself says how the
-measurement was set up. Anything that changes during the run, such as a
-sensitivity change or an overload, is written into the file as a \texttt{\#} line
-at the moment it happens. The columns are tab-separated; the first three are the
-temperature (\si{\degreeCelsius}) and the lock-in $X$ and $Y$ (\si{\volt}), as in
-the LabVIEW files, followed by the time, $R$ and $\theta$, the controller's
-setpoint and temperature, the multimeter temperature, the lock-in full scale, the
-heating or cooling direction, a segment number and error flags. Missing readings
-are written as \texttt{nan}. The files load directly with \texttt{numpy.loadtxt} or
-with pandas (\texttt{comment="\#"}), and with most spreadsheet programs.
+  \begin{figure}[htbp]
+    \centering
+    \photo[width=0.48\linewidth]{pyferro-lockin.png}{%
+      Screenshot of the PyFERRO Lock-in tab for the SRS SR830, showing
+      the controls for its settings and the buttons for reading, applying,
+      and loading the lab-manual values.}
+    \caption{The PyFERRO Lock-in tab for the SRS SR830.}
+    \label{fig:pyferro-lockin}
+  \end{figure}
 
-Write the file name in your lab notes all the same, with anything else you need
-to reconstruct the circumstances of the measurement.
+  \item Run tab: enter a sample/run name (it becomes the file name), operator,
+  drive details, notes and the save folder. Set the reading interval to at
+  least about five times the lock-in time constant.
 
-\clearpage
-% =============================================================================
-\section{The EG\&G 5302 lock-in}\label{app:lockin5302}
+  \begin{figure}[htbp]
+    \centering
+    \photo[width=0.48\linewidth]{pyferro-run.png}{%
+      Screenshot of the PyFERRO Run tab, showing the sample/run name,
+      operator, drive/circuit details, notes, save-folder selection,
+      reading interval, saving condition, and temperature-source menu.}
+    \caption{The PyFERRO Run tab and its data-file settings.}
+    \label{fig:pyferro-run}
+  \end{figure}
 
-Before the SR830, the lab used an EG\&G Princeton Applied Research model 5302
-lock-in, and PyFERRO still supports it (choose it as the lock-in Model on the
-Instruments tab). If you use the 5302, follow this appendix in place of
-Section~\ref{sec:lockinsettings}, and use its own oscillator resistance,
-$R_0 = \SI{450}{\ohm}$, wherever this manual writes $R_0$. Its standard
-settings for the capacitance measurement are:
+  \item Monitoring and recording: \texttt{Start monitoring} (F5) shows live
+  data without saving. \texttt{Record} (Ctrl+R) opens a file, starting
+  monitoring if needed; pressing it again closes that file, and the next
+  recording opens a new one. \texttt{Stop} disconnects.
+\end{enumerate}
 
-\begin{center}
-\begin{tabular}{@{}ll@{}}
-  \toprule
-  \textbf{Setting} & \textbf{Value} \\
-  \midrule
-  Input            & preamplifier A input (select PREAMP as signal source) \\
-  Sensitivity      & \SI{1}{\volt} initially \\
-  Filter           & flat \\
-  Oscillator level & \SI{0.500}{\volt} initially\\
-  Oscillator frequency & \SI{25}{\kilo\hertz} \\
-  Reference phase  & tuned (see below) \\
-  Reference        & internal \\
-  Oscillator out   & OSC to preamplifier A (BNC cable) \\
-  Time constant    & \SI{500}{\milli\second} \\
-  Dynamic reserve  & HI STAB \\
-  Output display   & X--YV \\
-  \bottomrule
-\end{tabular}
-\end{center}
-
-\paragraph{Setting the EG\&G model 5302.}
-Table~\ref{tab:lockin5302} gives the same settings in more detail: where to
-find each one on the front panel, and the equivalent GPIB command. The same command sent without a number makes the lock-in
-reply with the current value, which is how PyFERRO reads these settings back and
-records them in the data-file header.
-
-\notebox{Oscillator resistance and level}{The 5302's oscillator output resistance is
-$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not the \SI{50}{\ohm} of
-the SR830: use \SI{450}{\ohm} in $C = \delta/(\omega R_0)$. Its least
-sensitive range is \SI{1}{\volt}, and the in-phase signal is close to the
-oscillator level $V_0$, so $V_0$ must stay below \SI{1}{\volt}; at
-$V_0 = \SI{0.500}{\volt}$ it is half of full scale. Nothing is lost, since
-$C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
-
-\begin{table}[htbp]
-  \centering
-  \small
-  \begin{tabular}{@{}p{2.3cm}p{2.3cm}p{7.6cm}p{2.1cm}@{}}
-    \toprule
-    \textbf{Setting} & \textbf{Value} & \textbf{How to set it on the front panel}
-      & \textbf{GPIB} \\
-    \midrule
-    Signal input & preamplifier, input A
-      & Cable to input A of the plug-in preamplifier. The display shows PRE at the
-        upper right; if it shows DIR, select PREAMP as the signal source on the
-        SIGNAL SETUP screen.
-      & \texttt{PREAMP 1} \\
-    Reference & INT
-      & Press REF, the rightmost of the five keys under the display, until INT shows
-        in the upper-left window. The INT light above the meter comes on.
-      & \texttt{IE 0} \\
-    Oscillator frequency & \SI{25.000}{\kilo\hertz}
-      & Press the keys to the right of the large setting knob until OSC F is in the
-        middle of the lower-right window, then turn the knob. The KNOB ACTIVE light
-        must be on; if it is off, press either key once.
-      & \texttt{OF 2500 7} \\
-    Oscillator level & \SI{0.500}{\volt}
-      & As for the frequency, with OSC V selected.
-      & \texttt{OA 5000 1} \\
-    Sensitivity & \SI{1}{\volt}
-      & The SEN keys, at the top of the two key columns to the right of the display:
-        the left one moves to a larger full scale (less sensitive).
-      & \texttt{SEN 21} \\
-    Expand & off
-      & When it is on, EX shows at the upper right. Press FUNCT and then the right SEN
-        key (SEN/EXPAND) to toggle it.
-      & \texttt{EX 0} \\
-    Time constant & \SI{500}{\milli\second} (or \SI{200}{\milli\second})
-      & The TC keys, below the SEN keys. The 5302 has no \SI{300}{\milli\second}.
-      & \texttt{XTC 8} (\texttt{XTC 7}) \\
-    Filter & FLAT
-      & Press FILT, the second key from the right under the display, until FLAT
-        shows at the upper left.
-      & \texttt{FLT 0} \\
-    Dynamic reserve & HI STAB
-      & The DYNRES/LOCAL key, to the left of the display near its bottom edge.
-      & \texttt{DR 1} \\
-    Reference phase & $Y = 0$ with the sample disconnected
-      & Press AUTO and then the left PHASE key (Auto-Phase); repeat once the outputs
-        have settled. For fine tuning, select PHASE with the keys by the setting knob
-        and turn the knob.
-      & \texttt{AQN} \\
-    Display & X--YV
-      & The DISP keys, to the right of the display.
-      & --- \\
-    \bottomrule
-  \end{tabular}
-  \caption{EG\&G model 5302 settings for the capacitance measurement. The GPIB
-    commands are from chapter~9 of the 5302 manual; \texttt{OF 2500 7} means 2500 in
-    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 5000 1} means
-    5000 steps of \SI{0.1}{\milli\volt} in the \SIrange{25}{500}{\milli\volt} range.}
-  \label{tab:lockin5302}
-\end{table}
-
-The 5302 is a dual-phase lock-in: it shows the in-phase signal as $X$ and the
-out-of-phase signal as $Y$ at the same time. Tune the phase with the sample disconnected until $Y$ is as close to zero as
-possible (Auto-Phase does this), then connect the sample and read $V_{\mathrm{meas}}$
-from $Y$.
-
-The practice run with a piece of BNC cable
-(Section~\ref{sec:lockinsettings}) goes as follows with the 5302.
+The plots show temperature against time and $X$ and $Y$ against temperature,
+heating and cooling in different colours (Figure~\ref{fig:pyferro-overview}).
+A green status light means the instrument is responding; red means it is not
+(hover over the light for the reason).
 
 \begin{figure}[htbp]
   \centering
-  \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
-  Photograph of the instrument setup. On top is an HP 34401A digital
-  multimeter whose display reads approximately \SI{-0.025}{\milli\volt}
-  DC; its four front-panel input terminals are visible on the right.
-  Below it is an EG\&G Princeton Applied Research model 5302 lock-in
-  amplifier, with its differential preamplifier, central digital
-  display, analog meter, adjustment knob, and front-panel BNC
-  connectors visible.}
-  \caption{The HP 34401A multimeter (top) and the EG\&G Princeton
-    Applied Research model 5302 lock-in amplifier (bottom).}
-  \label{fig:frontpanel5302}
+  \photo[width=0.75\linewidth]{pyferro-overview.png}{%
+    Cropped screenshot of the PyFERRO main window, showing the acquisition
+    controls, readout tiles, and measurement plots.}
+  \caption{The PyFERRO main window during a simulated run.}
+  \label{fig:pyferro-overview}
 \end{figure}
 
-First, check the signal generated by the lock-in amplifier's internal
-oscillator. Connect one end of a BNC cable to the ``OSC'' output and the
-other end to input A on the preamplifier. Select ``PREAMP'' as the signal
-source. On the main display, select ``PHASE'' and turn the setting knob
-to set the reference phase to \ang{0.0}. Check that the analog meter
-and the in-phase component X show a clear signal. If most of the signal
-appears in X, its reading should be close to the oscillator setting of
-\SI{0.500}{\volt}.
+The data file is tab-separated text. Its first three columns are the temperature
+(\si{\degreeCelsius}) and the lock-in $X$ and $Y$ (\si{\volt}), as in the LabVIEW
+files; lines starting with \texttt{\#} record the instrument settings and
+anything that changed during the run. Missing readings are written as
+\texttt{nan}. The files load with \texttt{numpy.loadtxt}, with pandas
+(\texttt{comment="\#"}) and with most spreadsheet programs. Copy the file to a
+thumb drive for analysis, and write its name in your lab notes.
 
-We are interested in the out-of-phase component Y. Ideally, Y should
-be zero after the phase has been correctly adjusted. However, the
-electronics inside the lock-in amplifier can introduce a small phase
-error, so Y may initially have a small but nonzero value.
-
-The lock-in amplifier provides an automatic way to correct this phase
-error. Press the red ``AUTO'' button, followed by the left ``PHASE''
-button, to run Auto-Phase. Wait a few seconds for the readings to
-settle. The in-phase component X should then be maximized, while the
-out-of-phase component Y should be close to zero.
-
-Upon closer inspection, you may find that Auto-Phase has left a small
-out-of-phase signal. If Y is too small to read clearly, keep the
-sensitivity at \SI{1}{\volt} and press the ``+90'' phase button once
-to bring this small signal into the X channel. Then press ``FUNCT''
-followed by ``SEN down/EXPAND'' to magnify X by a factor of ten.
-Watch X and adjust the reference phase manually until it is as close
-to zero as possible. Press ``FUNCT'' followed by ``SEN down/EXPAND''
-again to turn off EXPAND, then select ``PHASE'' and subtract
-\ang{90} from its current setting to restore the original X--Y
-orientation. If the red ``OUTPUT OVLD'' indicator lights while
-EXPAND is on, turn EXPAND off before continuing. Do not reduce the
-\SI{1}{\volt} sensitivity setting while the oscillator is connected
-directly to the input.
-
-Now that the out-of-phase signal has been brought as close to zero as
-possible, keep the sensitivity at \SI{1}{\volt}. Insert a BNC ``T''
-connector into the line and connect another BNC cable. The added cable
-will produce a nonzero out-of-phase signal $V_{\mathrm{meas}}$, which
-you can read from Y. Calculate its capacitance using
-$C = |V_{\mathrm{meas}}|/(V_0\omega R_0)$, where
-$V_0 = \SI{0.500}{\volt}$,
-$\omega = \SI{1.57e5}{\per\second}$, and
-$R_0 = \SI{450}{\ohm}$.
-Measure the length of the cable, then repeat the measurement with a
-longer cable.
-
+\clearpage
 % =============================================================================
 \section{Physics of phase transitions}\label{app:physics}
 % =============================================================================

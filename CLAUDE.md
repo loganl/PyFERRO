@@ -13,7 +13,7 @@ lab manual (`ptmanual/`).
 | `pyferro/docs/drivers-and-daq.md` | teaching walkthrough of transports, drivers and the loop (the one extra doc file, added at the user's request) |
 | `pyferro/CHANGELOG.md` | every user-visible change goes under `## Unreleased` |
 | `README.md` (root) | short overview pointing at the above |
-| `ptmanual/main.tex` | the lab manual; its PyFERRO appendix (`app:pyferro`) and lock-in tables (SR830 `tab:lockinsr830`, 5302 `tab:lockin5302` in `app:lockin5302`) describe the program |
+| `ptmanual/main.tex` | the lab manual; its PyFERRO appendix (`app:pyferro`) and SR830 table (`tab:lockinsr830`) describe the program |
 | module docstrings | each driver's docstring lists the commands it uses |
 
 Don't add more doc files; extend these. A code change that alters behaviour, a
@@ -29,7 +29,7 @@ drivers or the loop, drivers-and-daq.md) edit in the same commit.
 | `pyferro/tools/update.py` | `git pull --ff-only` run by `pixi run start`; never blocks the start |
 | `pyferro/tests/` | `test_core.py` (drivers vs fakes, data files, loop), `test_protocols.py` (serial/Modbus over a pty), `test_gui.py` (pytest-qt), `test_version.py` |
 | `pyferro/docs/manuals/` | instrument manuals — **read these before guessing at instrument behaviour** |
-| `ptmanual/` | LaTeX lab manual. Its SR830 and 5302 tables must match `CAPACITANCE_SETUP` in `sr830.py` and `lockin5302.py`; `main.pdf`/`main-tagged.pdf` are committed, so rebuild them (`make`, `make tagged`; LuaLaTeX, TeX Live ≥ 2024) after editing `main.tex` |
+| `ptmanual/` | LaTeX lab manual. Its SR830 table must match `CAPACITANCE_SETUP` in `sr830.py`; `main.pdf`/`main-tagged.pdf` are committed, so rebuild them (`make`, `make tagged`; LuaLaTeX, TeX Live ≥ 2024) after editing `main.tex` |
 
 There is **no packaging**: the offline Windows bundle, `packaging/` and `release.sh`
 were removed at the user's request (2026-09-30). Don't bring them back.
@@ -97,8 +97,9 @@ writability test, and the git-tag test when HEAD is not on a tag.
 
 Lock-in and multimeter models are chosen on the Instruments tab (`LOCKIN_MODELS`,
 `DMM_MODELS` in `acquisition.py`). **The SR830 is the lab's lock-in and the default
-(2026-10-02, at the user's request)**; the 5302 stays supported and the manual covers it
-in an appendix. Each lock-in driver describes its own settings (`SETUP_TABLE`, `PANEL`,
+(2026-10-02, at the user's request)**; the 5302 stays supported by the app, but the
+manual no longer covers it (its appendix was removed at the user's request; the old
+5302 table survives as `CAPACITANCE_SETUP` in `lockin5302.py`). Each lock-in driver describes its own settings (`SETUP_TABLE`, `PANEL`,
 `commands`), so the GUI has no per-model code. The SR830's sine output is 50 Ω, so the
 manual's R₀ is 50 Ω and the capacitance signal is about 9× smaller than with the
 5302's 450 Ω; the manual reads it with the CH2 Expand and offers a series resistor.

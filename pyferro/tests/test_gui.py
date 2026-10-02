@@ -129,15 +129,17 @@ def test_lockin_model_test_button(window, qtbot, model, name):
     assert setup.li_result.text().startswith(f"✔ {name} found"), setup.li_result.text()
 
 
-@pytest.mark.parametrize("model, fix", [("sr830", "the SENSITIVITY arrow keys"),
-                                        ("5302", "the left SEN key")])
-def test_lockin_test_shows_the_settings_check(window, qtbot, model, fix):
+@pytest.mark.parametrize("model, name, fix", [
+    ("sr830", "the lab manual&#x27;s SR830 table", "the SENSITIVITY arrow keys"),
+    ("5302", "the 5302 capacitance set-up", "the left SEN key"),
+])
+def test_lockin_test_shows_the_settings_check(window, qtbot, model, name, fix):
     setup = window.setup
     setup.li_model.setCurrentIndex(setup.li_model.findData(model))
     qtbot.mouseClick(setup.li_test, Qt.LeftButton)
     qtbot.waitUntil(lambda: setup.li_result.text().startswith(("✔", "✘")), timeout=10000)
     table = setup.li_checks.text()
-    assert f"lab manual&#x27;s {model.upper()} table" in table and "<table" in table
+    assert name in table and "<table" in table
     assert "1 setting(s) differ" in table, "the simulated lock-in differs only in sensitivity"
     assert "Sensitivity" in table and fix in table  # the simulation is at 50 mV
 
