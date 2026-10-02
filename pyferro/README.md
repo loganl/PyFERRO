@@ -18,8 +18,7 @@ one instrument it can set, from the Lock-in tab, and only when asked (§3).
 
 This file is the complete documentation. [`CHANGELOG.md`](CHANGELOG.md) records what
 changed per version; [`docs/drivers-and-daq.md`](docs/drivers-and-daq.md) explains the
-code that talks to the instruments; `docs/` also holds the wiring diagram and the
-instrument manuals.
+code that talks to the instruments; `docs/` also holds the instrument manuals.
 
 ## 1. Install on the lab PC
 
@@ -47,10 +46,10 @@ Windows 10/11 64-bit. The lab PC runs a git clone at `C:\PyFERRO`.
 
 ## 2. Hardware and wiring
 
-![wiring diagram](docs/wiring-diagram.png)
+![wiring diagram](../ptmanual/tikz/fig-daq-wiring.png)
 
-Full size: `docs/wiring-diagram.pdf`; source in
-`docs/wiring-diagram.tex` and `ptmanual/tikz/fig-daq-wiring.tex`.
+This is the lab manual's own figure: full size in
+`../ptmanual/tikz/fig-daq-wiring.pdf`, source in `fig-daq-wiring.tex` beside it.
 
 **RS-485** (two-wire half-duplex; the adapter's `RXD+`, `RXD-`, `GND` stay empty):
 

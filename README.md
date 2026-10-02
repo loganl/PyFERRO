@@ -7,7 +7,7 @@ self-describing data files. It replaces `FERRO v.2.vi`, a LabVIEW 2009 routine.
 
 This repository holds the program and the lab manual for the experiment it serves.
 
-![Instrument wiring](pyferro/docs/wiring-diagram.png)
+![Instrument wiring](ptmanual/tikz/fig-daq-wiring.png)
 
 ## Try it without hardware
 
@@ -30,7 +30,7 @@ runs as in the lab. Against real instruments it is `pixi run start`.
 | `pyferro/ferro/` | the program: `gui/`, `acquisition.py` (the measurement loop), `instruments/` (drivers), `transports.py` (GPIB/serial), `config.py`, `datafile.py`, `analysis.py`, `sessionlog.py` |
 | `pyferro/tools/` | `update.py` (the `git pull` before `pixi run start`) and `gpib_check.py` (`pixi run gpib`, a GPIB link diagnostic) |
 | `pyferro/tests/` | drivers, wire-level protocol tests over a pty, GUI tests, version consistency |
-| `pyferro/docs/` | `drivers-and-daq.md`, the wiring diagram and the instrument manuals |
+| `pyferro/docs/` | `drivers-and-daq.md` and the instrument manuals |
 | `ptmanual/` | LaTeX source of the lab manual, its figures and standalone TikZ sources |
 
 **[`pyferro/README.md`](pyferro/README.md) is the complete documentation** — install,
