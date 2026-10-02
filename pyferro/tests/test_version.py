@@ -32,11 +32,6 @@ def test_pixi_manifest_has_no_version():
     assert not re.search(r'(?m)^version = "', text), "pixi.toml has a second copy of the version"
 
 
-def test_build_script_reads_the_package_version():
-    text = (ROOT / "packaging" / "build_offline.sh").read_text()
-    assert "ferro/__init__.py" in text, "the bundle name must come from ferro/__init__.py"
-
-
 def test_git_tag_matches_when_the_tree_is_on_a_tag():
     try:
         described = subprocess.run(
@@ -49,14 +44,3 @@ def test_git_tag_matches_when_the_tree_is_on_a_tag():
         pytest.skip("not on an exact tag (normal during development)")
     assert described.stdout.strip() == f"v{ferro.__version__}"
 
-
-def test_windows_launchers_use_crlf():
-    """cmd.exe mis-parses an LF-only .bat, and these are written on macOS."""
-    import pathlib
-
-    bats = sorted((pathlib.Path(__file__).parent.parent / "packaging" / "windows").glob("*.bat"))
-    assert bats, "no launchers found"
-    for bat in bats:
-        data = bat.read_bytes()
-        assert b"\n" in data
-        assert data.replace(b"\r\n", b"").count(b"\n") == 0, f"{bat.name} has bare LF line endings"

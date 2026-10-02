@@ -4,9 +4,6 @@ __pycache__/
 .pixi/
 .venv*/
 
-# --- build outputs ---------------------------------------------------------
-pyferro/dist/
-
 # --- LaTeX auxiliaries (the figure and manual PDFs are tracked) ------------
 *.aux
 *.log

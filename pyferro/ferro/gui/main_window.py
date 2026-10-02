@@ -40,8 +40,9 @@ from PySide6.QtWidgets import (
 from .. import __version__, config, sessionlog
 from ..acquisition import Acquisition
 from ..datafile import check_writable
+from .lockin_panel import LockinPanel
 from .setup_panel import SetupPanel
-from .widgets import Readout, StatusLight, format_si, run_task
+from .widgets import ElidedLabel, Readout, StatusLight, format_si, run_task
 
 THEMES = {
     "light": {
@@ -124,6 +125,7 @@ class Bridge(QObject):
     log = Signal(str, str)
     status = Signal(str, str, str)
     recording = Signal(object)
+    lockin = Signal(dict)
 
 
 class PlotBuffer:
@@ -143,9 +145,9 @@ class PlotBuffer:
         if self.n == len(self.data["time_s"]):
             for k in self.keys:
                 self.data[k] = np.concatenate([self.data[k], np.empty_like(self.data[k])])
-        # The direction is stored exactly as measured: 0 means the ramp direction is not
-        # established yet (the first readings) or the temperature is holding. Carrying the
-        # last direction forward would paint those points as a ramp they were not part of.
+        # The direction is stored exactly as reported: 0 means the ramp direction is not
+        # known yet (the first minutes). Points before a recognised turn are recoloured
+        # in _on_sample, never guessed ahead of time.
         for k in self.keys:
             v = row.get(k, math.nan)
             self.data[k][self.n] = math.nan if v is None else v
@@ -178,7 +180,7 @@ class MainWindow(QMainWindow):
         cool.setAlpha(215)
         self.cool_pen = pg.mkPen(cool, width=1.6, style=Qt.DashLine)
         self.flat_pen = pg.mkPen(self.theme["flat"], width=1.4)
-        self.resize(1400, 900)
+        self._fit_to_screen(1400, 900)
         self._build()
         self._connect()
         self.setup.load(cfg)
@@ -194,6 +196,22 @@ class MainWindow(QMainWindow):
             self.log("info", f"Session log: {sessionlog.path()}")
 
     # --- layout ---------------------------------------------------------------------
+    def _fit_to_screen(self, width: int, height: int) -> None:
+        """Open at the preferred size, or the screen's usable area if that is smaller.
+
+        The lab PC's screen is 1280 x 1024; a fixed 1400 px window opened past its
+        right edge.
+        """
+        screen = QGuiApplication.primaryScreen()
+        if screen is None:
+            self.resize(width, height)
+            return
+        area = screen.availableGeometry()
+        # resize() sets the inside of the window: leave room for its frame and title bar
+        w, h = min(width, area.width() - 20), min(height, area.height() - 50)
+        self.resize(w, h)
+        self.move(area.x() + (area.width() - w) // 2, area.y() + (area.height() - h) // 2)
+
     def _build(self) -> None:
         central = QWidget()
         root = QVBoxLayout(central)
@@ -218,14 +236,16 @@ class MainWindow(QMainWindow):
         self.clear_btn = QPushButton("Clear plots")
         for b in (self.start_btn, self.record_btn, self.stop_btn, self.clear_btn):
             bar.addWidget(b)
-        self.rec_label = QLabel("")
-        self.rec_label.setObjectName("recBanner")
-        self.rec_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        bar.addWidget(self.rec_label, 1)
+        bar.addStretch(1)
         self.lights = {"lockin": StatusLight("Lock-in"), "pid": StatusLight("CND3"), "dmm": StatusLight("Multimeter")}
         for light in self.lights.values():
             bar.addWidget(light)
         root.addLayout(bar)
+        # Its own full-width line: beside the buttons and lights a 1280 px screen leaves it
+        # about 100 px. The full path is its tooltip, and in the log.
+        self.rec_label = ElidedLabel("")
+        self.rec_label.setObjectName("recBanner")
+        root.addWidget(self.rec_label)
 
         split = QSplitter(Qt.Horizontal)
         root.addWidget(split, 1)
@@ -234,6 +254,10 @@ class MainWindow(QMainWindow):
         tabs.addTab(self._scroll(self._build_run_tab()), "Run")
         self.setup = SetupPanel()
         tabs.addTab(self._scroll(self.setup), "Instruments")
+        # Stays usable during a run, unlike Instruments: changes then go through the
+        # acquisition thread and into the data file.
+        self.lockin_panel = LockinPanel(self.setup._snapshot, self._running_acquisition)
+        tabs.addTab(self._scroll(self.lockin_panel), "Lock-in")
         tabs.setMinimumWidth(380)
         split.addWidget(tabs)
 
@@ -269,7 +293,7 @@ class MainWindow(QMainWindow):
                        self.p_time.plot(pen=self.flat_pen))
         self.c_x = (self.p_x.plot(pen=self.heat_pen, name="heating"),
                     self.p_x.plot(pen=self.cool_pen, name="cooling"),
-                    self.p_x.plot(pen=self.flat_pen, name="steady / not yet known"))
+                    self.p_x.plot(pen=self.flat_pen, name="not yet known"))
         self.c_y = (self.p_y.plot(pen=self.heat_pen), self.p_y.plot(pen=self.cool_pen),
                     self.p_y.plot(pen=self.flat_pen))
         tl.addWidget(self.plots, 1)
@@ -368,6 +392,8 @@ class MainWindow(QMainWindow):
         self.stop_btn.clicked.connect(self._stop)
         self.clear_btn.clicked.connect(self._clear)
         self.setup.log.connect(self.log)
+        self.lockin_panel.log.connect(self.log)
+        self.bridge.lockin.connect(self.lockin_panel.show_settings)
         self.setup.simulate.toggled.connect(lambda on: self.sim_banner.setVisible(on))
         self.bridge.sample.connect(self._on_sample)
         self.bridge.log.connect(lambda level, msg: self.log(level, msg, to_file=False))
@@ -427,6 +453,14 @@ class MainWindow(QMainWindow):
     def running(self) -> bool:
         return self.acq is not None and self.acq.running
 
+    def _running_acquisition(self) -> Acquisition | None:
+        """The measurement the Lock-in tab must go through, if one is running.
+
+        Also while it is stopping: its connection is still open, and a second one from
+        the tab would put two conversations on the bus at once.
+        """
+        return self.acq if self.running else None
+
     def _start_monitoring(self, record: bool = False) -> None:
         if self.running or self._stopping:
             return
@@ -437,7 +471,8 @@ class MainWindow(QMainWindow):
         for key, light in self.lights.items():
             light.set_state("busy" if key != "dmm" or cfg.dmm.enabled else "off", "connecting…")
         self.acq = Acquisition(cfg, on_sample=self.bridge.sample.emit, on_log=self.bridge.log.emit,
-                               on_status=self.bridge.status.emit, on_recording=self.bridge.recording.emit)
+                               on_status=self.bridge.status.emit, on_recording=self.bridge.recording.emit,
+                               on_lockin=self.bridge.lockin.emit)
         self.setup.set_locked(True)
         self.acq.start(record=record)
         self._update_buttons()
@@ -512,6 +547,11 @@ class MainWindow(QMainWindow):
 
     def _clear(self) -> None:
         self.buffer.clear()
+        # A zoom or drag switches pyqtgraph's auto-range off and pins the view to the old
+        # time window, so every point after the clear would land off-screen - the plots
+        # looked as if nothing was being recorded. A clear starts the view afresh too.
+        for p in (self.p_time, self.p_x, self.p_y):
+            p.enableAutoRange()
         self._dirty = True
 
     def _browse(self) -> None:
@@ -542,6 +582,12 @@ class MainWindow(QMainWindow):
         self._tick()
 
     def _on_sample(self, row: dict) -> None:
+        turned_at = row.get("turned_at_s", math.nan)
+        if not math.isnan(turned_at):
+            # The tracker recognises a turn a while after the real extreme: recolour the
+            # points since then onto the new branch.
+            d, t = self.buffer.view("direction"), self.buffer.view("time_s")
+            d[t >= turned_at] = row["direction"]
         self.buffer.append(row)
         self._dirty = True
         if self.acq and self.acq.writer:
@@ -556,7 +602,7 @@ class MainWindow(QMainWindow):
         self.tiles["SV"].set(f"{sv:.1f} °C" if not math.isnan(sv) else "—",
                              f"PV {pv:.1f} °C" if not math.isnan(pv) else "")
         slope = row.get("slope_c_per_min", math.nan)
-        arrow = {1: "▲ heating", -1: "▼ cooling", 0: "● steady"}[row.get("direction", 0)]
+        arrow = {1: "▲ heating", -1: "▼ cooling", 0: "● direction not yet known"}[row.get("direction", 0)]
         self.tiles["ramp"].set(f"{slope:+.2f}" if not math.isnan(slope) else "—", f"°C/min  {arrow}  seg {row.get('segment', 0)}")
         ovl = bool(row.get("flags", 0) & 1)
         pct = row.get("percent_fs", math.nan)

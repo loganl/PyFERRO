@@ -9,9 +9,11 @@ to the code that produced it. The number is written in exactly one place,
 
 ## Unreleased
 
+## 1.1.0 — 2026-09-30
+
 ### Added
 - **Choice of lock-in and multimeter model** on the Instruments tab. The lock-in can be
-  an EG&G 5302 (this rig, the default), an SRS SR830 or an EG&G 5301A; the multimeter
+  an EG&G 5302 (this rig, the default) or an SRS SR830; the multimeter
   an HP 34401A (the default) or a Keithley 199. The choice is saved with the other
   settings, used in simulation, shown by the Test buttons and in the log, and written
   into every data file header (`# lockin_model:`, `# temperature_source:`). The SR830
@@ -28,13 +30,75 @@ to the code that produced it. The number is written in exactly one place,
   its saved defaults. An overload is reported
   as an error, not recorded as a huge resistance, and a reading in the wrong function
   (someone changed it on the front panel) is refused.
-- **The 5301A driver is unverified.** No manual for the 5301A could be found anywhere,
-  including from Signal Recovery, which inherited the product line. The driver assumes
-  the 5302's commands and ranges, and is opened with the 5302's 50 ms reply delay. The
-  log, the Test button and the data file header all say so. Check `ID`, the sensitivity
-  and the time constant against the front panel before trusting its data.
+- Flag **16** in the data file: temperature discarded just after connecting.
+- **The 5302's front-panel set-up is read over GPIB**: reference mode, oscillator level
+  and frequency, dynamic reserve, filter, signal input and reference phase. The Test
+  button shows them and every data file header records them, so a file says how the
+  lock-in was set. The lab manual has a matching 5302 settings table, with how to set
+  each one.
+- **A Lock-in tab sets the 5302 from the program**: reference, oscillator frequency and
+  level, sensitivity, expand, time constant, filter, reserve and input. *Lab-manual
+  values* fills in the lab manual's table; *Apply* lists the commands, asks, sends only
+  what differs and reads the settings back. During a run the change is sent between
+  samples by the measurement loop and written into the data file. Checked on the rig
+  during a real run.
+- **All of the 5302's settings are recorded during a run**: every minute (and at once
+  after a change from the Lock-in tab) the reference, oscillator, filter, reserve, input
+  and phase are read with the time constant, and any change becomes a `#` line in the
+  file, as sensitivity and time-constant changes already did.
+- **Test lock-in checks the 5302 against that table**: a table under the result shows
+  each setting now, the lab manual's value, and for anything that differs, which key
+  changes it. Starting a recording logs any differences as a warning and writes them
+  into the header (`# lockin_setup_check:`). **Test controller** also shows output 2,
+  whether output 1 is limited below 100 %, and the setpoint mode and ramp rate.
+- **`pixi run start` updates itself first** with `git pull --ff-only`, so the lab PC's
+  clone always runs the latest code. Being offline, a local edit that blocks the pull,
+  or a folder that is not a git clone never stops the program starting.
+  `pixi run start --skip-deps` starts without updating.
+- **`pixi run gpib`** (`tools/gpib_check.py`) diagnoses the lock-in's GPIB link one
+  step at a time — VISA library, listeners on the bus (without MAX or admin rights),
+  serial poll, `ID` under each terminator pair, then twenty fresh connections — and ends
+  in a one-line verdict with a success rate.
+
+### Changed
+- **Installing on the lab PC is now a git clone run with pixi**, not the offline bundle:
+  the README's install section, troubleshooting and the lab manual describe that route.
+- Releasing is now by hand — test, commit, tag, push (README §9) — since there is no
+  longer a bundle to build.
+- The lab manual's data-taking appendix describes PyFERRO instead of the LabVIEW
+  routine, and its suggested protocol and temperature-measurement section follow.
+
+### Removed
+- **The offline Windows bundle and its packaging** (`packaging/`: `build_offline.sh`,
+  `release.sh`, `INSTALL.bat` and the `.bat` launchers), with its README section and
+  tests. The lab PC has internet and runs the git clone, so nothing uses it.
 
 ### Fixed
+- **The window ran off the right of the screen.** It opened at a fixed 1400 px, wider
+  than the lab PC's 1280 px screen, and once recording started the banner's file path
+  forced it to about 2600 px, since a window never goes narrower than its widest label.
+  It now opens at the screen's size when that is smaller, and the banner has its own
+  line and shortens the middle of the path ("…"), with the full path as its tooltip.
+- **Heating and cooling were split badly when the temperature wobbles.** The tracker
+  used a 60 s slope, and a wobble of a few degrees in the readings flipped it on every
+  swing, recolouring the curves and counting a new
+  segment each time. It now averages over 120 s and turns only once the average has come
+  back 3 °C from the highest (or lowest) point reached. On synthetic runs with ±5 °C
+  swings of period 5–120 s it turns exactly once, at the true peak; the old tracker
+  turned up to hundreds of times. A turn is recognised a minute or two late, so the
+  plot recolours the points back to the peak and the file gets a
+  `# Ramp turned to cooling at … °C, t = … s` line. The `direction` column's 0 now
+  means "not yet known" only; there is no separate "steady".
+- **After Clear plots, nothing new appeared on the plots.** Zooming or dragging a plot
+  switches its auto-range off, which pins the view to the old time window; once the old
+  points were cleared, every new one landed off-screen, so it looked as if nothing was
+  recorded. The data file was unaffected. Clear plots now turns auto-range back on.
+- **Temperatures of about −3000 °C at the start of a run** squashed the plot. A status
+  word from the controller outside the five fault codes the manual lists (8000H decodes
+  to −3276.8 °C) was read as a temperature. Anything below −999.9 °C, lower than any
+  input can measure, is now reported as a controller fault instead. And the first 3
+  temperatures after the controller or multimeter connects, at the start or on a
+  reconnect, are discarded: `nan` in the file with flag 16, left out of the plot.
 - **Connecting to the lock-in, and the Test button, timed out.** The app asked for a
   query's reply the instant it had sent the query; the 5302 had not finished parsing it,
   so the reply came late and landed on the next query (`SEN answered 5302`), after which

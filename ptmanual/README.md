@@ -25,7 +25,7 @@ make            # main.pdf, without tags
 make tagged     # main-tagged.pdf, the tagged, screen-reader-accessible edition
 ```
 
-Both are the same 59 pages. The untagged one is the default because it compiles
+Both have the same pages and content. The untagged one is the default because it compiles
 about twice as fast (roughly 4 s a pass against 7-8 s) and the file is about 14%
 smaller (4.4 MB against 5.1 MB); the tagged one
 is what to hand to a reader using a screen reader (see [Accessibility](#accessibility)).
@@ -150,7 +150,7 @@ Use the tagged one for anyone who reads with a screen reader.
   `testphase` itself turns tagging on and would override an earlier `off`, and the
   key list is assembled in a macro because `\DocumentMetadata` does not expand macros
   inside it.
-- Every one of the 45 images — both the TikZ figures and the photographs —
+- Every one of the 46 images — both the TikZ figures and the photographs —
   carries **alternative text** describing what it shows, supplied through the
   `alt=` key of `\includegraphics` (see the `\tikzfig` and `\photo` macros in
   the preamble). The alt text describes the physics content of each diagram,

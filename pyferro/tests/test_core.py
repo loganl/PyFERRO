@@ -9,18 +9,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from ferro import config, sessionlog
+from ferro import acquisition, config, sessionlog
 from ferro.acquisition import Acquisition
 from ferro.analysis import DirectionTracker
-from ferro.datafile import COLUMNS, DataWriter, check_writable, unique_path
+from ferro.datafile import COLUMNS, FLAG_TEMP_DISCARDED, DataWriter, check_writable, unique_path
 from ferro.instruments.cnd3 import CND3, PIDError, PIDSensorError, decode_temperature
 from ferro.instruments.hp34401a import celsius_to_pt100, pt100_to_celsius
 from ferro.instruments.keithley199 import Keithley199
-from ferro.instruments.lockin5301a import Lockin5301A
 from ferro.instruments.lockin5302 import (Lockin5302, checked_index, counts_to_volts,
                                           parse_ints)
-from ferro.instruments.simulated import (Sim5301ATransport, SimLockinTransport,
-                                        SimModbusInstrument, SimulatedSample)
+from ferro.instruments.simulated import SimLockinTransport, SimModbusInstrument, SimulatedSample
 from ferro.instruments.sr830 import SR830, parse_floats
 from ferro.transports import (TERMINATIONS, TransportError, VisaTransport, describe_status,
                               drain_replies, probe_terminations)
@@ -72,6 +70,160 @@ class SplitReplyTransport:
 
     def close(self):
         pass
+
+
+def test_5302_front_panel_setup_is_read_back():
+    """Manual ch. 9: IE, OA, OF, DR, FLT, PREAMP and P answer their values when sent bare."""
+    s = Lockin5302(SimLockinTransport(SimulatedSample())).settings()
+    assert (s["reference_mode"], s["dynamic_reserve"], s["filter"], s["signal_input"]) == \
+        ("INT", "HI STAB", "FLAT", "DIRECT")
+    assert s["oscillator_v"] == pytest.approx(1.000)  # OA 1000 2: 1000 mV
+    assert s["oscillator_hz"] == pytest.approx(25000)  # OF 2500 7: 25 kHz
+    assert s["phase_deg"] == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("reply, volts", [("500 0", 5e-3), ("5000 1", 0.5), ("250 2", 0.25)])
+def test_5302_oscillator_level_ranges(reply, volts):
+    li = Lockin5302(ScriptedTransport({"OA": reply}))
+    assert li.oscillator_v() == pytest.approx(volts)
+
+
+@pytest.mark.parametrize("reply, hz", [("1000 0", 1e-3), ("2500 7", 25e3), ("10000 8", 1e6)])
+def test_5302_oscillator_frequency_ranges(reply, hz):
+    assert Lockin5302(ScriptedTransport({"OF": reply})).oscillator_hz() == pytest.approx(hz)
+
+
+def test_5302_phase_from_quadrant_and_millidegrees():
+    assert Lockin5302(ScriptedTransport({"P": "1 5000"})).phase_deg() == pytest.approx(95.0)
+    assert Lockin5302(ScriptedTransport({"P": "3 95000"})).phase_deg() == pytest.approx(5.0)
+
+
+def test_a_setup_value_that_does_not_answer_is_left_unread_not_fatal():
+    replies = {"SEN": "21", "XTC": "8", "EX": "0", "FRQ": "25000000", "IE": "2",
+               "OA": TransportError("VI_ERROR_TMO"), "OF": "2500 7", "DR": "1", "FLT": "3",
+               "PREAMP": "0", "P": "0 0"}
+    s = Lockin5302(ScriptedTransport(replies)).settings()
+    assert s["oscillator_v"] is None and s["reference_mode"] == "EXT" and s["filter"] == "BAND-PASS"
+
+
+def test_setup_check_finds_what_was_wrong_on_the_rig():
+    """The 5302 as read on 2026-09-29, against the lab manual's capacitance table."""
+    from ferro.instruments.lockin5302 import check_setup
+
+    rig = {"reference_mode": "INT", "oscillator_hz": 25000.0, "oscillator_v": 2.0,
+           "sensitivity": "500 mV", "expand": True, "time_constant": "F 100 µs",
+           "filter": "LOW-PASS", "dynamic_reserve": "MIN", "signal_input": "DIRECT"}
+    rows = {r.name: r for r in check_setup(rig)}
+    wrong = {name for name, r in rows.items() if r.ok is False}
+    assert wrong == {"Oscillator level", "Sensitivity", "Expand", "Time constant", "Filter",
+                     "Dynamic reserve"}
+    assert rows["Oscillator level"].now == "2.000 V" and rows["Oscillator level"].wanted == "1.000 V"
+    assert rows["Time constant"].wanted == "500 ms or 200 ms"
+    assert "FUNCT" in rows["Expand"].how
+    rig["oscillator_v"] = None
+    assert {r.name: r for r in check_setup(rig)}["Oscillator level"].ok is None  # unread, not wrong
+
+
+def test_setup_check_passes_a_correctly_set_lockin():
+    from ferro.instruments.lockin5302 import check_setup
+
+    good = {"reference_mode": "INT", "oscillator_hz": 25010.0, "oscillator_v": 1.001,
+            "sensitivity": "1 V", "expand": False, "time_constant": "200 ms", "filter": "FLAT",
+            "dynamic_reserve": "HI STAB", "signal_input": "DIRECT"}
+    assert all(r.ok for r in check_setup(good))
+
+
+def test_cnd3_reports_its_output_and_setpoint_configuration():
+    from ferro.gui.setup_panel import describe_controller
+
+    s = CND3("SIM", instrument=SimModbusInstrument(SimulatedSample())).status()
+    assert (s["output2_percent"], s["output1_max_percent"], s["sv_mode"]) == (0.0, 100.0, "constant")
+    text = describe_controller({**s, "sv_mode": "slope", "sv_slope_c_per_min": 2.5,
+                                "output1_max_percent": 40.0})
+    assert "ramps at 2.5 °C/min" in text and "LIMITED to 40.0%" in text
+
+
+def test_recording_header_says_how_the_lockin_differs_from_the_manual(tmp_path):
+    cfg = config.AppConfig(simulate=True)  # the simulated 5302 sits at 50 mV, not 1 V
+    logs = []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append((lvl, m)))
+    meta = acq._metadata()
+    assert "Sensitivity 50 mV (manual: 1 V)" in meta["lockin_setup_check"]
+    assert any(lvl == "warning" and "differ from the lab manual" in m for lvl, m in logs)
+    for slot in acq.slots.values():
+        slot.close()
+
+
+@pytest.mark.parametrize("volts, command", [(1.0, "OA 1000 2"), (0.1, "OA 1000 1"),
+                                            (0.01, "OA 1000 0"), (5.0, "OA 5000 2"),
+                                            (0.005, "OA 500 0"), (0.3, "OA 3000 1")])
+def test_5302_oscillator_level_command_round_trips(volts, command):
+    from ferro.instruments.lockin5302 import oscillator_level_command
+
+    assert oscillator_level_command(volts) == command
+    reply = command.split(" ", 1)[1]
+    assert Lockin5302(ScriptedTransport({"OA": reply})).oscillator_v() == pytest.approx(volts)
+
+
+@pytest.mark.parametrize("hz, command", [(25000, "OF 2500 7"), (1000, "OF 1000 6"),
+                                         (999, "OF 9990 5"), (1e6, "OF 10000 8"),
+                                         (0.001, "OF 1000 0")])
+def test_5302_oscillator_frequency_command_round_trips(hz, command):
+    from ferro.instruments.lockin5302 import oscillator_frequency_command
+
+    assert oscillator_frequency_command(hz) == command
+    reply = command.split(" ", 1)[1]
+    assert Lockin5302(ScriptedTransport({"OF": reply})).oscillator_hz() == pytest.approx(hz)
+
+
+def test_5302_apply_sends_the_time_constant_before_the_reserve_and_checks_first():
+    """A FAST time constant forces MIN reserve (manual 4.3), undoing a reserve set before it."""
+    sent = []
+
+    class Recorder:
+        def write(self, cmd):
+            sent.append(cmd)
+
+    li = Lockin5302(Recorder())
+    li.apply({"dynamic_reserve": "HI STAB", "time_constant_index": 8, "oscillator_v": 1.0})
+    assert sent == ["OA 1000 2", "XTC 8", "DR 1"]
+    sent.clear()
+    with pytest.raises(ValueError):
+        li.apply({"time_constant_index": 8, "oscillator_v": 9.0})  # 9 V is out of range
+    assert sent == [], "nothing is sent when any value is bad"
+
+
+def test_lockin_changes_during_a_run_are_sent_and_recorded():
+    cfg = config.AppConfig(simulate=True)
+    logs, seen = [], []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m), on_lockin=seen.append)
+    acq.slots["lockin"].get()
+    acq._poll_settings()  # the baseline
+    acq.set_lockin({"time_constant_index": 8, "filter": "BAND-PASS"})
+    acq._handle_lockin_request()
+    acq._poll_settings()  # set_lockin asks for an immediate read-back
+    assert any(m.startswith("Lock-in set from PyFERRO: time constant 500 ms (XTC 8)") for m in logs)
+    assert "Lock-in time constant changed to 500 ms" in logs
+    assert "Lock-in filter changed to BAND-PASS" in logs
+    assert seen[-1]["filter"] == "BAND-PASS"
+    for slot in acq.slots.values():
+        slot.close()
+
+
+def test_a_front_panel_change_during_a_run_is_recorded():
+    cfg = config.AppConfig(simulate=True)
+    logs = []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m))
+    li = acq.slots["lockin"].get()
+    acq._poll_settings()
+    li.t.setup["IE"] = "2"  # someone presses REF
+    li.t.setup["OA"] = "2000 2"
+    acq.refresh_lockin()
+    acq._poll_settings()
+    assert "Lock-in reference changed to EXT" in logs
+    assert "Lock-in oscillator level changed to 2.000 V" in logs
+    for slot in acq.slots.values():
+        slot.close()
 
 
 def test_lockin_xy_split_over_two_reads():
@@ -234,37 +386,8 @@ def test_keithley199_has_no_celsius_mode():
         Keithley199(FakeKeithley199Transport(), mode="celsius")
 
 
-# --- 5301A (unverified -- see lockin5301a.py) -------------------------------------
-def test_5301a_warns_that_it_is_unverified():
-    with pytest.warns(UserWarning, match="unverified"):
-        Lockin5301A(Sim5301ATransport(SimulatedSample()))
-
-
-def test_5301a_reuses_the_5302_protocol():
-    with pytest.warns(UserWarning):
-        li = Lockin5301A(Sim5301ATransport(SimulatedSample()))
-    assert "5301" in li.check()
-    assert li.read().sen_index == 17
-
-
-def test_5301a_check_rejects_an_id_that_does_not_say_5301():
-    with pytest.warns(UserWarning):
-        li = Lockin5301A(SimLockinTransport(SimulatedSample()))  # answers ID "5302"
-    with pytest.raises(TransportError):
-        li.check()
-
-
-def test_5301a_out_of_range_does_not_claim_to_know_why():
-    t = Sim5301ATransport(SimulatedSample())
-    t.sen = 25
-    with pytest.warns(UserWarning):
-        li = Lockin5301A(t)
-    with pytest.raises(TransportError, match="table differs"):
-        li.sensitivity_index()
-
-
 # --- all models, through the app's own factories --------------------------------
-@pytest.mark.parametrize("model", ["5302", "sr830", "5301a"])
+@pytest.mark.parametrize("model", ["5302", "sr830"])
 def test_every_lockin_model_opens_and_reads_in_simulation(model):
     from ferro import acquisition
 
@@ -324,54 +447,6 @@ def test_sr830_is_opened_with_its_own_terminators_and_no_5302_delays(monkeypatch
     assert "reply_delay_s" not in kw and "gap_s" not in kw
 
 
-def test_5301a_is_opened_like_the_5302(monkeypatch):
-    """Same terminator search and reply delay: that delay is what made the 5302 work."""
-    from ferro import acquisition
-
-    built = []
-
-    class FakeVisa:
-        def __init__(self, resource, **kw):
-            self.kw = kw
-            built.append(self)
-
-        def query(self, cmd):
-            return "5301A"
-
-        def set_timeout(self, timeout_s):
-            pass
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(acquisition, "VisaTransport", FakeVisa)
-    monkeypatch.setattr(acquisition, "_DETECTED_TERMINATIONS", {})
-    cfg = config.AppConfig()
-    cfg.lockin.model = "5301a"
-    with pytest.warns(UserWarning):
-        li = acquisition.open_lockin(cfg)
-    assert isinstance(li, Lockin5301A)
-    assert all(t.kw["reply_delay_s"] == acquisition.LOCKIN_GAP_S for t in built)
-
-
-def test_the_5301a_warning_reaches_the_log_and_the_data_file(tmp_path):
-    logs = []
-    cfg = config.AppConfig(simulate=True)
-    cfg.lockin.model = "5301a"
-    cfg.run.output_dir = str(tmp_path)
-    cfg.run.interval_s = 0.1
-    cfg.run.sample = "unverified"
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append((lvl, m)))
-        acq.start(record=True)
-        time.sleep(0.5)
-        acq.stop()
-    assert any(lvl == "warning" and "unverified" in m for lvl, m in logs)
-    text = next(tmp_path.glob("unverified_*.txt")).read_text()
-    assert "# lockin_warning:" in text and "# lockin_model: 5301A" in text
-
-
 # --- CND3 ----------------------------------------------------------------------
 def test_decode_temperature():
     assert decode_temperature(0x0190) == pytest.approx(40.0)
@@ -379,6 +454,14 @@ def test_decode_temperature():
     assert decode_temperature(0xFC18) == pytest.approx(-100.0)
     with pytest.raises(PIDSensorError, match="not connected"):
         decode_temperature(0x8003)
+
+
+@pytest.mark.parametrize("raw", [0x8000, 0x8001, 0x8005, 0x8008, 0xD8F0])
+def test_a_status_code_is_never_read_as_a_temperature(raw):
+    """8000H would decode to -3276.8 C: the '-3000 C' spikes at the start of a run."""
+    with pytest.raises(PIDSensorError, match="status code"):
+        decode_temperature(raw)
+    assert decode_temperature(0xD8F1) == pytest.approx(-999.9)  # the lowest real reading
 
 
 def test_cnd3_rejects_unsupported_framing():
@@ -604,19 +687,67 @@ def test_legacy_format_matches_labview(tmp_path):
 
 
 # --- direction tracking ----------------------------------------------------------
+def _ramp(tr, rate_c_per_min=2.0, amp=0.0, period_s=5.0, top=150.0, dt=0.5):
+    """Heat 25 C -> top and cool back; return the directions seen and the peak time."""
+    rate = rate_c_per_min / 60
+    t_up = (top - 25) / rate
+    seen, turns, t = [], [], 0.0
+    while t < 2 * t_up:
+        base = 25 + rate * t if t < t_up else top - rate * (t - t_up)
+        d = tr.update(t, base + amp * math.sin(2 * math.pi * t / period_s))
+        if not seen or seen[-1] != d:
+            seen.append(d)
+        if tr.just_turned:
+            turns.append((tr.turn_time_s, tr.turn_temp_c, d))
+        t += dt
+    return seen, turns, t_up
+
+
 def test_direction_tracker_heating_then_cooling():
-    tr = DirectionTracker(window_s=30, threshold_c_per_min=0.5)
-    t = 0.0
-    for _ in range(120):  # 2 min heating at 3 degC/min
-        tr.update(t, 30 + 0.05 * t)
-        t += 1
-    assert tr.direction == 1
-    peak = 30 + 0.05 * t
-    for _ in range(120):
-        tr.update(t, peak - 0.05 * (t - 120))
-        t += 1
-    assert tr.direction == -1
-    assert tr.segment == 1
+    tr = DirectionTracker()
+    seen, turns, t_peak = _ramp(tr)
+    assert seen == [0, 1, -1] and tr.segment == 1
+    turn_t, turn_temp, d = turns[-1]
+    assert d == -1 and abs(turn_t - t_peak) < 10, "the recorded turn is the real peak"
+    assert turn_temp == pytest.approx(150, abs=2)
+
+
+@pytest.mark.parametrize("period_s", [5.0, 30.0, 120.0])
+def test_direction_tracker_ignores_a_five_degree_wobble(period_s):
+    """Relay cycling swings the probe by degrees; the old slope tracker flipped on each swing."""
+    tr = DirectionTracker()
+    seen, _, _ = _ramp(tr, amp=5.0, period_s=period_s)
+    assert seen == [0, 1, -1] and tr.segment == 1
+
+
+def test_direction_tracker_does_not_invent_a_ramp_from_a_wobbling_hold():
+    tr = DirectionTracker()
+    for i in range(2400):  # 20 min holding at 80 C with a +-5 C, 30 s swing
+        t = i * 0.5
+        tr.update(t, 80 + 5 * math.sin(2 * math.pi * t / 30))
+    assert tr.direction == 0 and tr.segment == 0
+    tr.update(1200.5, float("nan"))  # a missing reading changes nothing
+    assert tr.direction == 0
+
+
+def test_a_recognised_turn_is_written_to_the_file_and_recolours_the_plot(tmp_path):
+    cfg = config.AppConfig(simulate=True)
+    logs = []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m))
+
+    class Turned:
+        segment, slope_c_per_min, just_turned = 1, -2.0, True
+        direction, turn_time_s, turn_temp_c = -1, 12.5, 150.1
+
+        def update(self, t, temp):
+            return self.direction
+
+    acq.tracker = Turned()
+    row = acq._sample()
+    assert row["turned_at_s"] == 12.5 and row["direction"] == -1
+    assert any("Ramp turned to cooling at 150.1 °C, t = 12 s" in m for m in logs)
+    for slot in acq.slots.values():
+        slot.close()
 
 
 # --- settings ----------------------------------------------------------------------
@@ -648,13 +779,37 @@ def test_simulated_acquisition_records(tmp_path):
     acq.stop()
     assert not acq.running
     assert len(rows) >= 5
-    assert all(r["flags"] == 0 for r in rows), logs
+    skipped = acquisition.DISCARD_TEMPERATURES_AFTER_OPEN
+    assert all(r["flags"] == FLAG_TEMP_DISCARDED for r in rows[:skipped]), logs
+    assert all(r["flags"] == 0 for r in rows[skipped:]), logs
     files = list(tmp_path.glob("sim_*.txt"))
     assert len(files) == 1
     data = np.loadtxt(files[0])
     assert data.shape[0] >= 4
     text = files[0].read_text()
     assert "lockin_sensitivity: 50 mV" in text and "controller_firmware: V1.00" in text
+
+
+def test_first_temperatures_after_connecting_are_discarded_not_plotted():
+    """Every (re)connect throws away its first readings, flagged rather than nan-and-silent."""
+    cfg = config.AppConfig(simulate=True)
+    cfg.dmm.enabled = True
+    acq = Acquisition(cfg)
+    n = acquisition.DISCARD_TEMPERATURES_AFTER_OPEN
+    rows = [acq._sample() for _ in range(n + 2)]
+    for r in rows[:n]:
+        assert math.isnan(r["PV_C"]) and math.isnan(r["T_dmm_C"]) and math.isnan(r["T_C"])
+        assert r["flags"] == FLAG_TEMP_DISCARDED
+        assert not math.isnan(r["X_V"]), "only temperatures are discarded"
+    for r in rows[n:]:
+        assert math.isfinite(r["PV_C"]) and math.isfinite(r["T_dmm_C"]) and r["flags"] == 0
+    assert acq.slots["pid"].state == "ok", "a discarded reading is not a failure"
+
+    acq.slots["pid"].close()  # a reconnect starts the count again
+    acq.slots["pid"].device = None
+    assert acq._sample()["flags"] & FLAG_TEMP_DISCARDED
+    for slot in acq.slots.values():
+        slot.close()
 
 
 def test_acquisition_survives_missing_instruments(tmp_path):

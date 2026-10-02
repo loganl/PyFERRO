@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import QMessageBox  # noqa: E402
 
 from ferro import config  # noqa: E402
+from ferro.datafile import FLAG_TEMP_DISCARDED  # noqa: E402
 from ferro.gui.main_window import MainWindow  # noqa: E402
 
 
@@ -38,7 +39,7 @@ def test_record_requires_a_name(window, qtbot, monkeypatch):
 def test_simulated_record_stop_cycle(window, qtbot, tmp_path):
     window.sample.setText("gui test")
     qtbot.mouseClick(window.record_btn, Qt.LeftButton)
-    qtbot.waitUntil(lambda: window._rows_written >= 5, timeout=15000)
+    qtbot.waitUntil(lambda: window._rows_written >= 6, timeout=15000)
     assert window.record_btn.isChecked()
     assert not window.start_btn.isEnabled()
     assert window.tiles["T"].value.text().endswith("°C")
@@ -55,8 +56,53 @@ def test_simulated_record_stop_cycle(window, qtbot, tmp_path):
     files = list((tmp_path / "data").glob("gui_test_*.txt"))
     assert len(files) == 1
     data = np.loadtxt(files[0])
-    assert data.shape[0] >= 5 and np.isfinite(data[:, :3]).all()
+    kept = data[data[:, 12] != FLAG_TEMP_DISCARDED]  # first temperatures after connecting
+    assert kept.shape[0] >= 3 and np.isfinite(kept[:, :3]).all()
     assert config.load().run.sample == "gui test"  # settings persisted
+
+
+def test_new_points_are_visible_after_clear_plots_even_after_a_zoom(window, qtbot):
+    """A mouse-wheel zoom turns auto-range off; Clear then left every new point off-screen."""
+    qtbot.mouseClick(window.start_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: window.buffer.n >= 5, timeout=10000)
+    window._redraw()
+    vb = window.p_time.getViewBox()
+    vb.scaleBy((0.9, 0.9))  # what the mouse wheel does
+    assert not any(vb.autoRangeEnabled())
+    qtbot.mouseClick(window.clear_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: window.buffer.n >= 4, timeout=10000)
+    window._redraw()
+    qtbot.waitUntil(lambda: all(vb.autoRangeEnabled()), timeout=2000)
+    t, temp = window.buffer.view("time_s") / 60, window.buffer.view("T_C")
+    qtbot.wait(100)
+    (x0, x1), (y0, y1) = vb.viewRange()
+    assert ((t >= x0) & (t <= x1) & (temp >= y0) & (temp <= y1)).any(), "new points must be on screen"
+
+
+def test_a_recognised_turn_recolours_the_points_since_the_peak(window):
+    base = {"T_C": 100.0, "X_V": 1e-3, "Y_V": 1e-3}
+    for t in range(10):
+        window._on_sample({**base, "time_s": float(t), "direction": 1})
+    window._on_sample({**base, "time_s": 10.0, "direction": -1, "turned_at_s": 6.0})
+    assert list(window.buffer.view("direction")) == [1] * 6 + [-1] * 5
+
+
+def test_a_long_recording_path_does_not_widen_the_window(window):
+    """The banner's path once forced the window to 2600 px, off a 1280 px screen."""
+    from PySide6.QtWidgets import QApplication
+
+    def min_width():
+        QApplication.processEvents()
+        window.layout().activate()
+        return window.minimumSizeHint().width()
+
+    before = min_width()
+    path = "C:\\Users\\LabStudent\\Documents\\FerroData\\" + "BTO_run_" * 20 + "20260929_142436.txt"
+    window.rec_label.setText(f"● REC 0:10:12  1234 rows → {path}")
+    assert min_width() == before
+    assert window.rec_label.text().endswith(".txt") and window.rec_label.toolTip().endswith(".txt")
+    shown = super(type(window.rec_label), window.rec_label).text()
+    assert "…" in shown and shown.endswith(".txt"), "the middle is elided, the file name kept"
 
 
 def test_monitor_then_record_creates_separate_files(window, qtbot, tmp_path):
@@ -74,14 +120,64 @@ def test_monitor_then_record_creates_separate_files(window, qtbot, tmp_path):
     assert len(list((tmp_path / "data").glob("two_*.txt"))) == 2
 
 
-@pytest.mark.parametrize("model, name", [("5302", "5302"), ("sr830", "SR830"), ("5301a", "5301A")])
+@pytest.mark.parametrize("model, name", [("5302", "5302"), ("sr830", "SR830")])
 def test_lockin_model_test_button(window, qtbot, model, name):
     setup = window.setup
     setup.li_model.setCurrentIndex(setup.li_model.findData(model))
     qtbot.mouseClick(setup.li_test, Qt.LeftButton)
     qtbot.waitUntil(lambda: setup.li_result.text().startswith(("✔", "✘")), timeout=10000)
     assert setup.li_result.text().startswith(f"✔ {name} found"), setup.li_result.text()
-    assert ("UNVERIFIED" in setup.li_result.text()) == (model == "5301a")
+
+
+def test_lockin_test_shows_the_settings_check(window, qtbot):
+    setup = window.setup
+    setup.li_model.setCurrentIndex(setup.li_model.findData("5302"))
+    qtbot.mouseClick(setup.li_test, Qt.LeftButton)
+    qtbot.waitUntil(lambda: setup.li_result.text().startswith(("✔", "✘")), timeout=10000)
+    table = setup.li_checks.text()
+    assert "lab manual" in table and "<table" in table
+    assert "Sensitivity" in table and "the left SEN key" in table  # the simulated 5302 is at 50 mV
+
+
+def test_lockin_tab_sets_the_lockin_when_idle(window, qtbot):
+    panel = window.lockin_panel
+    qtbot.mouseClick(panel.read_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: panel.status.text().startswith(("✔", "✘")), timeout=10000)
+    assert panel.status.text().startswith("✔"), panel.status.text()
+    panel.filter.setCurrentIndex(panel.filter.findData("BAND-PASS"))
+    assert panel.changes() == {"filter": "BAND-PASS"}, "only what differs is sent"
+    qtbot.mouseClick(panel.apply_btn, Qt.LeftButton)  # the fixture answers the question Yes
+    qtbot.waitUntil(lambda: "Lock-in set" in panel.status.text(), timeout=10000)
+    assert panel._known["filter"] == "BAND-PASS"  # read back from the instrument
+    assert "FLT 3" in panel.status.text()
+
+
+def test_lockin_tab_goes_through_the_running_measurement(window, qtbot):
+    panel = window.lockin_panel
+    qtbot.mouseClick(window.start_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: panel._known is not None, timeout=10000)  # the first poll
+    panel.time_constant.setCurrentIndex(8)
+    qtbot.mouseClick(panel.apply_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: panel._known["time_constant_index"] == 8, timeout=10000)
+    qtbot.waitUntil(lambda: "Lock-in time constant changed to 500 ms"
+                    in window.log_view.toPlainText(), timeout=5000)
+    assert "Lock-in set from PyFERRO: time constant 500 ms (XTC 8)" in window.log_view.toPlainText()
+    qtbot.mouseClick(window.stop_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: not window.running and not window._stopping, timeout=15000)
+
+
+def test_lockin_tab_fills_in_the_lab_manual_values_without_sending(window):
+    from ferro.instruments.lockin5302 import check_setup
+
+    panel = window.lockin_panel
+    panel.expand.setChecked(True)
+    panel.osc_v.setValue(2.0)
+    panel.manual_btn.click()
+    values = panel.values()
+    as_read = {**values, "sensitivity": panel.sensitivity.currentData(),
+               "time_constant": panel.time_constant.currentData()}
+    assert all(r.ok for r in check_setup(as_read))
+    assert panel._known is None, "nothing was read or sent"
 
 
 @pytest.mark.parametrize("model, name", [("34401a", "HP 34401A"), ("k199", "Keithley 199")])
@@ -100,7 +196,7 @@ def test_other_models_record_and_are_saved(window, qtbot, tmp_path):
     setup.dmm_enabled.setChecked(True)
     window.sample.setText("sr830 k199")
     qtbot.mouseClick(window.record_btn, Qt.LeftButton)
-    qtbot.waitUntil(lambda: window._rows_written >= 3, timeout=15000)
+    qtbot.waitUntil(lambda: window._rows_written >= 6, timeout=15000)
     qtbot.mouseClick(window.stop_btn, Qt.LeftButton)
     qtbot.waitUntil(lambda: not window.running and not window._stopping, timeout=15000)
 
@@ -108,6 +204,7 @@ def test_other_models_record_and_are_saved(window, qtbot, tmp_path):
     text = path.read_text()
     assert "# lockin_model: SR830" in text and "Keithley 199" in text
     data = np.loadtxt(path)
-    assert np.isfinite(data[:, :3]).all()
+    kept = data[data[:, 12] != FLAG_TEMP_DISCARDED]
+    assert kept.shape[0] >= 3 and np.isfinite(kept[:, :3]).all()
     saved = config.load()
     assert (saved.lockin.model, saved.dmm.model) == ("sr830", "k199")
