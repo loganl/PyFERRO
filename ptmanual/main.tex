@@ -194,16 +194,16 @@ You should also supplement this write-up by looking up and reading some of the
 books/articles/websites from the list of references. We propose that you start
 in the following order:
 
-First read Sections \ref{sec:prepare}--\ref{sec:report}, which will give you an
+\textbf{First read Sections \ref{sec:prepare}--\ref{sec:report}}, which will give you an
 overview of this lab. Then spend some time learning how to use the lock-in
 amplifier. Your first task will be to master preliminary practice measurements
 of resistance and capacitance. During the first two periods of the lab work,
-concentrate on Section~\ref{sec:techniques} of this write-up entitled
-``Measurement techniques'' and study Appendices \ref{app:ac} and
-\ref{app:fourprobe}. Read the equipment
+concentrate on \textbf{Section~\ref{sec:techniques}} of this write-up entitled
+``Measurement techniques'' and study \textbf{Appendices \ref{app:ac} and
+\ref{app:fourprobe}}. Read the equipment
 manual for the lock-in amplifier and Ref.~\cite{ref:lockin}; study the
 principle of its operation. Simultaneously, study the instrument hands-on:
-connect a circuit and first measure a known resistor, and then a known
+connect a circuit and first measure a \underline{known} resistor, and then a \underline{known}
 capacitor, using the lock-in.
 
 Once you get familiarized with using the lock-in, read about the rest of the
@@ -262,12 +262,10 @@ data will be stored in the computer and need not be in the notebook.
 \end{itemize}
 
 The Omega CN08D3-SR-2U-CM-AC temperature controller controls the heater
-and can be programmed from its front panel. It is connected to the computer via RS-485,
-allowing PyFERRO to read the temperature without changing the controller
-settings. The lock-in amplifier is connected to the computer by the
-IEEE~488 (GPIB) interface; the HP 34401A multimeter is on the same bus but
-is not needed for the standard measurement. PyFERRO displays and records
-the measurements in real time.
+and can be programmed from its front panel, connected to the computer via RS-485.
+The lock-in amplifier is connected to the computer by the
+IEEE~488 (GPIB) interface and PyFERRO displays and records
+all measurements in real time.
 
 \begin{figure}[htbp]
   \centering
@@ -287,27 +285,17 @@ the measurements in real time.
   \label{fig:daqwiring}
 \end{figure}
 
-\paragraph{Samples.}
-You will be studying samples of \VOtwo\ and \BTO. If two students work on this
-lab, they should together measure at least one \VOtwo\ sample, which will be
-provided, and prepare themselves and measure two \BTO\ samples. Sample
-preparation and all the measurements can be done in collaboration, but for the
-purposes of data analysis we will consider that one of these two samples belongs
-to one student, and another one to the other, so that each student will report
-and evaluate the data on the common \VOtwo\ sample and on their own \BTO\
-sample.
-
 % =============================================================================
 \section{Principle of the measurement and an overview of data analysis}
 % =============================================================================
 
 Details on these subjects will be found in the rest of this write-up; and you
-know what they say: the devil is in the detail. Here is the brief summary:
+know what they say: \textit{the devil is in the details}. Here is the \textbf{brief summary:}
 
 You will be studying two different phase transitions, both taking place as a
 function of temperature: a metal--insulator transition in vanadium dioxide
 (\VOtwo) and a ferroelectric transition in barium titanate (\BTO). Read
-Appendix~\ref{app:physics} where the physics of phase transitions is reviewed
+\textbf{Appendix~\ref{app:physics}} where the physics of phase transitions is reviewed
 and detailed.
 
 The sample is placed in a temperature-controlled chamber. The temperature is
@@ -469,7 +457,7 @@ Report. In it there will be several different (but related) parts:
 % =============================================================================
 
 The main instrument you will be using in your measurements in this lab is
-called a \emph{lock-in amplifier}~\cite{ref:lockin}. This wonderful instrument
+called a \emph{lock-in amplifier} ~\cite{ref:lockin}. This wonderful instrument
 was invented in the 1950's by a physicist Robert Dicke; it is used extensively
 for a variety of measurements in physics experiments and elsewhere.
 
@@ -505,8 +493,7 @@ relationship to the reference. This is a version of the \emph{phase-sensitive
 detection} technique. The phase can be continually varied and also changed in
 \ang{90} steps.
 
-You should read about lock-in operation in our lock-in manual (available online
-through Blackboard) and elsewhere~\cite{ref:lockin}. Here and in
+You should read about lock-in operation in our lock-in manual~\cite{ref:lockin}. Here and in
 Appendix~\ref{app:ac} we give a brief general introduction to its operating
 principle, and discuss in more detail the two types of measurements we will be
 doing in this lab.
@@ -520,7 +507,7 @@ essential that you understand this topic in order to do this lab.}
 
 \paragraph{The principle of lock-in measurement} is as follows: the lock-in
 contains its own AC voltage source called \emph{oscillator output}, in which you
-can adjust the amplitude (but only up to \SI{2.0}{\volt}), and frequency
+can adjust the amplitude, and frequency
 (adjustable in a wide range from a fraction of \SI{1}{\hertz} to
 \SI{100}{\kilo\hertz}). The frequency, once you set it, will be kept with great
 precision and stability by a lock-in. The readout is tuned to read only
@@ -1057,22 +1044,23 @@ accurate this estimate will be.
 \end{figure}
 
 The procedure for preparing and mounting the \BTO\ sample is as follows.
-Sand the \BTO\ sample to a uniform size and measure its dimensions.
-Apply silver paint to its two broad faces to form the capacitor plates,
-then sand the unpainted sides so that the two plates do not touch.
-Check for a short circuit with an ohmmeter. Apply a thin layer of silver
-paste to the PCB pad connected to one terminal of the through-hole
-connector, and place one painted face of the sample onto the paste.
-Solder a wire to the pad connected to the other terminal and connect
-the wire to the painted upper face of the sample. The two painted faces
-are thus connected to separate PCB pads and separate connector terminals.
-Check for a short circuit again through the two connector terminals.
-Be careful not to let the silver paint or paste bridge the two faces:
-you are making a capacitor. When the sample is installed in the chamber,
-the entire PCB is secured in place by the metal clip.
-The two black two-pin connectors on the PCB plug onto the four white
-connector pins in the sample chamber, providing
-the electrical connections to the two painted faces of the sample.
+\begin{enumerate}
+    \item Sand the \BTO\ sample to a uniform size and measure its dimensions.
+    \item Apply silver paint to its two broad faces to form the capacitor plates,
+        then sand the unpainted sides so that the two plates do not touch.
+    \item Check for a short circuit with an ohmmeter.
+    \item Apply a thin layer of silver paste to the PCB pad connected to one terminal of the through-hole
+        connector, and place one painted face of the sample onto the paste.
+    \item Solder a wire to the pad connected to the other terminal and connect
+        the wire to the painted upper face of the sample. The two painted faces
+        are thus connected to separate PCB pads and separate connector terminals.
+    \item Check for a short circuit again through the two connector terminals.
+        Be careful not to let the silver paint or paste bridge the two faces:
+        you are making a capacitor.
+    \item Install the sample in the chamber, the entire PCB is secured in place by the metal clip.
+        The two black two-pin connectors on the PCB plug into the first two connector pins in the sample chamber, providing
+        the electrical connections to the two painted faces of the sample. You may have to check which lead goes where with a voltmeter.
+\end{enumerate}
 
 \notebox{The paint dries very quickly}{Do not leave the silver-paint container
 open for an extended period of time; open it for as short an interval as
