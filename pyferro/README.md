@@ -6,7 +6,7 @@ controller heats and cools the chamber. Replaces the LabVIEW routine `FERRO v.2.
 | Instrument | Connection | Default |
 |---|---|---|
 | EG&G/PAR 5302 lock-in | NI GPIB adapter | `GPIB0::12::INSTR` |
-| Omega CND3 PID controller (holds the Pt100 probe) | Dtech USB → RS-485 (FTDI) | Modbus ASCII, address 1, 9600 7E1 |
+| Omega CND3 PID controller (holds the control thermocouple) | Dtech USB → RS-485 (FTDI) | Modbus ASCII, address 1, 9600 7E1 |
 | HP 34401A multimeter (optional) | NI GPIB adapter | `GPIB0::24::INSTR`, Pt100 in 4-wire Ω |
 
 Other models can be chosen on the Instruments tab, for rigs built differently: an SRS

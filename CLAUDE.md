@@ -145,10 +145,17 @@ don't add it back.
   cycling the heater — **probably wrong**: see the next point.
 - **The CND3's PV reading is faulty (2026-09-29 ~15:00).** In STOP, outputs 0 %, OUT1
   light off, PV read 204 → 219 → 137 → 207 → 207 → 123 °C at 4 s intervals — no
-  chamber moves like that. Suspect the Pt100 wiring on terminals 10/11/12 or noise
+  chamber moves like that. Suspect the probe wiring on terminals 10/11/12 or noise
   pickup. It may also explain the wobble, the "keeps heating past the setpoint"
   reports and the -3000 °C spikes. Fix the probe before trusting any PV, and don't
   re-diagnose those symptoms from PV data until it reads steadily.
+- **The control probe looks like a thermocouple, not a Pt100 (2026-10-02).** The user
+  saw two same-looking wires joined at the tip, separately insulated. Identified by
+  eye; a mV-versus-warmth test has not been reported. The lab manual and README now
+  say thermocouple. A thermocouple uses two terminals, not three, and needs the
+  controller's input type to match (register 1004H: 0-10 thermocouple types, 12
+  Pt100; CND3 manual). **A mismatch there would itself give a wrong PV** - check it
+  before blaming wiring or noise for the fault above.
 - An unpowered instrument anywhere on the GPIB chain holds NRFD/NDAC and stalls the
   bus, which also makes a scan "find" a device that never answers.
 - `ibic` (MAX → Tools → NI-488.2 → Interactive Control) needs no admin rights, unlike
