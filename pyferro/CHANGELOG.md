@@ -9,6 +9,12 @@ to the code that produced it. The number is written in exactly one place,
 
 ## Unreleased
 
+### Changed
+- The lab-manual set-up that *Test lock-in*, the recording check and *Lab-manual values*
+  use now matches the manual's revised 5302 table: oscillator level 0.500 V (was
+  1.000 V) and the preamplifier as signal input (was DIRECT INPUT). A lock-in set the
+  old way is now reported as differing from the lab manual.
+
 ## 1.1.0 — 2026-09-30
 
 ### Added

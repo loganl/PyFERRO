@@ -76,8 +76,8 @@ def test_5302_front_panel_setup_is_read_back():
     """Manual ch. 9: IE, OA, OF, DR, FLT, PREAMP and P answer their values when sent bare."""
     s = Lockin5302(SimLockinTransport(SimulatedSample())).settings()
     assert (s["reference_mode"], s["dynamic_reserve"], s["filter"], s["signal_input"]) == \
-        ("INT", "HI STAB", "FLAT", "DIRECT")
-    assert s["oscillator_v"] == pytest.approx(1.000)  # OA 1000 2: 1000 mV
+        ("INT", "HI STAB", "FLAT", "PREAMP")
+    assert s["oscillator_v"] == pytest.approx(0.500)  # OA 5000 1: 5000 steps of 0.1 mV
     assert s["oscillator_hz"] == pytest.approx(25000)  # OF 2500 7: 25 kHz
     assert s["phase_deg"] == pytest.approx(0.0)
 
@@ -116,8 +116,8 @@ def test_setup_check_finds_what_was_wrong_on_the_rig():
     rows = {r.name: r for r in check_setup(rig)}
     wrong = {name for name, r in rows.items() if r.ok is False}
     assert wrong == {"Oscillator level", "Sensitivity", "Expand", "Time constant", "Filter",
-                     "Dynamic reserve"}
-    assert rows["Oscillator level"].now == "2.000 V" and rows["Oscillator level"].wanted == "1.000 V"
+                     "Dynamic reserve", "Signal input"}
+    assert rows["Oscillator level"].now == "2.000 V" and rows["Oscillator level"].wanted == "0.500 V"
     assert rows["Time constant"].wanted == "500 ms or 200 ms"
     assert "FUNCT" in rows["Expand"].how
     rig["oscillator_v"] = None
@@ -127,9 +127,9 @@ def test_setup_check_finds_what_was_wrong_on_the_rig():
 def test_setup_check_passes_a_correctly_set_lockin():
     from ferro.instruments.lockin5302 import check_setup
 
-    good = {"reference_mode": "INT", "oscillator_hz": 25010.0, "oscillator_v": 1.001,
+    good = {"reference_mode": "INT", "oscillator_hz": 25010.0, "oscillator_v": 0.5005,
             "sensitivity": "1 V", "expand": False, "time_constant": "200 ms", "filter": "FLAT",
-            "dynamic_reserve": "HI STAB", "signal_input": "DIRECT"}
+            "dynamic_reserve": "HI STAB", "signal_input": "PREAMP"}
     assert all(r.ok for r in check_setup(good))
 
 

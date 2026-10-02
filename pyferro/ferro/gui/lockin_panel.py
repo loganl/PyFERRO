@@ -104,7 +104,7 @@ class LockinPanel(QWidget):
         self.checks.setTextFormat(Qt.RichText)
         self.checks.setWordWrap(True)
         lay.addWidget(self.checks)
-        note = QLabel("Front panel only: AC/DC and FLOAT/GND (the buttons above DIRECT INPUT), "
+        note = QLabel("Front panel only: the coupling and grounding buttons on the preamplifier, "
                       "and the phase tuning (AUTO, then the left PHASE key, with the sample "
                       "disconnected). Changes made here during a run are written into the "
                       "data file, as are front-panel changes, within a minute.")

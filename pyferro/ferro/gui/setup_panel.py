@@ -82,8 +82,8 @@ def setup_table_html(rows) -> str:
     return (f"<p>{html.escape(head)}</p><table cellspacing='0' cellpadding='3'>"
             "<tr><th></th><th align='left'>Setting</th><th align='left'>Now</th>"
             "<th align='left'>Lab manual</th><th align='left'>Change with</th></tr>"
-            + "".join(cells) + "</table><p>AC/DC and FLOAT/GND cannot be read over GPIB: "
-            "check the buttons above DIRECT INPUT (AC latched, FLOAT released).</p>")
+            + "".join(cells) + "</table><p>The preamplifier's coupling and grounding buttons "
+            "cannot be read over GPIB: check them on its front panel.</p>")
 
 
 def _result_label() -> QLabel:

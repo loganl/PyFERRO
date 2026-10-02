@@ -256,17 +256,18 @@ data will be stored in the computer and need not be in the notebook.
   \item Sample chamber with four electric leads.
   \item Temperature controller.
   \item Lock-in amplifier to measure the samples.
-  \item Keithley four-probe resistance meter to measure temperature.
-  \item Computer (username \texttt{gradlab}, password \texttt{senior}).
+  \item HP 34401A multimeter (not needed for the standard measurement).
+  \item Computer (username \texttt{LabStudent}, password \texttt{PhaseTransition}).
   \item Decade resistance box, additional resistors, capacitors, BNC cables etc.
 \end{itemize}
 
-See the equipment manuals for details. The temperature controller has a web
-interface. Use this interface for programming the controller (see
-Appendix~\ref{app:tempcontrol}). The lock-in amplifier and the Keithley
-multimeter are connected to a computer by the IEEE~488 (GPIB) interface, and the
-temperature controller by RS-485. A data-taking program, PyFERRO, records the
-lock-in signal and the temperature (Appendix~\ref{app:pyferro}).
+The Omega CN08D3-SR-2U-CM-AC temperature controller controls the heater
+and can be programmed from its front panel. It is connected to the computer via RS-485,
+allowing PyFERRO to read the temperature without changing the controller
+settings. The lock-in amplifier is connected to the computer by the
+IEEE~488 (GPIB) interface; the HP 34401A multimeter is on the same bus but
+is not needed for the standard measurement. PyFERRO displays and records
+the measurements in real time.
 
 \begin{figure}[htbp]
   \centering
@@ -276,7 +277,7 @@ lock-in signal and the temperature (Appendix~\ref{app:pyferro}).
     terminals; the oscillator drives the sample through resistor R-zero and the
     measuring input sits across the sample. Below it a dashed box marks the
     sample chamber, containing the sample capacitor, a heater winding and a
-    thermocouple. The thermocouple runs to the PID controller box, an Omega CND3, which
+    thermocouple. The thermocouple runs to the PID controller box, an Omega CN08D3, which
     lists probe input terminals 10, 11 and 12, output OUT1 on terminals 8 and 9,
     and RS-485 on terminals 13 (D minus) and 14 (D plus). OUT1 switches a
     solid-state relay that powers the heater from AC mains. On the right, the
@@ -622,7 +623,9 @@ its variation.
 The sample has four contacts: two outside contacts for the current and two
 inner ones for the voltage. You should read about the four-probe measurement in
 Appendix~\ref{app:fourprobe}, and a brief description of this principle should
-be given in your Final Report. The voltage from the inner leads
+be given in your Final Report. Be ready to answer this question: what is the
+advantage of the four-terminal method over the two-terminal method, and how is
+this advantage achieved? The voltage from the inner leads
 $V_{\mathrm{meas}}$ (see the figure above) is supplied to the lock-in's
 measuring input, where it will be amplified (thus the name lock-in
 \emph{amplifier}), and provided for the readout on the front panel and, through
@@ -658,7 +661,7 @@ resistor: instead of being \SI{10}{\mega\ohm} it can be, for example,
 to monitor the current and to use the measured current $I_{\mathrm{meas}}$ in a
 calculation of a sample resistance at every point along the way. This can be
 done with the use of an additional computer-interfaced voltmeter, and with
-a modification of the data-taking program.
+a modification of PyFERRO.
 
 \notebox{Do not overdrive the sample}{The current should not be increased
 indefinitely; excessive currents can produce self-heating and even damage the
@@ -816,42 +819,42 @@ $\omega$ and $R_0$, we can calculate the capacitance of the sample as
 
 \subsection{Lock-in amplifier settings}
 
-The standard settings of the EG\&G model 5209 lock-in amplifier are:
+The standard settings of the EG\&G Princeton Applied Research Model 5302 are:
 
 \begin{center}
 \begin{tabular}{@{}ll@{}}
   \toprule
   \textbf{Setting} & \textbf{Value} \\
   \midrule
-  Input            & A \\
-  Sensitivity      & \SI{3}{\volt} \\
-  Filter           & flat, track \\
-  Oscillator level & \SI{1.999}{\volt} \\
+  Input            & preamplifier A input (select PREAMP as signal source) \\
+  Sensitivity      & \SI{1}{\volt} initially \\
+  Filter           & flat \\
+  Oscillator level & \SI{0.500}{\volt} initially\\
   Oscillator frequency & \SI{25}{\kilo\hertz} \\
   Reference phase  & tuned (see below) \\
   Reference        & internal \\
-  Oscillator out   & BNC cable connected \\
-  Time constant    & \SI{300}{\milli\second} \\
-  Dynamic reserve  & high resolution \\
-  Output display   & signal \\
+  Oscillator out   & OSC to preamplifier A (BNC cable) \\
+  Time constant    & \SI{500}{\milli\second} \\
+  Dynamic reserve  & HI STAB \\
+  Output display   & X--YV \\
   \bottomrule
 \end{tabular}
 \end{center}
 
-\paragraph{Settings for the EG\&G model 5302.}
-The rig now uses a model 5302 (Figure~\ref{fig:daqwiring}), which differs from the 5209
-in ways that matter here. Table~\ref{tab:lockin5302} gives its settings for the
-capacitance measurement, where to find each one on the front panel, and the
-equivalent GPIB command. The same command sent without a number makes the lock-in
+\paragraph{Setting the EG\&G model 5302.}
+Table~\ref{tab:lockin5302} gives the same settings in more detail: where to
+find each one on the front panel, and the equivalent GPIB command. The same command sent without a number makes the lock-in
 reply with the current value, which is how PyFERRO reads these settings back and
 records them in the data-file header.
 
-\notebox{Two numbers differ from the 5209}{The 5302's oscillator output resistance is
-$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not \SI{600}{\ohm}: use
-\SI{450}{\ohm} in $C = \delta/(\omega R_0)$ and wherever this manual writes $R_0$.
-And its least sensitive range is \SI{1}{\volt}, with no \SI{3}{\volt} range, so set the
-oscillator to $V_0 = \SI{1.000}{\volt}$ instead of \SI{1.999}{\volt}: the in-phase signal is close
-to $V_0$ and would overload the \SI{1}{\volt} range. Nothing is lost, since
+\notebox{Oscillator resistance and level}{The 5302's oscillator output resistance is
+$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not the \SI{600}{\ohm} of
+the earlier lock-in that other sections of this manual still quote: use
+\SI{450}{\ohm} in $C = \delta/(\omega R_0)$ and wherever this manual writes
+$R_0$. Its least
+sensitive range is \SI{1}{\volt}, and the in-phase signal is close to the
+oscillator level $V_0$, so $V_0$ must stay below \SI{1}{\volt}; at
+$V_0 = \SI{0.500}{\volt}$ it is half of full scale. Nothing is lost, since
 $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
 
 \begin{table}[htbp]
@@ -862,12 +865,11 @@ $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
     \textbf{Setting} & \textbf{Value} & \textbf{How to set it on the front panel}
       & \textbf{GPIB} \\
     \midrule
-    Signal input & DIRECT INPUT, AC, FLOAT
-      & Cable to the DIRECT INPUT connector (lower left). Of the two buttons above it,
-        latch the upper one (AC) and release the lower one (FLOAT). The display shows
-        DIR at the upper right; if it shows PRE, select DIRECT INPUT on the SIGNAL
-        SETUP screen.
-      & \texttt{PREAMP 0} (AC and FLOAT: front panel only) \\
+    Signal input & preamplifier, input A
+      & Cable to input A of the plug-in preamplifier. The display shows PRE at the
+        upper right; if it shows DIR, select PREAMP as the signal source on the
+        SIGNAL SETUP screen.
+      & \texttt{PREAMP 1} \\
     Reference & INT
       & Press REF, the rightmost of the five keys under the display, until INT shows
         in the upper-left window. The INT light above the meter comes on.
@@ -877,9 +879,9 @@ $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
         middle of the lower-right window, then turn the knob. The KNOB ACTIVE light
         must be on; if it is off, press either key once.
       & \texttt{OF 2500 7} \\
-    Oscillator level & \SI{1.000}{\volt}
+    Oscillator level & \SI{0.500}{\volt}
       & As for the frequency, with OSC V selected.
-      & \texttt{OA 1000 2} \\
+      & \texttt{OA 5000 1} \\
     Sensitivity & \SI{1}{\volt}
       & The SEN keys, at the top of the two key columns to the right of the display:
         the left one moves to a larger full scale (less sensitive).
@@ -903,21 +905,20 @@ $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
         have settled. For fine tuning, select PHASE with the keys by the setting knob
         and turn the knob.
       & \texttt{AQN} \\
-    Display & X-Y\%
+    Display & X--YV
       & The DISP keys, to the right of the display.
       & --- \\
     \bottomrule
   \end{tabular}
   \caption{EG\&G model 5302 settings for the capacitance measurement. The GPIB
     commands are from chapter~9 of the 5302 manual; \texttt{OF 2500 7} means 2500 in
-    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 1000 2} means
-    \SI{1000}{\milli\volt} in the \SIrange{250}{5000}{\milli\volt} range.}
+    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 5000 1} means
+    5000 steps of \SI{0.1}{\milli\volt} in the \SIrange{25}{500}{\milli\volt} range.}
   \label{tab:lockin5302}
 \end{table}
 
 The 5302 is a dual-phase lock-in: it shows the in-phase signal as $X$ and the
-out-of-phase signal as $Y$ at the same time, so there is no \textsc{90 deg} button to
-press. Tune the phase with the sample disconnected until $Y$ is as close to zero as
+out-of-phase signal as $Y$ at the same time. Tune the phase with the sample disconnected until $Y$ is as close to zero as
 possible (Auto-Phase does this), then connect the sample and read $V_{\mathrm{meas}}$
 from $Y$.
 
@@ -928,56 +929,63 @@ diagrams.
 \begin{figure}[htbp]
   \centering
   \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
-    Photograph of the instrument rack. On top is an EG\&G Princeton Applied
-    Research model 5209 lock-in amplifier; its front panel is divided into
-    sections labeled Sensitivity, Filters, Tuning, Reference and Output, with a
-    digital display reading 6.0, an analog meter, and a second display reading
-    0.00. A BNC cable is plugged into the oscillator output at the right. Below
-    it is a Keithley 199 System DMM/Scanner whose red display reads 001.090
-    kilohms.}
-  \caption{The lock-in amplifier (top) and the Keithley 199 multimeter
-           (bottom).}
+  Photograph of the instrument setup. On top is an HP 34401A digital
+  multimeter whose display reads approximately \SI{-0.025}{\milli\volt}
+  DC; its four front-panel input terminals are visible on the right.
+  Below it is an EG\&G Princeton Applied Research model 5302 lock-in
+  amplifier, with its differential preamplifier, central digital
+  display, analog meter, adjustment knob, and front-panel BNC
+  connectors visible.}
+  \caption{The HP 34401A multimeter (top) and the EG\&G Princeton
+    Applied Research model 5302 lock-in amplifier (bottom).}
   \label{fig:frontpanel}
 \end{figure}
 
-First we check the signal generated by the internal source of the lock-in.
-Connect one end of a BNC cable to the ``osc out'' connector, and the other end
-to input~A. In the ``tuning'' section scroll until the display shows the
-reference phase, ``ref ph'', and set it to \num{0.0}. The analog meter and the
-output display on the right should show a voltage slightly less than
-\SI{2}{\volt}.
+First, check the signal generated by the lock-in amplifier's internal
+oscillator. Connect one end of a BNC cable to the ``OSC'' output and the
+other end to input A on the preamplifier. Select ``PREAMP'' as the signal
+source. On the main display, select ``PHASE'' and turn the setting knob
+to set the reference phase to \ang{0.0}. Check that the analog meter
+and the in-phase component X show a clear signal. If most of the signal
+appears in X, its reading should be close to the oscillator setting of
+\SI{0.500}{\volt}.
 
-We are going to be interested in the out-of-phase component, and we can get that
-by pressing the \textsc{90 deg} button once. Ideally, the out-of-phase signal
-should be zero. However, with all the electronics inside the lock-in, keeping the
-phase of the output voltage under control is not an easy job and there will be a
-small but finite out-of-phase signal.
+We are interested in the out-of-phase component Y. Ideally, Y should
+be zero after the phase has been correctly adjusted. However, the
+electronics inside the lock-in amplifier can introduce a small phase
+error, so Y may initially have a small but nonzero value.
 
-The engineers designing the lock-in provided a way to correct any phase error:
-run an autotune cycle. First press the red ``auto'' button, and then press the
-button slightly up and left. Wait a few seconds, and the lock-in will find the
-best phase so that the in-phase signal is maximum, and the out-of-phase signal
-is zero. To check the out-of-phase, press the \textsc{90 deg} button again and
-you should see zero.
+The lock-in amplifier provides an automatic way to correct this phase
+error. Press the red ``AUTO'' button, followed by the left ``PHASE''
+button, to run Auto-Phase. Wait a few seconds for the readings to
+settle. The in-phase component X should then be maximized, while the
+out-of-phase component Y should be close to zero.
 
-Upon closer inspection you may discover that the autotuning is not perfect. Change
-the sensitivity from \SI{3}{\volt} to \SI{300}{\milli\volt}, and you will see
-that there is a finite signal. You should do a manual fine tuning of the phase,
-so that this signal is as close to zero as possible. You may increase the
-sensitivity to \SI{100}{\milli\volt} and continue tuning the phase.
+Upon closer inspection, you may find that Auto-Phase has left a small
+out-of-phase signal. If Y is too small to read clearly, keep the
+sensitivity at \SI{1}{\volt} and press the ``+90'' phase button once
+to bring this small signal into the X channel. Then press ``FUNCT''
+followed by ``SEN down/EXPAND'' to magnify X by a factor of ten.
+Watch X and adjust the reference phase manually until it is as close
+to zero as possible. Press ``FUNCT'' followed by ``SEN down/EXPAND''
+again to turn off EXPAND, then select ``PHASE'' and subtract
+\ang{90} from its current setting to restore the original X--Y
+orientation. If the red ``OUTPUT OVLD'' indicator lights while
+EXPAND is on, turn EXPAND off before continuing. Do not reduce the
+\SI{1}{\volt} sensitivity setting while the oscillator is connected
+directly to the input.
 
-\notebox{Do not overload the input}{Do not increase the sensitivity further,
-because the input of the lock-in will be overloaded. If you see the red overload
-sign flashing, change to a less sensitive setting. Never set the lock-in to
-sensitivity of \SI{10}{\milli\volt} or higher.}
-
-Now that you have the out-of-phase voltage at zero, select the sensitivity of
-\SI{300}{\milli\volt} again. Insert a BNC ``T'' connector to the line and
-connect another BNC cable. Suddenly, there will be a finite out-of-phase signal
-$V_{\mathrm{meas}}$. Calculate $C$ using
-$C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ with $V_0 = \SI{2.00}{\volt}$,
-$\omega = \SI{1.57e5}{\per\second}$ and $R_0 = \SI{600}{\ohm}$. Measure the
-length of the cable. Test a longer cable.
+Now that the out-of-phase signal has been brought as close to zero as
+possible, keep the sensitivity at \SI{1}{\volt}. Insert a BNC ``T''
+connector into the line and connect another BNC cable. The added cable
+will produce a nonzero out-of-phase signal $V_{\mathrm{meas}}$, which
+you can read from Y. Calculate its capacitance using
+$C = |V_{\mathrm{meas}}|/(V_0\omega R_0)$, where
+$V_0 = \SI{0.500}{\volt}$,
+$\omega = \SI{1.57e5}{\per\second}$, and
+$R_0 = \SI{450}{\ohm}$.
+Measure the length of the cable, then repeat the measurement with a
+longer cable.
 
 \notebox{Question}{In round numbers, what is the capacitance of one foot of BNC
 cable?}
@@ -999,26 +1007,23 @@ least initially.
 
 \begin{figure}[htbp]
   \centering
-  \photo[width=0.62\linewidth]{sample-chamber.png}{%
-    Photograph looking down into the open sample chamber. A cylindrical aluminum
-    block, wrapped on the outside with many turns of copper heater wire, has a
-    circular well in the middle. Inside the well lie small samples with red and
-    black wires soldered to metal clips. A thermocouple for temperature
-    control is visible at the upper right, and the edge of the aluminum cup
-    cover appears at the top right of the frame.}
-  \caption{The sample chamber, opened. A heater is wrapped around the aluminum
-    block; the thermocouple for temperature control is visible at the upper
-    right. A platinum resistor (barely visible) sits in the center of the
-    chamber and is used to measure the temperature of the samples.}
+  \photo[width=0.45\linewidth]{sample-chamber.png}{%
+  Top view of the sample chamber, with the removed metal cup cover on
+  the left. Four metal pins at the back provide the connection for the
+  PCB. The white cable below connects to the PID temperature
+  controller.}
+  \caption{The sample chamber with its metal cup cover removed, showing
+    the pins for connecting the PCB and the cable to the PID temperature
+    controller.}
   \label{fig:chamber}
 \end{figure}
 
 In normal use, the sample chamber is covered by an aluminum cup (see the upper
-right corner of the photograph). The whole assembly is covered by a
-double-walled stainless steel cover for thermal insulation. A double-walled
-evacuated vessel is called a \emph{dewar}. If you wish to cool the sample faster,
-remove the stainless steel dewar. You may also remove the aluminum cup, but in
-that case stop taking data, since the temperature readout will not be reliable.
+left corner of the photograph). The whole assembly is covered by a
+stainless steel cover (the dewar) for thermal insulation. If you wish to cool
+the sample faster, remove the dewar. You may also remove the aluminum cup, but
+in that case stop taking data, since the temperature readout will not be
+reliable.
 
 \subsection{Samples and sample preparation}
 
@@ -1051,28 +1056,40 @@ accurate this estimate will be.
   \label{fig:silverpaint}
 \end{figure}
 
-Use silver paint to create the capacitor plates and mount the sample (with the
-silver paint) onto the two-terminal connector shown in the middle of the figure.
-The best way to do this is by placing the sample between the two pins and using
-the silver paint to create the capacitor plates. The silver paint should be
-applied by a piece of thin wire (visible in the photograph above). Be careful
-not to paint over the edges, because that creates a short circuit and ruins the
-sample. Remember that you are making a capacitor.
+The procedure for preparing and mounting the \BTO\ sample is as follows.
+Sand the \BTO\ sample to a uniform size and measure its dimensions.
+Apply silver paint to its two broad faces to form the capacitor plates,
+then sand the unpainted sides so that the two plates do not touch.
+Check for a short circuit with an ohmmeter. Apply a thin layer of silver
+paste to the PCB pad connected to one terminal of the through-hole
+connector, and place one painted face of the sample onto the paste.
+Solder a wire to the pad connected to the other terminal and connect
+the wire to the painted upper face of the sample. The two painted faces
+are thus connected to separate PCB pads and separate connector terminals.
+Check for a short circuit again through the two connector terminals.
+Be careful not to let the silver paint or paste bridge the two faces:
+you are making a capacitor. When the sample is installed in the chamber,
+the entire PCB is secured in place by the metal clip.
+The two black two-pin connectors on the PCB plug onto the four white
+connector pins in the sample chamber, providing
+the electrical connections to the two painted faces of the sample.
 
 \notebox{The paint dries very quickly}{Do not leave the silver-paint container
 open for an extended period of time; open it for as short an interval as
-possible, just to get the paint onto a piece of wire.}
+possible, just long enough to take the paint you need.}
 
 \begin{figure}[htbp]
   \centering
-  \photo[width=0.48\linewidth]{two-pin-connectors.png}{%
-    Photograph of three small black two-pin connectors side by side. The one on
-    the right is empty, with two bare gold pins. The one in the center has a
-    translucent chip of ceramic barium titanate mounted between its pins. The one
-    on the left has a small test capacitor soldered across its pins.}
-  \caption{An empty two-pin connector (right), a mounted \BTO\ sample (center),
-    and a \SI{100}{\pico\farad} test capacitor soldered to the connector (left).}
-  \label{fig:connectors}
+  \photo[width=0.48\linewidth]{sample.png}{%
+    Photograph of two green sample-mounting PCBs. The PCB on the left is
+    unloaded, showing its contact pads and through-holes. The PCB on the right
+    has a \BTO\ sample mounted near the center and two black two-pin connectors.
+    One painted face of the sample is attached to a PCB pad with silver paste,
+    while a fine wire connects the other painted face to the second contact.
+    The two connectors plug onto the four pins in the sample chamber.}
+  \caption{An unloaded sample-mounting PCB (left) and a PCB with a mounted
+    \BTO\ sample and two two-pin connectors (right).}
+  \label{fig:sample}
 \end{figure}
 
 A stereo microscope is provided for mounting the sample, although with good eyes
@@ -1084,16 +1101,13 @@ sample with Scotch tape to the first page of your report.}
 
 \begin{figure}[htbp]
   \centering
-  \photo[width=0.6\linewidth]{bnc-connections.png}{%
-    Photograph of the bench-top wiring. The bottom of the aluminum sample
-    chamber stands at the top of the frame on a white insulating base, with a
-    white Teflon-insulated cable and red and black wires running from it down to
-    a metal panel carrying four BNC bulkhead connectors. One BNC is fitted with a
-    black coaxial cable and another carries a short-circuit termination.}
-  \caption{Connecting the apparatus. One BNC cable runs from the signal source to
-    input~A of the lock-in, and another from the lock-in to the BNC leading to
-    the sample. When the sample is in place, the other BNC must be terminated
-    with a short circuit to ground, as shown.}
+  \photo[angle=-90, width=0.6\linewidth]{bnc-connections.png}{%
+    Photograph of the wiring beside the cylindrical sample chamber.
+    Four BNC bulkhead connectors are mounted on a metal panel, with
+    colored wires running between the panel and the chamber. Red and
+    black lead adapters are attached to the BNC connectors.}
+  \caption{Wiring between the sample chamber and the four-connector
+    BNC panel.}
   \label{fig:bnc}
 \end{figure}
 
@@ -1101,28 +1115,37 @@ Connect the experimental apparatus: one BNC cable from the signal source to
 input~A of the lock-in, and another cable from the lock-in to the BNC leading to
 the sample. Check that there is no sample in the sample chamber. (For later use,
 when you put in the sample, you need to terminate the other BNC with a short
-circuit to ground, as shown in the photograph.)
+circuit to ground.)
 
-The out-of-phase signal you see now is due to all of the capacitances leading to
-the sample, including the capacitance between the Teflon-insulated black wire and
-ground. Do a fine tuning of the phase so that this signal is zero. Switch to a
-sensitivity of \SI{300}{\milli\volt} and insert the sample. The signal you see
-now is entirely due to the sample, and you can use
-$C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ again to calculate the capacitance of
-the sample. (If the signal is small, you may need to change the sensitivity to
-\SI{100}{\milli\volt}.)
+The Y reading (the out-of-phase component) that you see now is due to
+all of the capacitances leading to the sample, including the capacitance
+between the Teflon-insulated black wire and ground. Fine-tune the phase
+so that this background Y reading is as close to zero as possible.
+Keep the sensitivity at \SI{1}{\volt} and insert the sample. The
+additional Y signal is due primarily to the sample; use its measured
+voltage $V_{\mathrm{meas}}$ in
+$C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ to calculate the sample's
+capacitance. If Y is too small to read clearly, use the phase-shift
+and EXPAND procedure described above. Restore the phase and turn off
+EXPAND before recording the Y measurement.
 
-For all of this to work, $V_{\mathrm{meas}}/V_0 = \omega R_0 C$ should be much
-less than~1. In Appendix~\ref{app:ac} we derived the exact formula for the
-calculation of the capacitance, and we noted that the difference between the
-exact and the approximate formulae is about \SI{1}{\percent} when
-$\delta = 0.1$.
-Therefore, for $V_0 = \SI{2}{\volt}$, the systematic error caused by using the
-approximate formula will be less than \SI{1}{\percent} if $V_{\mathrm{meas}}$ is
-smaller than \SI{200}{\milli\volt}. If you made a very thin sample and the
-capacitance is large, you may go outside of this limit. When that happens you should
-either use the exact formula or reduce the frequency to \SI{10}{\kilo\hertz} or
-\SI{5}{\kilo\hertz} and repeat the tuning.
+For all of this to work, $V_{\mathrm{meas}}/V_0 = \omega R_0 C$ should be
+much less than~1. In Appendix~\ref{app:ac} we derived the exact formula
+for calculating the capacitance, and noted that the difference between
+the exact and approximate formulae is about \SI{1}{\percent} when
+$\delta = 0.1$. Therefore, for an initial oscillator setting of
+$V_0 = \SI{0.500}{\volt}$, the systematic error caused by using the
+approximate formula is about \SI{1}{\percent} or less if
+$V_{\mathrm{meas}}$ is smaller than \SI{50}{\milli\volt}. If the measured
+oscillator voltage differs from this setting, use the measured value of
+$V_0$ and adjust the voltage limit accordingly. Here
+$R_0 = \SI{450}{\ohm}$ and, at \SI{25}{\kilo\hertz},
+$\omega = 2\pi f \simeq \SI{1.57e5}{\per\second}$.
+If you made a very thin sample and its capacitance is large, you may
+go outside this limit. In that case, use the exact formula or reduce
+the frequency to \SI{10}{\kilo\hertz} or \SI{5}{\kilo\hertz} and repeat
+the phase tuning. If you change the frequency, use its new value of
+$\omega$ when calculating the capacitance.
 
 At this point you are ready to measure the temperature dependence of the
 capacitance. Keep in mind that we expect the capacitance to increase as we warm
@@ -1132,134 +1155,182 @@ interesting part of the measurement is happening.
 
 \subsection{Temperature control}
 
-The ``guts'' of the temperature controller~\cite{ref:pid} are shown in
-Figure~\ref{fig:tcguts}. The ``brain'' is an Omega CNi8DH44 unit, connected to a
-solid-state relay (on the left) and other circuitry, like fuses and connection
-pads. The solid-state relay converts the low-power output of the converter into
-the high power that drives the heater wrapped around the sample chamber (see the
-photograph of the sample chamber above). The input for the temperature controller
-is a thermocouple that is placed in the aluminum block of the sample
-chamber. A thermocouple is a pair of wires made of two different metals, joined
-at one end. When the joined end is at a different temperature from the free
-ends, a small voltage appears between the free ends (the Seebeck effect),
-typically tens of microvolts per degree Celsius. The controller measures this
-voltage, corrects for the temperature of its own terminals, and converts the
-result to the temperature of the junction.
+The front panel of the Omega CN08D3-SR-2U-CM-AC temperature
+controller~\cite{ref:pid} is shown in Figure~\ref{fig:tcguts}.
+The controller is connected to a nearby solid-state relay. Its
+low-power control output turns the relay on and off; the relay, in
+turn, switches the separate power circuit that drives the heater
+wrapped around the sample chamber (see the photograph of the sample
+chamber above). In PID operation, changing the fraction of time that
+the relay is on adjusts the average power delivered to the heater.
+The input for the temperature controller is a thermocouple
+that is placed in the aluminum block of the sample chamber. A
+thermocouple is a pair of wires made of two different metals, joined
+at one end. When the joined end is at a different temperature from
+the free ends, a small voltage appears between the free ends (the
+Seebeck effect), typically tens of microvolts per degree Celsius.
 
 \begin{figure}[htbp]
   \centering
-  \photo[width=0.72\linewidth]{temperature-controller.png}{%
-    Photograph of the inside of the open temperature-controller enclosure. A
-    black Omega CNi8DH44 module with a white specification label sits at the top
-    right. To its left are a solid-state relay and a transformer, and the base of
-    the box is filled with blue, grey, black and yellow wiring running to a row
-    of screw terminals along the front edge.}
-  \caption{Inside the temperature controller.}
+  \photo[width=0.50\linewidth]{temperature-controller.png}{%
+    Close-up photograph of the front panel of the OMEGA
+    CN08D3-SR-2U-CM-AC temperature controller. The upper orange display
+    shows a measured temperature of \SI{37.5}{\degreeCelsius}, while the
+    lower green display shows a setpoint of \SI{60.0}{\degreeCelsius}.
+    The OUT1 indication and output bar are visible below the displays.
+    The front panel has F1 and F2 keys, a gear-symbol key, a return-arrow
+    key, and down and up arrow keys.}
+  \caption{Front panel of the OMEGA CN08D3-SR-2U-CM-AC temperature
+    controller, showing the measured temperature and setpoint.}
   \label{fig:tcguts}
 \end{figure}
 
-The simplest way to warm the sample to a pre-set temperature and keep it there is
-the ``on/off'' control mechanism. You specify the \emph{set point} (or
-\emph{setpoint} in one word), which is just the highest temperature needed, and
-the controller starts to heat the sample chamber with full power. If the ramp is
-specified, the controller will slow down this heating rate by lowering the power
-to keep the specified ramp. This is important in order to obtain good data. You
-should experiment with the ramp rate and settle at the acceptable rate which you
-will judge by the quality of your data.
+The simplest form of temperature control is ``on/off'' control. You
+specify a \emph{setpoint}, the highest temperature needed for the
+measurement. When the measured temperature is below it, the
+controller turns the heater fully on; when the setpoint is reached,
+it turns the heater off. Heat remaining in the chamber may continue
+to raise its temperature after the heater turns off. This is called
+``overshoot''. As the temperature falls below the setpoint, heating
+starts again. Because different parts of the chamber take time to
+warm and cool, the temperature may continue to fall before rising
+again and may oscillate around the setpoint. ``PID'' control adjusts
+the heating output to reduce these oscillations; see
+Ref.~\cite{ref:pid} for an introduction to PID control. Compare
+the temperature response under on/off and PID control.
 
-Once the temperature at the control thermometer reaches the set point, the
-heating power is switched off. It is most likely, however, that at this moment
-there is an amount of excess heat in the system, and temperature keeps climbing
-(this is called an ``overshoot''). After a while the readout of the control
-thermometer starts decreasing, and crosses the setpoint from above. The
-``on/off'' controller switches ``on'', but by this time the rest of the sample
-chamber is too cold, and the temperature keeps dropping for a while. Then the
-temperature overshoots again (in the opposite direction) and the process goes
-into a cycle. The desired temperature will never be reached; instead there will
-be an oscillation around it. To fix this problem the temperature controller is
-programmed to use ``PID'' control, with the P, I and D parameters optimized for
-this particular sample chamber. Read about the PID control in
-Ref.~\cite{ref:pid}.
+For a phase-transition measurement, the heating rate also matters.
+In the CN08D3's Slope SV (\texttt{SLOP}) mode, you specify a target
+temperature and a rate at which the setpoint rises toward it. PID
+control adjusts the heater output, reducing it when necessary to
+limit the rate of heating. This helps the sample temperature follow
+the measured chamber temperature and is important for obtaining
+reliable data. Try different heating rates, examine the data, and
+choose a suitable rate based on their quality. The
+CN08D3 also has a Program SV (\texttt{PROG}) mode for scheduling
+multiple heating and holding steps, but it is optional for this
+experiment.
 
 \notebox{Question}{Be ready to answer this question: what is the role of the
 ``I'' in PID?}
 
-\notebox{Hot surfaces and overheating}{Most of the capacitive measurement is done
-at temperatures over \SI{100}{\degreeCelsius}. Be careful: the sample chamber
-will be hot. Do not exceed \SI{160}{\degreeCelsius}, because the sample chamber
-will be damaged. The sample chamber can be seriously overheated if left alone
-with the heater on. Always switch off the temperature controller when the
-measurement is done. If you are using ``ramp'' mode, remember to make sure that
-``soak'' is also on for a short time, to ensure that the heater shuts off once
-the desired temperature is reached; more on this in
-Appendix~\ref{app:tempcontrol}.}
+\paragraph{Front-panel operation.}
+The controller is operated using the gear-symbol key, the curved-arrow
+key, and the down and up arrow keys. From the normal PV/SV display, a
+brief press of the gear-symbol key enters Regulation Mode; holding it
+for more than three seconds enters Initial Setting Mode. The curved-arrow
+key moves through the menu items, and the arrow keys change a value or
+option. Press the gear-symbol key to save a setting. The \texttt{F1}
+and \texttt{F2} keys have user-defined functions and are not needed here.
+On the normal display, PV is the measured temperature and SV is the
+setpoint.
+
+To set the temperature unit to Celsius, hold the gear-symbol key for
+more than three seconds to enter Initial Setting Mode. Use the
+curved-arrow key to find \texttt{tPUN}, then use the up or down arrow
+to select \si{\degreeCelsius}. Press the gear-symbol key to save the
+setting and return to the normal display. Confirm that the display
+shows \si{\degreeCelsius}, and check that SV is set to the desired
+temperature.
+
+To select slope heating, hold the gear-symbol key for more than three
+seconds to enter Initial Setting Mode. Press the curved-arrow key until
+\texttt{CRTS} appears, use the up or down arrow to change \texttt{CONS}
+to \texttt{SLOP}, and press the gear-symbol key to save and return to the
+normal display. The slope-rate unit is set separately in Initial Setting
+Mode using \texttt{EVEC}: its third digit from the left is \(0\) for
+\si{\degreeCelsius\per\minute} or \(1\) for
+\si{\degreeCelsius\per\second}. Change only this digit if the rate unit
+needs to be changed. To set the heating rate, briefly press the
+gear-symbol key to enter Regulation Mode, use the curved-arrow key to
+find \texttt{SVSL}, set the desired rate with the up or down arrow, and
+press the gear-symbol key to save, as shown in Figure~\ref{fig:pid-slope}.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[angle=-90, width=0.48\linewidth]{temperature-controller-slop.png}{%
+    Close-up photograph of the front panel of the
+    CN08D3 temperature controller. The display shows the
+    \texttt{SVSL} setting for the setpoint slope, with the current value
+    shown in green. The gear-symbol, curved-arrow, down-arrow, and
+    up-arrow keys are visible below the display.}
+  \caption{The OMEGA CN08D3-SR-2U-CM-AC front-panel display for setting
+    the SV slope (heating rate).}
+  \label{fig:pid-slope}
+\end{figure}
+
+To begin heating, press the curved-arrow key from the normal display
+until \texttt{R-S} appears. Select \texttt{RUN} with the arrow keys and
+press the gear-symbol key to save. Monitor PV and the measurement data
+during heating. When the target temperature is reached and cooling data
+collection is to begin, use the curved-arrow key to find \texttt{R-S}
+again, select \texttt{STOP}, and press the gear-symbol key to save.
+Confirm that the heating output is off, then continue recording as the
+sample cools. In \texttt{SLOP} mode, reaching the target temperature
+does not automatically stop the controller.
+
+\notebox{Hot surfaces and overheating}{Most of the capacitance measurements are
+made at temperatures over \SI{100}{\degreeCelsius}. Be careful: the sample
+chamber will be hot. Do not exceed \SI{160}{\degreeCelsius}, because the
+sample chamber may be damaged. The sample chamber can be seriously overheated
+if left unattended with the heater on. Always switch off the temperature
+controller when the measurement is done. When using \texttt{SLOP} mode,
+reaching the target temperature does not turn off the heater. Set
+\texttt{R-S} to \texttt{STOP} and confirm that the heating output is off
+before recording the cooling data.}
 
 \subsection{Temperature measurement}
 
-In measurements of temperature-dependent properties it is a good practice to
-have two thermometers: one to control the temperature (described above) and
-another one to measure the actual temperature of the sample. This second thermometer is often
-directly attached to the sample. In our case, for the sake of easy sample
-changes, the thermometer is simply inserted into the center of the sample
-chamber. This thermometer is a platinum resistor. The resistance of platinum
-(and all other metals) depends on the temperature, and this resistor has a
-resistance of \SI{100}{\ohm} at temperature \SI{0}{\degreeCelsius}. For
-platinum, a \SI{1}{\degreeCelsius} increment of temperature changes the
-resistance by \SI{0.38}{\ohm}.
+The temperature is measured by a thermocouple installed in the aluminum
+block of the sample chamber and connected to the temperature input of
+the Omega CN08D3 controller. A thermocouple detects temperature through
+the small voltage between its two wires, which grows with the
+temperature difference between the junction in the block and the
+controller's terminals.
 
-We use a Keithley 199 multimeter in four-probe resistivity mode to read out the
-resistance of the temperature probe. Learn about the four-probe method in
-Appendix~\ref{app:fourprobe}.
+The CN08D3 measures the thermocouple voltage, corrects for the
+temperature of its own terminals, and converts the result to the process
+temperature (PV). Its input-type setting must match the thermocouple
+type. PyFERRO reads the PV
+and setpoint (SV) from the controller over RS-485 and records them with
+the lock-in measurements. The controller uses the PV as feedback to
+regulate the heater. Because the probe measures the aluminum block, its
+reading may differ slightly from the temperature at the sample.
 
-\notebox{Question}{Be ready to answer this question: what is the advantage of the
-four-terminal method over the two-terminal method, and how is this advantage
-achieved?}
+The PyFERRO data file contains (1) the time dependence of the
+temperature and (2) the temperature dependence of the lock-in output
+signals \(X\) and \(Y\). Copy the data file to a thumb drive for
+analysis.
 
-The multimeter is set to ``Ohm'' mode and the four leads should be connected to
-the four terminals. (Note the two red leads go to the same side of the resistor,
-and the two black leads go to the other side. For the extension wires the reds
-are connected to browns and the blacks are connected to whites.)
-
-When the computer reads out the resistance values, it converts them to
-temperature with the standard platinum-resistor relation (IEC~60751)
-\begin{equation}
-  R = R_{0}\left(1 + A\,T + B\,T^{2}\right), \qquad
-  R_{0} = \SI{100}{\ohm},\;
-  A = \SI{3.9083e-3}{\per\degreeCelsius},\;
-  B = \SI{-5.775e-7}{\per\degreeCelsius\squared},
-\end{equation}
-which near room temperature is close to
-$T \approx (R - \SI{100}{\ohm})/(\SI{0.385}{\ohm\per\degreeCelsius})$.
-To record this thermometer, tick \emph{Also read the multimeter} on PyFERRO's
-Instruments tab (Appendix~\ref{app:pyferro}); its reading is saved in the
-\texttt{T\_dmm\_C} column, next to the controller's own probe in \texttt{PV\_C}.
-
-Each recording is one data file holding both the time dependence of the
-temperature and the temperature dependence of the lock-in output voltage. It is
-expected that you transfer the relevant data files to a thumb drive to carry out
-the evaluation of the data.
-
-Before measuring the sample, study the temperature control process. Start at room
-temperature or at a temperature below \SI{50}{\degreeCelsius}. Select a set point
-of \SI{70}{\degreeCelsius}. Record the time dependence of the temperature. Put
-the temperature controller into ``on/off'' mode and keep recording. Temperature
-oscillations will develop. Put the temperature controller into ``PID'' mode.
-Discuss these observations in your lab report.
+Before measuring the sample, use PyFERRO to study the temperature
+control process. On the Instruments tab, turn off Simulation mode and
+check the connections to the lock-in amplifier and the Omega CN08D3
+temperature controller. On the Run tab, select the CN08D3 controller as
+the temperature source. Start at room temperature or below
+\SI{50}{\degreeCelsius}. On the CN08D3, select constant setpoint mode
+(\texttt{CONS}) and set the setpoint to \SI{70}{\degreeCelsius}. Set
+the controller's \texttt{CONTROL} mode to \texttt{ON-OFF}. Start
+monitoring and recording in PyFERRO, then set the controller to
+\texttt{RUN}. Continue recording as the temperature rises and
+oscillations develop. Then change the CN08D3's \texttt{CONTROL} mode
+from \texttt{ON-OFF} to \texttt{PID} without stopping the recording.
+Compare the temperature-versus-time data for the two modes and discuss
+your observations in your lab report.
 
 % =============================================================================
 \section{Suggested protocol for a measurement}
 % =============================================================================
 
 \begin{enumerate}
-  \item Tune the lock-in, and set up the sample (\VOtwo\ or \BTO) in the sample
-        chamber. Cover the sample chamber with the stainless steel cover (the
-        dewar).
-  \item Start PyFERRO and press \emph{Start monitoring}
-        (Appendix~\ref{app:pyferro}).
-  \item Press \emph{Record} to start saving data.
-  \item Program ``Set point 1'' of the temperature controller to
-        \SI{90.0}{\degreeCelsius} for a \VOtwo\ measurement and
-        \SI{150.0}{\degreeCelsius} for the capacitance \BTO\ measurement.
+  \item Tune the lock-in amplifier and place the \VOtwo\ or \BTO\ sample
+        in the sample chamber. Close the chamber with its fitted cover. If
+        additional thermal insulation is needed, place the larger stainless-steel
+        dewar over the covered chamber.
+  \item Start the PyFERRO routine.
+  \item Start saving data in PyFERRO.
+  \item Set the temperature-controller setpoint on the front panel to
+  \SI{90.0}{\degreeCelsius} for a \VOtwo\ measurement or
+  \SI{150.0}{\degreeCelsius} for the capacitance measurement of \BTO.
   \item Program the ramp rate. Change the ramp rate and examine the data: you
         want to make sure that your ramp rate is slow enough for the data to be
         reliable. Discuss with the laboratory staff what this means.
@@ -1268,8 +1339,8 @@ Discuss these observations in your lab report.
         a narrow temperature range.
   \item Once the setpoint is reached you will take more data while the sample is
         cooling.
-  \item If you are not in ramp/soak mode, program the lower set point of the
-        temperature controller to \SI{10.0}{\degreeCelsius}.
+  \item Set \texttt{R-S} to \texttt{STOP} on the temperature controller and
+        confirm that the heating output is off.
   \item The sample will slowly cool while the data is recorded. In the \BTO\
         measurement, nothing interesting happens below \SI{80}{\degreeCelsius},
         so when the temperature reaches \SI{80}{\degreeCelsius} you can take off
@@ -1917,137 +1988,6 @@ able to measure such a sample with the four-probe method.}
 
 \clearpage
 % =============================================================================
-\section{Programming the temperature controller}\label{app:tempcontrol}
-% =============================================================================
-
-The temperature controller can be programmed from the front panel (see the
-manual) or by using its web interface. Front panel programming is cumbersome and
-not recommended. There are two ways to access the web interface:
-
-\subsection{If you want to change the setpoint only}
-
-Open ``Shortcut to internet'' on the desktop (Internet Explorer). The home page
-is served by the temperature controller (the IP address is
-\texttt{192.168.1.200}). An ``I Server'' page will appear, with Device Type
-Selection. No need to change anything, just click on ``Update''. On the next
-page (``Server Home Page'') click on ``Read Devices''. The current temperature
-readout of the controller should appear. Click on ``1.'' right before ``Omega''
-on the screen. A login screen will appear, enter \texttt{12345678} for
-password. You reach the ``Device Setpoints'' screen.
-
-Change ``Setpoint~\#1'' and press update. The temperature controller should show
-the new setpoint in the lower left side of the display. As long as you keep the
-window open you can change setpoints many times without going through the login
-process.
-
-\subsection{If you want to change other settings}
-
-Click on the ``iSeries and MICRO INFINITY Config'' icon on the desktop. The
-opening screen will look like Figure~\ref{fig:tc1}.
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-config-open.png}{%
-    Screenshot of the iSeries/MICRO-INFINITY Configuration program. The Setpoints
-    tab is selected, showing text fields for Setpoint 1 and Setpoint 2, both
-    reading 000.0, a drop-down for the display color in the non-alarm state set
-    to Green, and a Set Point Deviation checkbox. A column of buttons down the
-    right-hand side is labeled Hardware, Read, Write, Help and Quit, and a row
-    of tabs along the bottom includes ID code, Setpoints, Input type, Reading,
-    Alarm 1, Alarm 2, LB alarm, Out1, Out2, Ramp/Soak, Analog and Comm.}
-  \caption{The configuration program as it opens.}
-  \label{fig:tc1}
-\end{figure}
-
-Click on ``Read'' and on the next screen click on ``File''. The default settings
-of our temperature controller are stored in the
-\texttt{temperature\_controller.cfg} file (in the ``My Documents'' folder). Click
-on the file and the next screen will be like Figure~\ref{fig:tc2}. If the Model\#
-and the options come up correctly, click OK.
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-config-file.png}{%
-    Screenshot of the configuration program's file-selection dialogue, listing
-    the stored configuration file for the temperature controller together with
-    the model number and the installed options read back from that file.}
-  \caption{Opening the stored configuration file.}
-  \label{fig:tc2}
-\end{figure}
-
-Next the software needs to establish connection with the temperature controller.
-Click on the ``Comm.'' tab and click on the ``Connect'' button under Connection
-Wizard. The IP address should be \texttt{192.168.1.200}. Next, the screen shown
-in Figure~\ref{fig:tc3} appears. In this window the RS-232 is the default value,
-and you need to change it to RS-485. In a few seconds the connection
-should be established, and you need to push ``Finish''.
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.85\linewidth]{tc-comm-wizard.png}{%
-    Screenshot of the Connection Wizard dialogue. It shows the network address
-    field containing the controller IP address and a selection between the RS-232
-    and RS-485 serial standards, with RS-232 selected by default, plus Back, Next
-    and Finish buttons.}
-  \caption{The connection wizard. Change RS-232 to RS-485.}
-  \label{fig:tc3}
-\end{figure}
-
-To select a new setpoint, click on the ``Setpoints'' tab and enter the new value
-to ``Setpoint 1''.
-
-To activate the ramp mode click the ``Ramp/Soak'' tab on the main window. The
-window shown in Figure~\ref{fig:tc4} should appear. Now you can click ``enable''
-for the ramp option. The Ramp option allows you to control the rate of heating in
-the sample chamber. For example if you set the ramp to 1 hour then it will take
-1 hour to get to your setpoint~1, etc. This is important since you
-want to keep your sample thermometer consistent with your cavity thermometer.
-
-\notebox{Always enable soak with ramp}{If you decide to use the ramp option you
-\textbf{MUST} enable the soak option as well. The soak option will guarantee that
-once your temperature is reached and your soak time is complete that the heater
-will turn off.}
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-rampsoak.png}{%
-    Screenshot of the Ramp/Soak tab of the configuration program, showing enable
-    checkboxes and time fields for the ramp and soak phases associated with each
-    setpoint.}
-  \caption{The Ramp/Soak tab.}
-  \label{fig:tc4}
-\end{figure}
-
-After that you upload the change to the controller by pressing ``Write'' and
-selecting ``Network'' in the screen shown in Figure~\ref{fig:tc5}. During the
-upload process hit OK several times when the software stops for confirmation.
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-write-network.png}{%
-    Screenshot of the Write dialogue, offering a choice between writing the
-    configuration to a File and writing it over the Network to the connected
-    controller.}
-  \caption{Writing the configuration back to the controller over the network.}
-  \label{fig:tc5}
-\end{figure}
-
-To access the PID control parameters click on the ``Output 1'' tab. The next
-screen shows the ``Control Type''. Here is the place where you can change to
-``On/Off Control'' (Figure~\ref{fig:tc6}).
-
-\begin{figure}[htbp]
-  \centering
-  \photo[width=0.78\linewidth]{tc-output1-pid.png}{%
-    Screenshot of the Output 1 tab, showing the Control Type selector with
-    entries for PID control and On/Off control, together with the associated
-    proportional, integral and derivative parameter fields.}
-  \caption{The Output~1 tab, where the control type is selected.}
-  \label{fig:tc6}
-\end{figure}
-
-\clearpage
-% =============================================================================
 \section{Data taking with PyFERRO}\label{app:pyferro}
 % =============================================================================
 
@@ -2057,30 +1997,129 @@ saves them. It only reads the temperature controller: setpoints and ramps are se
 on the controller itself.
 
 \begin{enumerate}
-  \item Open a terminal in \texttt{C:\textbackslash PyFERRO\textbackslash pyferro}
-        and type \texttt{pixi run start}. The program first fetches any update,
-        then opens its window. Nothing is measured yet.
-  \item On the \emph{Instruments} tab, press \emph{Test lock-in} and
-        \emph{Test controller}; each should answer with a green tick. For the
-        lock-in, a table underneath compares every setting with
-        Table~\ref{tab:lockin5302} and names the key that changes any setting that
-        differs. The \emph{Lock-in} tab can also set them: \emph{Lab-manual
-        values} fills in the table's values, and \emph{Apply to lock-in} sends
-        them. To record the Keithley thermometer as well, tick \emph{Also read the
-        multimeter}.
-  \item On the \emph{Run} tab, enter a sample or run name (it becomes the file
-        name), the operator, the drive details and any notes, and choose the save
-        folder. Set the \emph{reading interval} to at least five times the
-        lock-in time constant.
-  \item Press \emph{Start monitoring} (F5). The plots and readouts start, but
-        nothing is saved yet.
-  \item Press \emph{Record} (Ctrl+R) to save. Every recording goes to a new file,
-        \texttt{<name>\_YYYYMMDD\_HHMMSS.txt}; an existing file is never
-        overwritten or appended to. Press \emph{Record} again to close the file;
-        the next recording opens another one.
-  \item \emph{Clear plots} empties the screen without touching the file;
-        \emph{Stop} disconnects the instruments.
-\end{enumerate}
+  \item Starting PyFERRO.
+  The \texttt{PyFERRO} folder on the desktop contains information about the
+  app. To start PyFERRO, open a terminal in
+  \texttt{C:\textbackslash PyFERRO\textbackslash pyferro} and run one of the
+  following commands:
+  \begin{itemize}
+    \item \texttt{pixi run start} updates the code to the latest version,
+    then starts PyFERRO with the instruments.
+    \item \texttt{pixi run simulate} starts PyFERRO without hardware.
+    \item \texttt{pixi run gpib} checks the lock-in amplifier's GPIB connection.
+  \end{itemize}
+  The first run downloads Python and all dependencies into the
+  \texttt{.pixi\textbackslash} directory and requires about
+  \SI{1.5}{\giga\byte} of free disk space. Later runs reuse these files.
+  Once setup is complete, PyFERRO can start without an internet connection.
+  If the update step cannot reach the internet, it reports this and starts
+  using the code already present.
+
+    \item Instruments tab: Check the lock-in Model
+      (EG\&G 5302 on this rig), pick the DTECH COM port (FTDI ports listed
+      first), and press \texttt{Test lock-in} and \texttt{Test controller}.
+      For a hardware run, make sure Simulation mode is off. A green check
+      shows the sensitivity, time constant and reference frequency, and PV/SV,
+      output level, control mode and firmware. For the 5302, a table underneath
+      compares every setting with the lab manual's and says which key changes
+      any that differ; starting a recording repeats the check and logs any
+      difference as a warning.
+
+
+    \begin{figure}[htbp]
+      \centering
+      \photo[width=0.42\linewidth]{pyferro-instruments.png}{%
+        Screenshot of the PyFERRO Instruments tab in simulation mode, showing
+        the lock-in model and connection settings, the lock-in test result,
+        and the comparison with the lab-manual settings.}
+      \caption{The PyFERRO Instruments tab, shown in simulation mode.}
+      \label{fig:pyferro-instruments}
+    \end{figure}
+
+    \item Lock-in tab (5302): \texttt{Read from lock-in} shows its
+    settings; change them there and press \texttt{Apply to lock-in} (it lists
+    the commands and asks first), or press \texttt{Lab-manual values} to fill
+    in the lab manual's table, then Apply. Only what differs is sent, and
+    the settings are read back afterwards. This works during a run too: the
+    change is sent between samples and written into the data file. AC/DC,
+    FLOAT/GND and the phase tuning stay on the front panel.
+
+    \begin{figure}[htbp]
+      \centering
+      \photo[width=0.48\linewidth]{pyferro-lockin.png}{%
+        Screenshot of the PyFERRO Lock-in tab for the EG\&G 5302, showing
+        the controls for its settings and the buttons for reading, applying,
+        and loading the lab-manual values.}
+      \caption{The PyFERRO Lock-in tab for the EG\&G 5302.}
+      \label{fig:pyferro-lockin}
+    \end{figure}
+
+    \item Run tab: Enter a sample/run name (becomes the file name),
+    operator, drive details, notes, and the save folder.
+
+    \begin{figure}[htbp]
+      \centering
+      \photo[width=0.48\linewidth]{pyferro-run.png}{%
+        Screenshot of the PyFERRO Run tab, showing the sample/run name,
+        operator, drive/circuit details, notes, save-folder selection,
+        reading interval, saving condition, and temperature-source menu.}
+      \caption{The PyFERRO Run tab and its data-file settings.}
+      \label{fig:pyferro-run}
+    \end{figure}
+
+    \item Monitoring and recording:
+    \texttt{Start monitoring} (F5) shows live data without saving. Before
+    starting a new run, press \texttt{Clear plots} if you want to clear the
+    displayed plots. Press \texttt{Record} (Ctrl+R) to open a file, starting
+    monitoring if needed; pressing it again closes that file, and the next
+    recording opens a new one. \texttt{Stop} disconnects.
+
+    \item Reading interval and saving: Set the reading interval to
+    at least about five times the lock-in time constant.
+    \texttt{Save only if $\Delta T \geq$} reproduces the old LabVIEW
+    behaviour; leave it off to record every reading.
+
+    \item Temperature source and multimeter:
+    \texttt{Temperature from} (Run tab) selects what goes in column 1 of
+    the file: the CN08D3 controller probe (normal) or the multimeter Pt100.
+    Both are recorded whenever available---\texttt{PV\_C} from the
+    controller, \texttt{T\_dmm\_C} from the multimeter. To use the
+    multimeter, tick \texttt{Also read the multimeter} on the Instruments
+    tab and check its model, its GPIB address
+    (\texttt{GPIB0::24::INSTR} for the 34401A,
+    \texttt{GPIB0::6::INSTR} for the Keithley 199 on this rig), and whether
+    the reading is ohms (a Pt100, converted here) or already
+    \si{\degreeCelsius} (34401A only).
+  \end{enumerate}
+
+  The tiles above the plots show the sample temperature, setpoint, ramp
+  direction and rate, \(X\), \(Y\) and \(R/\theta\); the plots show
+  temperature against time and \(X\) and \(Y\) against temperature, heating
+  and cooling in different colours. The PyFERRO data file contains
+  (1) the time dependence of the temperature and (2) the temperature
+  dependence of the lock-in output signals \(X\) and \(Y\). Copy the data
+  file to a thumb drive for analysis.
+
+  \begin{figure}[htbp]
+    \centering
+    \photo[width=0.75\linewidth]{pyferro-overview.png}{%
+      Cropped screenshot of the PyFERRO main window, showing the acquisition
+      controls, readout tiles, and measurement plots.}
+    \caption{The PyFERRO main window during a simulated run.}
+    \label{fig:pyferro-overview}
+  \end{figure}
+
+  A green status light indicates that the instrument is responding;
+  red means that it is not responding (hover over the light for the reason),
+  and grey means that the instrument is unused.
+  A failed reading never stops a run---the value becomes
+  \texttt{nan}, a flag is set, and the instrument is reopened after three
+  consecutive failures. The first three temperatures after the controller
+  or multimeter connects are discarded (\texttt{nan}, flag 16) so a
+  start-up glitch cannot squash the plot. The temperature tile turns red
+  above the chamber limit (default \SI{160}{\degreeCelsius}).
+  Settings persist in \verb|%USERPROFILE%\.ferro\settings.json|; delete it
+  to reset, or set \texttt{FERRO\_CONFIG\_DIR} for a per-group file.
 
 The data file starts with \texttt{\#} lines that record the sample name, the
 lock-in's settings (sensitivity, time constant, reference, oscillator, filter,
@@ -3536,6 +3575,6 @@ metal--insulator transition in \VOtwo\ were created by Michael Gurvitch, both in
 2012. Thanks to Xu Du, Matthew Dawber, Alexander Shabalov and Carlos Marques for
 contributions to the design and realization of the measurement and for useful
 comments. The 2026 edition of this manual was typeset into \LaTeX \ with Claude
-Opus 4.5 and updated by Logan Levack.
+Opus 4.5 and updated by Logan Levack and Qiyun Ma.
 
 \end{document}
