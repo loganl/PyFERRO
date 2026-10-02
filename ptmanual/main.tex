@@ -256,7 +256,7 @@ data will be stored in the computer and need not be in the notebook.
   \item Sample chamber with four electric leads.
   \item Temperature controller.
   \item Lock-in amplifier to measure the samples.
-  \item HP 34401A multimeter to measure temperature.
+  \item HP 34401A multimeter (not needed for the standard measurement).
   \item Computer (username \texttt{LabStudent}, password \texttt{PhaseTransition}).
   \item Decade resistance box, additional resistors, capacitors, BNC cables etc.
 \end{itemize}
@@ -264,9 +264,10 @@ data will be stored in the computer and need not be in the notebook.
 The Omega CN08D3-SR-2U-CM-AC temperature controller controls the heater
 and can be programmed from its front panel. It is connected to the computer via RS-485,
 allowing PyFERRO to read the temperature without changing the controller
-settings. The lock-in amplifier and HP 34401A multimeter are connected to the computer by the
-IEEE~488 (GPIB) interface. PyFERRO displays and records the measurements
-in real time.
+settings. The lock-in amplifier is connected to the computer by the
+IEEE~488 (GPIB) interface; the HP 34401A multimeter is on the same bus but
+is not needed for the standard measurement. PyFERRO displays and records
+the measurements in real time.
 
 \begin{figure}[htbp]
   \centering
@@ -622,7 +623,9 @@ its variation.
 The sample has four contacts: two outside contacts for the current and two
 inner ones for the voltage. You should read about the four-probe measurement in
 Appendix~\ref{app:fourprobe}, and a brief description of this principle should
-be given in your Final Report. The voltage from the inner leads
+be given in your Final Report. Be ready to answer this question: what is the
+advantage of the four-terminal method over the two-terminal method, and how is
+this advantage achieved? The voltage from the inner leads
 $V_{\mathrm{meas}}$ (see the figure above) is supplied to the lock-in's
 measuring input, where it will be amplified (thus the name lock-in
 \emph{amplifier}), and provided for the readout on the front panel and, through
@@ -657,7 +660,8 @@ resistor: instead of being \SI{10}{\mega\ohm} it can be, for example,
 \SI{0.200}{\milli\ampere} instead of \SI{0.200}{\micro\ampere}. But we will have
 to monitor the current and to use the measured current $I_{\mathrm{meas}}$ in a
 calculation of a sample resistance at every point along the way. This can be
-done with the use of modification function in PyFERRO.
+done with the use of an additional computer-interfaced voltmeter, and with
+a modification of PyFERRO.
 
 \notebox{Do not overdrive the sample}{The current should not be increased
 indefinitely; excessive currents can produce self-heating and even damage the
@@ -837,20 +841,20 @@ The standard settings of the EG\&G Princeton Applied Research Model 5302 are:
 \end{tabular}
 \end{center}
 
-\paragraph{Settings for the EG\&G model 5302.}
-The rig now uses a model 5302 (Figure~\ref{fig:daqwiring}), which differs from the 5209
-in ways that matter here. Table~\ref{tab:lockin5302} gives its settings for the
-capacitance measurement, where to find each one on the front panel, and the
-equivalent GPIB command. The same command sent without a number makes the lock-in
+\paragraph{Setting the EG\&G model 5302.}
+Table~\ref{tab:lockin5302} gives the same settings in more detail: where to
+find each one on the front panel, and the equivalent GPIB command. The same command sent without a number makes the lock-in
 reply with the current value, which is how PyFERRO reads these settings back and
 records them in the data-file header.
 
-\notebox{Two numbers differ from the 5209}{The 5302's oscillator output resistance is
-$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not \SI{600}{\ohm}: use
-\SI{450}{\ohm} in $C = \delta/(\omega R_0)$ and wherever this manual writes $R_0$.
-And its least sensitive range is \SI{1}{\volt}, with no \SI{3}{\volt} range, so set the
-oscillator to $V_0 = \SI{1.000}{\volt}$ instead of \SI{1.999}{\volt}: the in-phase signal is close
-to $V_0$ and would overload the \SI{1}{\volt} range. Nothing is lost, since
+\notebox{Oscillator resistance and level}{The 5302's oscillator output resistance is
+$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not the \SI{600}{\ohm} of
+the earlier lock-in that other sections of this manual still quote: use
+\SI{450}{\ohm} in $C = \delta/(\omega R_0)$ and wherever this manual writes
+$R_0$. Its least
+sensitive range is \SI{1}{\volt}, and the in-phase signal is close to the
+oscillator level $V_0$, so $V_0$ must stay below \SI{1}{\volt}; at
+$V_0 = \SI{0.500}{\volt}$ it is half of full scale. Nothing is lost, since
 $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
 
 \begin{table}[htbp]
@@ -861,12 +865,11 @@ $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
     \textbf{Setting} & \textbf{Value} & \textbf{How to set it on the front panel}
       & \textbf{GPIB} \\
     \midrule
-    Signal input & DIRECT INPUT, AC, FLOAT
-      & Cable to the DIRECT INPUT connector (lower left). Of the two buttons above it,
-        latch the upper one (AC) and release the lower one (FLOAT). The display shows
-        DIR at the upper right; if it shows PRE, select DIRECT INPUT on the SIGNAL
-        SETUP screen.
-      & \texttt{PREAMP 0} (AC and FLOAT: front panel only) \\
+    Signal input & preamplifier, input A
+      & Cable to input A of the plug-in preamplifier. The display shows PRE at the
+        upper right; if it shows DIR, select PREAMP as the signal source on the
+        SIGNAL SETUP screen.
+      & \texttt{PREAMP 1} \\
     Reference & INT
       & Press REF, the rightmost of the five keys under the display, until INT shows
         in the upper-left window. The INT light above the meter comes on.
@@ -876,9 +879,9 @@ $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
         middle of the lower-right window, then turn the knob. The KNOB ACTIVE light
         must be on; if it is off, press either key once.
       & \texttt{OF 2500 7} \\
-    Oscillator level & \SI{1.000}{\volt}
+    Oscillator level & \SI{0.500}{\volt}
       & As for the frequency, with OSC V selected.
-      & \texttt{OA 1000 2} \\
+      & \texttt{OA 5000 1} \\
     Sensitivity & \SI{1}{\volt}
       & The SEN keys, at the top of the two key columns to the right of the display:
         the left one moves to a larger full scale (less sensitive).
@@ -902,21 +905,20 @@ $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
         have settled. For fine tuning, select PHASE with the keys by the setting knob
         and turn the knob.
       & \texttt{AQN} \\
-    Display & X-Y\%
+    Display & X--YV
       & The DISP keys, to the right of the display.
       & --- \\
     \bottomrule
   \end{tabular}
   \caption{EG\&G model 5302 settings for the capacitance measurement. The GPIB
     commands are from chapter~9 of the 5302 manual; \texttt{OF 2500 7} means 2500 in
-    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 1000 2} means
-    \SI{1000}{\milli\volt} in the \SIrange{250}{5000}{\milli\volt} range.}
+    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 5000 1} means
+    5000 steps of \SI{0.1}{\milli\volt} in the \SIrange{25}{500}{\milli\volt} range.}
   \label{tab:lockin5302}
 \end{table}
 
 The 5302 is a dual-phase lock-in: it shows the in-phase signal as $X$ and the
-out-of-phase signal as $Y$ at the same time, so there is no \textsc{90 deg} button to
-press. Tune the phase with the sample disconnected until $Y$ is as close to zero as
+out-of-phase signal as $Y$ at the same time. Tune the phase with the sample disconnected until $Y$ is as close to zero as
 possible (Auto-Phase does this), then connect the sample and read $V_{\mathrm{meas}}$
 from $Y$.
 
@@ -1016,11 +1018,12 @@ least initially.
   \label{fig:chamber}
 \end{figure}
 
-In normal use, the sample chamber is covered by an aluminum cup (see the upper                 % correct?
+In normal use, the sample chamber is covered by an aluminum cup (see the upper
 left corner of the photograph). The whole assembly is covered by a
-stainless steel cover for thermal insulation. If you wish to cool the sample faster,
-You may also remove the aluminum cup, but in that case stop taking data,
-since the temperature readout will not be reliable.
+stainless steel cover (the dewar) for thermal insulation. If you wish to cool
+the sample faster, remove the dewar. You may also remove the aluminum cup, but
+in that case stop taking data, since the temperature readout will not be
+reliable.
 
 \subsection{Samples and sample preparation}
 
@@ -1073,7 +1076,7 @@ the electrical connections to the two painted faces of the sample.
 
 \notebox{The paint dries very quickly}{Do not leave the silver-paint container
 open for an extended period of time; open it for as short an interval as
-possible, just to get the paint onto a piece of wire.}
+possible, just long enough to take the paint you need.}
 
 \begin{figure}[htbp]
   \centering
@@ -1294,10 +1297,6 @@ the lock-in measurements. The controller uses the PV as feedback to
 regulate the heater. Because the probe measures the aluminum block, its
 reading may differ slightly from the temperature at the sample.
 
-\notebox{Question}{Be ready to answer this question: what is the advantage of the
-four-terminal method over the two-terminal method, and how is this advantage
-achieved?}
-
 The PyFERRO data file contains (1) the time dependence of the
 temperature and (2) the temperature dependence of the lock-in output
 signals \(X\) and \(Y\). Copy the data file to a thumb drive for
@@ -1319,7 +1318,7 @@ Compare the temperature-versus-time data for the two modes and discuss
 your observations in your lab report.
 
 % =============================================================================
-\section{Suggested protocol for a measurement}                                         % check pyferro/README.md
+\section{Suggested protocol for a measurement}
 % =============================================================================
 
 \begin{enumerate}
@@ -1340,8 +1339,8 @@ your observations in your lab report.
         a narrow temperature range.
   \item Once the setpoint is reached you will take more data while the sample is
         cooling.
-  \item If you are not in ramp/soak mode, program the lower set point of the
-        temperature controller to \SI{10.0}{\degreeCelsius}.
+  \item Set \texttt{R-S} to \texttt{STOP} on the temperature controller and
+        confirm that the heating output is off.
   \item The sample will slowly cool while the data is recorded. In the \BTO\
         measurement, nothing interesting happens below \SI{80}{\degreeCelsius},
         so when the temperature reaches \SI{80}{\degreeCelsius} you can take off
