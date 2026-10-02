@@ -9,7 +9,21 @@ to the code that produced it. The number is written in exactly one place,
 
 ## Unreleased
 
+### Added
+- **The Lock-in tab, the lab-manual check and *Lab-manual values* work for the SR830.**
+  PyFERRO reads its whole set-up (reference, sine output level and frequency, input,
+  coupling, grounding, line notches, reserve, filter slope, displays, phase) for the
+  Test button, the data-file header and the once-a-minute check, compares it with the
+  lab manual's new SR830 table, and can set any of it from the Lock-in tab, during a run
+  too. An offset or expand can be turned off from the tab, not on.
+- The Lock-in tab rebuilds its controls for the model chosen on the Instruments tab.
+
 ### Changed
+- **The SR830 is now the default lock-in**, at GPIB address 8; the lab manual describes
+  it, and moves the 5302 to an appendix. A settings file that already names a model
+  keeps it: choose *SRS SR830* once on the Instruments tab.
+- Choosing a lock-in model moves the address to that model's on this rig (8 for the
+  SR830, 12 for the 5302), unless the address was typed in by hand.
 - The lab-manual set-up that *Test lock-in*, the recording check and *Lab-manual values*
   use now matches the manual's revised 5302 table: oscillator level 0.500 V (was
   1.000 V) and the preamplifier as signal input (was DIRECT INPUT). A lock-in set the

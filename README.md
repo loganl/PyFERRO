@@ -43,12 +43,12 @@ walks through the transports, drivers and measurement loop, and
 
 | Instrument | Link | Protocol |
 |---|---|---|
-| EG&G/PAR 5302 lock-in | GPIB (NI adapter), address 12 | text commands, integer counts scaled by the instrument's own sensitivity setting; its settings can also be set from the program |
+| SRS SR830 lock-in | GPIB (NI adapter), address 8 | IEEE 488.2 text commands, X/Y/R/θ in volts; its settings can also be set from the program |
 | Omega CND3 PID controller | RS-485 via an FTDI USB adapter | Modbus ASCII/RTU, read-only |
 | HP 34401A multimeter (optional) | GPIB, address 24 | `READ?`, Pt100 → °C (IEC 60751) |
 
-The Instruments tab can also select an **SRS SR830** lock-in (GPIB 8 on this rig) and a
-**Keithley 199** multimeter (GPIB 6), for rigs built differently.
+The Instruments tab can also select the lab's previous lock-in, an **EG&G/PAR 5302**
+(GPIB 12 on this rig), and a **Keithley 199** multimeter (GPIB 6).
 
 The controller owns the heater; PyFERRO never writes to it. Instrument failures are
 recorded as `nan` with a flag bit and the connection is reopened automatically, so a

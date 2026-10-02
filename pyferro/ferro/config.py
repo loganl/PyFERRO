@@ -23,11 +23,16 @@ def default_data_dir() -> str:
     return str(Path.home() / "Documents" / "FerroData")
 
 
+# Each lock-in's GPIB address on this rig. Choosing a model on the Instruments tab
+# moves the address to that model's, unless it was set to something else by hand.
+LOCKIN_RESOURCES = {"sr830": "GPIB0::8::INSTR", "5302": "GPIB0::12::INSTR"}
+
+
 @dataclass
 class LockinConfig:
-    model: str = "5302"  # "5302" or "sr830"
-    interface: str = "visa"  # "visa" (GPIB) or "serial" (RS-232)
-    resource: str = "GPIB0::12::INSTR"
+    model: str = "sr830"  # "sr830" (the lab's lock-in) or "5302"
+    interface: str = "visa"  # "visa" (GPIB) or "serial" (RS-232, 5302 only)
+    resource: str = LOCKIN_RESOURCES["sr830"]
     serial_port: str = ""
     baudrate: int = 9600
     timeout_s: float = 2.0

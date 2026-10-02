@@ -129,55 +129,78 @@ def test_lockin_model_test_button(window, qtbot, model, name):
     assert setup.li_result.text().startswith(f"✔ {name} found"), setup.li_result.text()
 
 
-def test_lockin_test_shows_the_settings_check(window, qtbot):
+@pytest.mark.parametrize("model, fix", [("sr830", "the SENSITIVITY arrow keys"),
+                                        ("5302", "the left SEN key")])
+def test_lockin_test_shows_the_settings_check(window, qtbot, model, fix):
     setup = window.setup
-    setup.li_model.setCurrentIndex(setup.li_model.findData("5302"))
+    setup.li_model.setCurrentIndex(setup.li_model.findData(model))
     qtbot.mouseClick(setup.li_test, Qt.LeftButton)
     qtbot.waitUntil(lambda: setup.li_result.text().startswith(("✔", "✘")), timeout=10000)
     table = setup.li_checks.text()
-    assert "lab manual" in table and "<table" in table
-    assert "Sensitivity" in table and "the left SEN key" in table  # the simulated 5302 is at 50 mV
+    assert f"lab manual&#x27;s {model.upper()} table" in table and "<table" in table
+    assert "1 setting(s) differ" in table, "the simulated lock-in differs only in sensitivity"
+    assert "Sensitivity" in table and fix in table  # the simulation is at 50 mV
 
 
-def test_lockin_tab_sets_the_lockin_when_idle(window, qtbot):
-    panel = window.lockin_panel
+@pytest.mark.parametrize("model, key, value, command", [
+    ("sr830", "line_filter", "LINE", "ILIN 1"),
+    ("5302", "filter", "BAND-PASS", "FLT 3"),
+])
+def test_lockin_tab_sets_the_lockin_when_idle(window, qtbot, model, key, value, command):
+    setup, panel = window.setup, window.lockin_panel
+    setup.li_model.setCurrentIndex(setup.li_model.findData(model))
+    assert panel.model == model, "the tab follows the model chosen on the Instruments tab"
     qtbot.mouseClick(panel.read_btn, Qt.LeftButton)
     qtbot.waitUntil(lambda: panel.status.text().startswith(("✔", "✘")), timeout=10000)
     assert panel.status.text().startswith("✔"), panel.status.text()
-    panel.filter.setCurrentIndex(panel.filter.findData("BAND-PASS"))
-    assert panel.changes() == {"filter": "BAND-PASS"}, "only what differs is sent"
+    box = panel.widget(key)
+    box.setCurrentIndex(box.findData(value))
+    assert panel.changes() == {key: value}, "only what differs is sent"
     qtbot.mouseClick(panel.apply_btn, Qt.LeftButton)  # the fixture answers the question Yes
     qtbot.waitUntil(lambda: "Lock-in set" in panel.status.text(), timeout=10000)
-    assert panel._known["filter"] == "BAND-PASS"  # read back from the instrument
-    assert "FLT 3" in panel.status.text()
+    assert panel._known[key] == value  # read back from the instrument
+    assert command in panel.status.text()
 
 
 def test_lockin_tab_goes_through_the_running_measurement(window, qtbot):
     panel = window.lockin_panel
+    assert panel.model == "sr830"
     qtbot.mouseClick(window.start_btn, Qt.LeftButton)
     qtbot.waitUntil(lambda: panel._known is not None, timeout=10000)  # the first poll
-    panel.time_constant.setCurrentIndex(8)
+    panel.widget("time_constant_index").setCurrentIndex(10)
     qtbot.mouseClick(panel.apply_btn, Qt.LeftButton)
-    qtbot.waitUntil(lambda: panel._known["time_constant_index"] == 8, timeout=10000)
-    qtbot.waitUntil(lambda: "Lock-in time constant changed to 500 ms"
+    qtbot.waitUntil(lambda: panel._known["time_constant_index"] == 10, timeout=10000)
+    qtbot.waitUntil(lambda: "Lock-in time constant changed to 1 s"
                     in window.log_view.toPlainText(), timeout=5000)
-    assert "Lock-in set from PyFERRO: time constant 500 ms (XTC 8)" in window.log_view.toPlainText()
+    assert "Lock-in set from PyFERRO: time constant 1 s (OFLT 10)" in window.log_view.toPlainText()
     qtbot.mouseClick(window.stop_btn, Qt.LeftButton)
     qtbot.waitUntil(lambda: not window.running and not window._stopping, timeout=15000)
 
 
-def test_lockin_tab_fills_in_the_lab_manual_values_without_sending(window):
+@pytest.mark.parametrize("model", ["sr830", "5302"])
+def test_lockin_tab_fills_in_the_lab_manual_values_without_sending(window, model):
     from ferro.instruments.lockin5302 import check_setup
 
+    window.setup.li_model.setCurrentIndex(window.setup.li_model.findData(model))
     panel = window.lockin_panel
-    panel.expand.setChecked(True)
-    panel.osc_v.setValue(2.0)
+    panel.widget("oscillator_v").setValue(2.0)
     panel.manual_btn.click()
     values = panel.values()
-    as_read = {**values, "sensitivity": panel.sensitivity.currentData(),
-               "time_constant": panel.time_constant.currentData()}
-    assert all(r.ok for r in check_setup(as_read))
+    as_read = {**values, "sensitivity": panel.widget("sensitivity_index").currentData(),
+               "time_constant": panel.widget("time_constant_index").currentData()}
+    assert all(r.ok for r in check_setup(as_read, panel.driver.SETUP_TABLE))
     assert panel._known is None, "nothing was read or sent"
+
+
+def test_lockin_model_moves_the_address_unless_set_by_hand(window):
+    setup = window.setup
+    assert setup.li_model.currentData() == "sr830"
+    assert setup.li_resource.currentText() == "GPIB0::8::INSTR"
+    setup.li_model.setCurrentIndex(setup.li_model.findData("5302"))
+    assert setup.li_resource.currentText() == "GPIB0::12::INSTR"
+    setup.li_resource.setEditText("GPIB0::3::INSTR")
+    setup.li_model.setCurrentIndex(setup.li_model.findData("sr830"))
+    assert setup.li_resource.currentText() == "GPIB0::3::INSTR"
 
 
 @pytest.mark.parametrize("model, name", [("34401a", "HP 34401A"), ("k199", "Keithley 199")])

@@ -17,10 +17,10 @@ from the wires up to the measurement loop, with every example taken from this ri
 |---|---|---|
 | GUI | `gui/main_window.py`, `setup_panel.py`, `lockin_panel.py` | Draws plots and readouts. Never talks to an instrument the loop has open. |
 | **DAQ** | `acquisition.py` | When to read, what to do when a read fails, what to save. |
-| **Drivers** | `instruments/lockin5302.py`, `cnd3.py`, `hp34401a.py` (+ other models, §4) | What the instrument's answers mean. |
+| **Drivers** | `instruments/sr830.py`, `lockin5302.py`, `cnd3.py`, `hp34401a.py` (+ other models, §4) | What the instrument's answers mean. |
 | **Transports** | `transports.py`, minimalmodbus | How bytes get there and back. |
 | OS / vendor | NI-VISA → NI-488.2; pyserial → FTDI | Hardware access, from outside this repo. |
-| Wires | GPIB → 5302; RS-485 → CND3 terminals 13/14 | Electrical signals. |
+| Wires | GPIB → SR830 (or 5302); RS-485 → CND3 terminals 13/14 | Electrical signals. |
 
 Each layer talks only to the one directly below it. `Lockin5302` never mentions GPIB;
 `Acquisition` never mentions `SEN`. That separation is why simulation works: replace the
@@ -271,17 +271,24 @@ mode — on the rig it was once found on DC volts.
 
 ### Other models: one shape, several drivers
 
-The rig uses a 5302 and a 34401A, but the Instruments tab can select an SRS SR830
-lock-in and a Keithley 199 multimeter. `open_lockin` and `open_dmm` look the
-driver up in `LOCKIN_MODELS` / `DMM_MODELS`, and nothing above them knows which one they
-got, because every lock-in driver has the same methods (`check`, `read`, `settings`,
-`close`) and attributes (`MODEL`, `SENSITIVITY_LABELS`, `TIME_CONSTANT_LABELS`,
-`EXPAND_NAME`), and every reading the same fields (`x_v`, `y_v`, `r_v`, `theta_deg`,
-`sensitivity`, `full_scale_v`, `percent_fs`, `expand`, `overloaded`). The multimeters
-share `check`, `read_raw`, `read_celsius`, `close` and `MODEL`. Only the 5302 has
-`setup()` and `apply()`: the acquisition loop checks for `apply` before sending a
-Lock-in-tab change, and the setup check runs only when `settings()` includes
-`reference_mode`.
+The lab's lock-in is now the SRS SR830, the default; the 5302 above, its predecessor, is
+still supported, and the walkthrough uses it because its quirks are the instructive
+ones. The multimeter can be a 34401A or a Keithley 199. `open_lockin` and `open_dmm`
+look the driver up in `LOCKIN_MODELS` / `DMM_MODELS`, and nothing above them knows which
+one they got, because every lock-in driver has the same methods (`check`, `read`,
+`settings`, `apply`, `close`) and attributes (`MODEL`, `SENSITIVITY_LABELS`,
+`TIME_CONSTANT_LABELS`, `EXPAND_NAME`), and every reading the same fields (`x_v`, `y_v`,
+`r_v`, `theta_deg`, `sensitivity`, `full_scale_v`, `percent_fs`, `expand`,
+`overloaded`). The multimeters share `check`, `read_raw`, `read_celsius`, `close` and
+`MODEL`.
+
+Each lock-in driver also describes its own settings, so the GUI and the loop need no
+per-model code: `SETUP_TABLE` (its lab-manual table, checked by the shared
+`check_setup`), `SETUP_NAME`, `SETUP_NOTE`, `PANEL` (the Lock-in tab's controls:
+key, label, and a kind — a choice, a position in a list, kHz, volts or a check box),
+`PANEL_NOTE` (what only the front panel can do), and `commands(changes)`, which builds
+and checks every command before anything is sent. The Lock-in tab rebuilds itself from
+`PANEL` when the model changes.
 
 What differs is what the manuals say, and each difference shows up somewhere specific:
 
@@ -291,7 +298,13 @@ What differs is what the manuals say, and each difference shows up somewhere spe
   read**. The driver reads it exactly once per sample, after the data. Two reads (say one
   for overload, one for unlock) would each clear what the other was looking for. For the
   same reason a retried read may have lost the bits, so a sample whose status read
-  needed a retry is flagged as overloaded.
+  needed a retry is flagged as overloaded. Every front-panel setting has a command, so
+  unlike the 5302 nothing is unreadable: `setup()` reads `FMOD?`, `SLVL?`, `ISRC?`,
+  `ICPL?`, `IGND?`, `ILIN?`, `RMOD?`, `OFSL?`, `DDEF?` and `PHAS?`. `SETTABLE` sends the
+  reference first (`FREQ` is refused unless it is internal) and the reserve and slope
+  before the time constant, which the instrument raises to the shortest they allow.
+  Several commands can share a line, separated by `;`: that is how one entry turns
+  every offset and expand off.
 - **Keithley 199** ([`keithley199.py`](../ferro/instruments/keithley199.py)) has no
   `*IDN?`, like the 5302. The device clear that `VisaTransport` sends on opening resets
   it, so the driver sets its own function, and turns Zero off, every time. Its readings carry a prefix, and
@@ -305,7 +318,8 @@ Source: [`ferro/instruments/simulated.py`](../ferro/instruments/simulated.py)
 The fakes sit **below** the drivers. `SimLockinTransport` implements the transport
 contract and answers `SEN`, `XY` and the rest as a 5302 would — starting in the lab
 manual's set-up, and taking new values from `SEN 21`-style commands — so the real
-parsing, scaling and setting code runs. `SimModbusInstrument` stands in for `minimalmodbus.Instrument`, so the real
+parsing, scaling and setting code runs. `SimSR830Transport` does the same with the
+SR830's commands, in volts. `SimModbusInstrument` stands in for `minimalmodbus.Instrument`, so the real
 `decode_temperature` runs. One shared `SimulatedSample` keeps all three instruments
 agreeing on the temperature. `lockin_transport` and `dmm_transport` pick the fake that
 matches the selected model.
@@ -430,8 +444,8 @@ temperature over the last 120 s.
 
 `_watch_lockin` runs every sample and costs nothing, since SEN, EX and overload arrive
 with each reading. `_poll_settings` runs every 60 s: the lock-in's full `settings()`
-(for the 5302 that includes the reference, oscillator, filter, reserve, input and
-phase — `LOCKIN_WATCHED` lists what is compared) and the controller's mode and run
+(the reference, oscillator, filters, reserve, input and phase, and on the SR830 also
+coupling, grounding, slope and displays — `LOCKIN_WATCHED` lists what is compared) and the controller's mode and run
 state, which each need extra exchanges. Any change is **annotated** — logged, and
 written into the data file as `# HH:MM:SS …` — so the file explains itself. Each poll
 also goes to `on_lockin`, which fills the window's Lock-in tab.

@@ -112,9 +112,16 @@ class SimSR830Transport(Transport):
         self.sens = 22  # 50 mV
         self.oflt = 9  # 300 ms
         self.lias = 0
+        # The lab manual's SR830 table, apart from the sensitivity above.
+        self.setup = {"FMOD": "1", "FREQ": "25000.000", "SLVL": "0.500", "ISRC": "0",
+                      "ICPL": "0", "IGND": "0", "ILIN": "0", "RMOD": "2", "OFSL": "1",
+                      "PHAS": "0.00"}
+        self.ddef = {"1": "0,0", "2": "0,0"}
+        self.oexp = {"1": "0.00,0", "2": "0.00,0", "3": "0.00,0"}
 
     def write(self, cmd: str) -> None:
-        self.query(cmd)
+        for part in cmd.split(";"):  # several commands on one line (5-1)
+            self.query(part)
 
     def query(self, cmd: str) -> str:
         cmd = cmd.strip().upper().replace(" ", "")
@@ -133,10 +140,23 @@ class SimSR830Transport(Transport):
         if cmd.startswith("OFLT"):
             self.oflt = int(cmd[4:])
             return ""
-        if cmd == "FREQ?":
-            return "1000.000"
+        if cmd[:4] in self.setup:
+            if cmd.endswith("?"):
+                return self.setup[cmd[:4]]
+            self.setup[cmd[:4]] = cmd[4:]
+            return ""
+        if cmd.startswith("DDEF?"):
+            return self.ddef[cmd[5:]]
+        if cmd.startswith("DDEF"):
+            ch, rest = cmd[4:].split(",", 1)
+            self.ddef[ch] = rest
+            return ""
         if cmd.startswith("OEXP?"):
-            return "0.00,0"
+            return self.oexp[cmd[5:]]
+        if cmd.startswith("OEXP"):
+            ch, offset, expand = cmd[4:].split(",")
+            self.oexp[ch] = f"{float(offset):.2f},{expand}"
+            return ""
         if cmd == "SNAP?1,2,3,4":
             x, y = self.sample.signal_v(self.sample.temperature())
             if max(abs(x), abs(y)) > SR830_SENSITIVITIES_V[self.sens]:

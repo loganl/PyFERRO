@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..acquisition import open_dmm, open_lockin, open_pid
-from ..config import AppConfig
+from ..config import LOCKIN_RESOURCES, AppConfig
 from ..instruments.cnd3 import BAUD_RATES, autodetect
 from ..instruments.lockin5302 import check_setup
 from ..transports import list_visa_resources
@@ -32,18 +32,20 @@ FORMATS = ["7E1", "8N1", "7O1", "8E1", "7N2", "8N2", "7E2", "7O2", "8O1"]
 
 
 def describe_setup(s: dict) -> str:
-    """The 5302's front-panel set-up for the Test result; empty for other models."""
+    """The lock-in's set-up for the Test result: the settings this model has."""
     if "reference_mode" not in s:
         return ""
     unread = "?"
     osc_v, osc_hz, phase = s.get("oscillator_v"), s.get("oscillator_hz"), s.get("phase_deg")
-    return ("; ref " + (s.get("reference_mode") or unread)
-            + ", osc " + (f"{osc_v:.3f} V" if osc_v is not None else unread)
-            + " at " + (f"{osc_hz / 1000:.3f} kHz" if osc_hz is not None else unread)
-            + ", reserve " + (s.get("dynamic_reserve") or unread)
-            + ", filter " + (s.get("filter") or unread)
-            + ", input " + (s.get("signal_input") or unread)
-            + ", phase " + (f"{phase:.1f}°" if phase is not None else unread))
+    out = ("; ref " + (s.get("reference_mode") or unread)
+           + ", osc " + (f"{osc_v:.3f} V" if osc_v is not None else unread)
+           + " at " + (f"{osc_hz / 1000:.3f} kHz" if osc_hz is not None else unread))
+    for key, name in (("dynamic_reserve", "reserve"), ("filter", "filter"),
+                      ("line_filter", "notch"), ("signal_input", "input"),
+                      ("coupling", "coupling"), ("grounding", "grounding")):
+        if key in s:
+            out += f", {name} " + (s[key] or unread)
+    return out + ", phase " + (f"{phase:.1f}°" if phase is not None else unread)
 
 
 def describe_controller(s: dict) -> str:
@@ -62,15 +64,14 @@ def describe_controller(s: dict) -> str:
     return ("; " + ", ".join(parts)) if parts else ""
 
 
-def setup_table_html(rows) -> str:
+def setup_table_html(rows, table_name: str, note: str = "") -> str:
     """The lock-in's settings against the lab manual's table, differences in red."""
     if not rows:
         return ""
     bad = [r for r in rows if r.ok is False]
-    head = ("All settings match the lab manual's 5302 table (capacitance measurement)."
+    head = (f"All settings match {table_name} (capacitance measurement)."
             if not bad else
-            f"{len(bad)} setting(s) differ from the lab manual's 5302 table "
-            "(capacitance measurement):")
+            f"{len(bad)} setting(s) differ from {table_name} (capacitance measurement):")
     cells = []
     for r in rows:
         colour = {True: "#1f9d55", False: "#d64545", None: "#9aa0a6"}[r.ok]
@@ -82,8 +83,7 @@ def setup_table_html(rows) -> str:
     return (f"<p>{html.escape(head)}</p><table cellspacing='0' cellpadding='3'>"
             "<tr><th></th><th align='left'>Setting</th><th align='left'>Now</th>"
             "<th align='left'>Lab manual</th><th align='left'>Change with</th></tr>"
-            + "".join(cells) + "</table><p>The preamplifier's coupling and grounding buttons "
-            "cannot be read over GPIB: check them on its front panel.</p>")
+            + "".join(cells) + "</table>" + (f"<p>{html.escape(note)}</p>" if note else ""))
 
 
 def _result_label() -> QLabel:
@@ -113,8 +113,8 @@ class SetupPanel(QWidget):
         box = QGroupBox("Lock-in amplifier")
         form = QFormLayout(box)
         self.li_model = QComboBox()
-        self.li_model.addItem("EG&G 5302", "5302")
         self.li_model.addItem("SRS SR830 (GPIB only)", "sr830")
+        self.li_model.addItem("EG&G 5302", "5302")
         form.addRow("Model", self.li_model)
         self.li_iface = QComboBox()
         self.li_iface.addItem("GPIB (NI adapter)", "visa")
@@ -213,6 +213,7 @@ class SetupPanel(QWidget):
         self.li_iface.currentIndexChanged.connect(lambda i: self.li_stack.setCurrentIndex(i))
         self.li_find.clicked.connect(self._find_visa)
         self.pid_refresh.clicked.connect(lambda: (self.pid_port.refresh(), self.li_serial.refresh()))
+        self.li_model.currentIndexChanged.connect(self._lockin_model_changed)
         self.li_test.clicked.connect(self._test_lockin)
         self.pid_test.clicked.connect(self._test_pid)
         self.pid_detect.clicked.connect(self._detect_pid)
@@ -263,6 +264,16 @@ class SetupPanel(QWidget):
             for w in self.findChildren(kind):
                 w.setEnabled(not locked)
 
+    def _lockin_model_changed(self) -> None:
+        """Move to the chosen model's address, unless it was set to another by hand."""
+        model = self.li_model.currentData()
+        if self.li_resource.currentText().strip() in LOCKIN_RESOURCES.values():
+            self.li_resource.setEditText(LOCKIN_RESOURCES.get(model, self.li_resource.currentText()))
+        if model == "sr830":  # the driver talks GPIB only
+            self.li_iface.setCurrentIndex(0)
+        self.li_checks.setText("")
+        self.li_result.setText("")
+
     # --- actions -------------------------------------------------------------------
     def _snapshot(self) -> AppConfig:
         return self.apply(copy.deepcopy(self._config))
@@ -296,13 +307,15 @@ class SetupPanel(QWidget):
                 found = li.settings()
                 found["model"], found["expand_name"] = li.MODEL, li.EXPAND_NAME
                 found["link"] = getattr(li.t, "detected", "")
+                found["_table"] = (li.SETUP_TABLE, li.SETUP_NAME, li.SETUP_NOTE)
                 return found
             finally:
                 li.close()
 
         def fmt(s):
-            checks = check_setup(s) if "reference_mode" in s else []
-            self.li_checks.setText(setup_table_html(checks))
+            table, table_name, note = s.pop("_table")
+            checks = check_setup(s, table)
+            self.li_checks.setText(setup_table_html(checks, table_name, note))
             bad = [c for c in checks if c.ok is False]
             if bad:
                 self.log.emit("warning", "Lock-in settings differ from the lab manual: " + "; ".join(

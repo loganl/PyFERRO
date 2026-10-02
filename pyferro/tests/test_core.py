@@ -195,6 +195,7 @@ def test_5302_apply_sends_the_time_constant_before_the_reserve_and_checks_first(
 
 def test_lockin_changes_during_a_run_are_sent_and_recorded():
     cfg = config.AppConfig(simulate=True)
+    cfg.lockin.model = "5302"
     logs, seen = [], []
     acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m), on_lockin=seen.append)
     acq.slots["lockin"].get()
@@ -212,6 +213,7 @@ def test_lockin_changes_during_a_run_are_sent_and_recorded():
 
 def test_a_front_panel_change_during_a_run_is_recorded():
     cfg = config.AppConfig(simulate=True)
+    cfg.lockin.model = "5302"
     logs = []
     acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m))
     li = acq.slots["lockin"].get()
@@ -240,7 +242,11 @@ class FakeSR830Transport:
         self.writes = []
         self.replies = {"*IDN?": "Stanford_Research_Systems,SR830,s/n12345,ver1.07",
                         "SNAP?1,2,3,4": snap, "SENS?": sens, "OFLT?": "9",
-                        "FREQ?": "1000.00", "OEXP?1": oexp, "OEXP?2": "0.00,0", "OEXP?3": "0.00,0"}
+                        "FREQ?": "25000.0", "OEXP?1": oexp, "OEXP?2": "0.00,0", "OEXP?3": "0.00,0",
+                        # the lab manual's SR830 table (manual 5-4 to 5-8)
+                        "FMOD?": "1", "SLVL?": "0.500", "ISRC?": "0", "ICPL?": "0", "IGND?": "0",
+                        "ILIN?": "0", "RMOD?": "2", "OFSL?": "1", "DDEF?1": "0,0",
+                        "DDEF?2": "0,0", "PHAS?": "-12.34"}
         self.lias = 0
 
     def write(self, cmd):
@@ -314,6 +320,89 @@ def test_sr830_offset_or_expand_is_reported():
 def test_sr830_out_of_step_sensitivity_is_refused_not_indexed():
     with pytest.raises(TransportError, match="out of step"):
         SR830(FakeSR830Transport(sens="1000")).read()
+
+
+def test_sr830_setup_is_read_and_checked_against_the_lab_manual():
+    from ferro.instruments.lockin5302 import check_setup
+
+    li = SR830(FakeSR830Transport(sens="26"))
+    s = li.settings()
+    assert (s["reference_mode"], s["oscillator_hz"], s["oscillator_v"]) == ("INT", 25000.0, 0.5)
+    assert (s["signal_input"], s["coupling"], s["grounding"]) == ("A", "AC", "FLOAT")
+    assert (s["dynamic_reserve"], s["filter_slope"], s["display"]) == ("LOW NOISE", "12 dB/oct", "X, Y")
+    assert s["phase_deg"] == pytest.approx(-12.34)
+    rows = check_setup(s, li.SETUP_TABLE)
+    assert rows and all(r.ok for r in rows), [r for r in rows if not r.ok]
+    s["coupling"] = "DC"
+    assert [r.name for r in check_setup(s, li.SETUP_TABLE) if not r.ok] == ["Coupling"]
+
+
+def test_sr830_unreadable_setting_is_unread_not_a_failure():
+    transport = FakeSR830Transport()
+
+    def query(cmd, _q=transport.query):
+        if cmd == "ICPL?":
+            raise TransportError("timeout")
+        return _q(cmd)
+
+    transport.query = query
+    assert SR830(transport).settings()["coupling"] is None
+
+
+def test_sr830_apply_sends_commands_in_a_safe_order():
+    transport = FakeSR830Transport()
+    li = SR830(transport)
+    sent = li.apply({"time_constant_index": 9, "dynamic_reserve": "LOW NOISE",
+                     "oscillator_hz": 25000.0, "reference_mode": "INT", "expand": False})
+    assert transport.writes[2:] == ["FMOD 1", "FREQ 25000.0000", "RMOD 2", "OFLT 9",
+                                    "OEXP 1,0,0;OEXP 2,0,0;OEXP 3,0,0"]
+    assert sent[0] == "reference INT (FMOD 1)"
+
+
+def test_sr830_bad_values_send_nothing():
+    transport = FakeSR830Transport()
+    li = SR830(transport)
+    for bad in ({"oscillator_v": 9.0}, {"expand": True}, {"coupling": "XX"},
+                {"oscillator_hz": 200e3}, {"display": "X, θ"}, {"no_such": 1}):
+        with pytest.raises(ValueError):
+            li.apply({"time_constant_index": 9, **bad})
+    assert transport.writes == ["OUTX1", "*CLS"]
+
+
+def test_sr830_simulation_matches_the_lab_manual_except_sensitivity():
+    from ferro import acquisition
+    from ferro.instruments.lockin5302 import check_setup
+
+    cfg = config.AppConfig(simulate=True)
+    li = acquisition.open_lockin(cfg)
+    assert li.MODEL == "SR830", "the SR830 is the default lock-in"
+    rows = check_setup(li.settings(), li.SETUP_TABLE)
+    assert [r.name for r in rows if not r.ok] == ["Sensitivity"]
+    li.apply({"sensitivity_index": 26, "display": "R, θ"})
+    s = li.settings()
+    assert (s["sensitivity"], s["display"]) == ("1 V", "R, θ")
+
+
+def test_sr830_changes_during_a_run_are_sent_and_recorded():
+    cfg = config.AppConfig(simulate=True)
+    logs, seen = [], []
+    acq = Acquisition(cfg, on_log=lambda lvl, m: logs.append(m), on_lockin=seen.append)
+    li = acq.slots["lockin"].get()
+    acq._poll_settings()  # the baseline
+    acq.set_lockin({"time_constant_index": 10, "coupling": "DC"})
+    acq._handle_lockin_request()
+    acq._poll_settings()
+    assert any(m.startswith("Lock-in set from PyFERRO: coupling DC (ICPL 1), time constant 1 s")
+               for m in logs)
+    assert "Lock-in time constant changed to 1 s" in logs
+    assert "Lock-in input coupling changed to DC" in logs
+    li.t.setup["FMOD"] = "0"  # someone presses Source
+    acq.refresh_lockin()
+    acq._poll_settings()
+    assert "Lock-in reference changed to EXT" in logs
+    assert seen[-1]["reference_mode"] == "EXT"
+    for slot in acq.slots.values():
+        slot.close()
 
 
 def test_sr830_parse_floats():
@@ -613,7 +702,7 @@ def test_annotations_land_in_the_data_file(tmp_path):
     text = path.read_text()
     assert "# " in text and "Reading interval changed to 5 s" in text
     assert np.loadtxt(path).shape[0] >= 3, "comment lines must not break numeric loading"
-    assert "# connection_lockin: Lock-in: 5302 SIMULATED" in text
+    assert "# connection_lockin: Lock-in: SR830 SIMULATED" in text
 
 
 def test_connections_name_the_actual_ports():
@@ -1064,6 +1153,7 @@ def test_the_terminator_probe_runs_without_retries(monkeypatch):
     monkeypatch.setattr(acquisition, "VisaTransport", FakeVisa)
     monkeypatch.setattr(acquisition, "_DETECTED_TERMINATIONS", {})
     cfg = config.AppConfig()
+    cfg.lockin.model = "5302"
     li = acquisition.open_lockin(cfg)
     assert all(t.kw["retries"] == 0 for t in built)
     assert all(t.kw["reply_delay_s"] == acquisition.LOCKIN_GAP_S for t in built), \

@@ -394,6 +394,8 @@ class MainWindow(QMainWindow):
         self.setup.log.connect(self.log)
         self.lockin_panel.log.connect(self.log)
         self.bridge.lockin.connect(self.lockin_panel.show_settings)
+        self.setup.li_model.currentIndexChanged.connect(
+            lambda: self.lockin_panel.set_model(self.setup.li_model.currentData()))
         self.setup.simulate.toggled.connect(lambda on: self.sim_banner.setVisible(on))
         self.bridge.sample.connect(self._on_sample)
         self.bridge.log.connect(lambda level, msg: self.log(level, msg, to_file=False))

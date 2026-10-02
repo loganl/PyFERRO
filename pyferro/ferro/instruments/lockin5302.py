@@ -18,7 +18,8 @@ auto-sensitivity step) is picked up automatically.
 
 The same commands with a number set the value. ``apply()`` sends the ones in
 ``SETTABLE`` (the Lock-in tab), and ``check_setup()`` compares the settings with
-``CAPACITANCE_SETUP``, the lab manual's 5302 table.
+``CAPACITANCE_SETUP``, the lab manual's 5302 table. ``check_setup``, ``commands_for``
+and ``SetupCheck`` are shared with the SR830 driver.
 """
 
 from __future__ import annotations
@@ -75,7 +76,7 @@ def _on_off(v) -> str:
 
 
 # The lab manual's 5302 table for the capacitance measurement (ptmanual/main.tex,
-# "Settings for the EG&G model 5302"): keep the two in step.
+# tab:lockin5302, in the appendix on the 5302): keep the two in step.
 # (settings key, name, wanted - a tuple means any of them, formatter, how to change it)
 CAPACITANCE_SETUP = (
     ("reference_mode", "Reference", "INT", str, "REF, the rightmost key under the display"),
@@ -131,19 +132,37 @@ SETTABLE = (
 )
 
 
-def commands_for(changes: dict) -> list[tuple[str, str]]:
+def commands_for(changes: dict, settable=SETTABLE) -> list[tuple[str, str]]:
     """(command, description) for each setting in ``changes``, in sending order.
 
     Raises ValueError, before anything is sent, if any value is out of range.
     """
     out = []
-    for key, command, describe in SETTABLE:
+    for key, command, describe in settable:
         if key in changes:
             out.append((command(changes[key]), describe(changes[key])))
-    unknown = set(changes) - {key for key, _, _ in SETTABLE}
+    unknown = set(changes) - {key for key, _, _ in settable}
     if unknown:
         raise ValueError(f"cannot set {', '.join(sorted(unknown))}")
     return out
+
+
+# The Lock-in tab's controls, in order: (settings key, label, kind, options). Kinds:
+# "choice" (a value from options), "index" (a position in options: the key ends in
+# _index and the settings hold the label under the key without it), "khz" and
+# "volts" (a number, options = (lowest, highest) in kHz or V), "check" (options =
+# the box's text).
+PANEL = (
+    ("reference_mode", "Reference", "choice", tuple(REFERENCE_MODES.values())),
+    ("oscillator_hz", "Oscillator frequency", "khz", (0.000001, 1000.0)),
+    ("oscillator_v", "Oscillator level", "volts", (0.005, 5.0)),
+    ("sensitivity_index", "Sensitivity", "index", tuple(SENSITIVITY_LABELS)),
+    ("expand", "Expand", "check", "Expand X ×10"),
+    ("time_constant_index", "Time constant", "index", tuple(TIME_CONSTANT_LABELS)),
+    ("filter", "Filter", "choice", tuple(FILTER_MODES.values())),
+    ("dynamic_reserve", "Dynamic reserve", "choice", tuple(RESERVE_MODES.values())),
+    ("signal_input", "Signal input", "choice", tuple(SIGNAL_INPUTS.values())),
+)
 
 
 @dataclass
@@ -254,6 +273,19 @@ class Lockin5302:
     SENSITIVITY_LABELS = SENSITIVITY_LABELS
     TIME_CONSTANT_LABELS = TIME_CONSTANT_LABELS
     EXPAND_NAME = LockinReading.EXPAND_NAME
+    # What the Test button, the file header and the Lock-in tab need to know.
+    SETUP_TABLE = CAPACITANCE_SETUP
+    SETUP_NAME = "the lab manual's 5302 table"
+    SETUP_NOTE = ("The preamplifier's coupling and grounding buttons cannot be read over "
+                  "GPIB: check them on its front panel.")
+    PANEL = PANEL
+    PANEL_NOTE = ("Front panel only: the coupling and grounding buttons on the preamplifier, "
+                  "and the phase tuning (AUTO, then the left PHASE key, with the sample "
+                  "disconnected).")
+
+    @staticmethod
+    def commands(changes: dict) -> list[tuple[str, str]]:
+        return commands_for(changes, SETTABLE)
 
     def __init__(self, transport: Transport) -> None:
         self.t = transport

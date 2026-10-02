@@ -1,4 +1,7 @@
-"""The Lock-in tab: read the 5302's settings and change them from the program.
+"""The Lock-in tab: read the lock-in's settings and change them from the program.
+
+The controls are built from the selected model's driver (``PANEL``, ``SETUP_TABLE``,
+``commands``), so the SR830 and the 5302 share this code.
 
 While monitoring or recording, changes go through the acquisition thread
 (``Acquisition.set_lockin``), which sends them between samples and writes what took
@@ -26,18 +29,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..acquisition import open_lockin
-from ..instruments.lockin5302 import (
-    CAPACITANCE_SETUP,
-    FILTER_MODES,
-    REFERENCE_MODES,
-    RESERVE_MODES,
-    SENSITIVITY_LABELS,
-    SIGNAL_INPUTS,
-    TIME_CONSTANT_LABELS,
-    check_setup,
-    commands_for,
-)
+from ..acquisition import LOCKIN_MODELS, open_lockin
+from ..instruments.lockin5302 import check_setup
 from .setup_panel import setup_table_html
 from .widgets import run_task
 
@@ -49,6 +42,15 @@ def _combo(items) -> QComboBox:
     return box
 
 
+def _number(low: float, high: float, suffix: str, step: float) -> QDoubleSpinBox:
+    box = QDoubleSpinBox()
+    box.setRange(low, high)
+    box.setDecimals(3)
+    box.setSingleStep(step)
+    box.setSuffix(suffix)
+    return box
+
+
 class LockinPanel(QWidget):
     log = Signal(str, str)
 
@@ -56,42 +58,18 @@ class LockinPanel(QWidget):
         super().__init__(parent)
         self._get_cfg, self._get_acq = get_cfg, get_acq
         self._known: dict | None = None  # the settings last read from the instrument
+        self.model: str | None = None
+        self.driver = None
+        self.fields: dict[str, tuple[str, QWidget]] = {}  # settings key -> (kind, control)
 
         lay = QVBoxLayout(self)
-        box = QGroupBox("EG&G 5302 settings")
-        form = QFormLayout(box)
-        self.reference = _combo(REFERENCE_MODES.values())
-        form.addRow("Reference", self.reference)
-        self.osc_khz = QDoubleSpinBox()
-        self.osc_khz.setRange(0.000001, 1000.0)
-        self.osc_khz.setDecimals(3)
-        self.osc_khz.setSuffix(" kHz")
-        form.addRow("Oscillator frequency", self.osc_khz)
-        self.osc_v = QDoubleSpinBox()
-        self.osc_v.setRange(0.005, 5.0)
-        self.osc_v.setDecimals(3)
-        self.osc_v.setSingleStep(0.1)
-        self.osc_v.setSuffix(" V")
-        form.addRow("Oscillator level", self.osc_v)
-        self.sensitivity = _combo(SENSITIVITY_LABELS)
-        form.addRow("Sensitivity", self.sensitivity)
-        self.expand = QCheckBox("Expand X ×10")
-        form.addRow("Expand", self.expand)
-        self.time_constant = _combo(TIME_CONSTANT_LABELS)
-        form.addRow("Time constant", self.time_constant)
-        self.filter = _combo(FILTER_MODES.values())
-        form.addRow("Filter", self.filter)
-        self.reserve = _combo(RESERVE_MODES.values())
-        form.addRow("Dynamic reserve", self.reserve)
-        self.signal_input = _combo(SIGNAL_INPUTS.values())
-        form.addRow("Signal input", self.signal_input)
-        lay.addWidget(box)
+        self.box = QGroupBox()
+        self.form = QFormLayout(self.box)
+        lay.addWidget(self.box)
 
         row = QHBoxLayout()
         self.read_btn = QPushButton("Read from lock-in")
         self.manual_btn = QPushButton("Lab-manual values")
-        self.manual_btn.setToolTip("Fill in the lab manual's 5302 table (capacitance measurement). "
-                                   "Nothing is sent until Apply.")
         self.apply_btn = QPushButton("Apply to lock-in")
         for b in (self.read_btn, self.manual_btn, self.apply_btn):
             row.addWidget(b)
@@ -104,63 +82,98 @@ class LockinPanel(QWidget):
         self.checks.setTextFormat(Qt.RichText)
         self.checks.setWordWrap(True)
         lay.addWidget(self.checks)
-        note = QLabel("Front panel only: the coupling and grounding buttons on the preamplifier, "
-                      "and the phase tuning (AUTO, then the left PHASE key, with the sample "
-                      "disconnected). Changes made here during a run are written into the "
-                      "data file, as are front-panel changes, within a minute.")
-        note.setWordWrap(True)
-        note.setStyleSheet("color: #5f6368;")
-        lay.addWidget(note)
+        self.note = QLabel("")
+        self.note.setWordWrap(True)
+        self.note.setStyleSheet("color: #5f6368;")
+        lay.addWidget(self.note)
         lay.addStretch(1)
 
         self.read_btn.clicked.connect(self._read)
         self.manual_btn.clicked.connect(self._fill_from_manual)
         self.apply_btn.clicked.connect(self._apply)
         self._tasks = []
+        self.set_model(get_cfg().lockin.model)
+
+    def set_model(self, model: str) -> None:
+        """Build the controls for this model (the one chosen on the Instruments tab)."""
+        driver = LOCKIN_MODELS.get(model)
+        if driver is None or model == self.model:
+            return
+        self.model, self.driver, self._known = model, driver, None
+        while self.form.rowCount():
+            self.form.removeRow(0)
+        self.fields = {}
+        for key, label, kind, options in driver.PANEL:
+            if kind in ("choice", "index"):
+                widget = _combo(options)
+            elif kind == "khz":
+                widget = _number(*options, " kHz", 1.0)
+            elif kind == "volts":
+                widget = _number(*options, " V", 0.1)
+            else:
+                widget = QCheckBox(options)
+            self.fields[key] = (kind, widget)
+            self.form.addRow(label, widget)
+        self.box.setTitle(f"{driver.MODEL} settings")
+        self.manual_btn.setToolTip(f"Fill in {driver.SETUP_NAME} (capacitance measurement). "
+                                   "Nothing is sent until Apply.")
+        self.note.setText(driver.PANEL_NOTE + " Changes made here during a run are written "
+                          "into the data file, as are front-panel changes, within a minute.")
+        self.checks.setText("")
+        self.status.setText("Read the lock-in to see its settings.")
+
+    def widget(self, key: str) -> QWidget:
+        return self.fields[key][1]
 
     # --- values in the controls ---------------------------------------------------------
     def values(self) -> dict:
-        return {
-            "signal_input": self.signal_input.currentData(),
-            "reference_mode": self.reference.currentData(),
-            "oscillator_hz": round(self.osc_khz.value() * 1000.0, 6),
-            "oscillator_v": round(self.osc_v.value(), 3),
-            "sensitivity_index": self.sensitivity.currentIndex(),
-            "expand": self.expand.isChecked(),
-            "time_constant_index": self.time_constant.currentIndex(),
-            "dynamic_reserve": self.reserve.currentData(),
-            "filter": self.filter.currentData(),
-        }
+        out = {}
+        for key, (kind, w) in self.fields.items():
+            if kind == "choice":
+                out[key] = w.currentData()
+            elif kind == "index":
+                out[key] = w.currentIndex()
+            elif kind == "khz":
+                out[key] = round(w.value() * 1000.0, 6)
+            elif kind == "volts":
+                out[key] = round(w.value(), 3)
+            else:
+                out[key] = w.isChecked()
+        return out
+
+    def _set(self, key: str, value) -> None:
+        kind, w = self.fields[key]
+        if kind == "choice":
+            w.setCurrentIndex(max(0, w.findData(value)))
+        elif kind == "index":
+            w.setCurrentIndex(int(value))
+        elif kind == "khz":
+            w.setValue(value / 1000.0)
+        elif kind == "volts":
+            w.setValue(value)
+        else:
+            w.setChecked(bool(value))
 
     def show_settings(self, s: dict) -> None:
         """Fill the controls from settings read from the lock-in, and check them."""
-        if "reference_mode" not in s:
+        if self.driver is None or not set(self.fields) <= set(s):
             return  # another model's settings
         self._known = dict(s)
-        for combo, key in ((self.reference, "reference_mode"), (self.filter, "filter"),
-                           (self.reserve, "dynamic_reserve"), (self.signal_input, "signal_input")):
+        for key in self.fields:
             if s.get(key) is not None:
-                combo.setCurrentIndex(max(0, combo.findData(s[key])))
-        if s.get("oscillator_hz") is not None:
-            self.osc_khz.setValue(s["oscillator_hz"] / 1000.0)
-        if s.get("oscillator_v") is not None:
-            self.osc_v.setValue(s["oscillator_v"])
-        self.sensitivity.setCurrentIndex(s["sensitivity_index"])
-        self.time_constant.setCurrentIndex(s["time_constant_index"])
-        self.expand.setChecked(bool(s["expand"]))
-        self.checks.setText(setup_table_html(check_setup(s)))
+                self._set(key, s[key])
+        self.checks.setText(setup_table_html(check_setup(s, self.driver.SETUP_TABLE),
+                                             self.driver.SETUP_NAME, self.driver.SETUP_NOTE))
 
     def _fill_from_manual(self) -> None:
-        wanted = {key: value for key, _, value, _, _ in CAPACITANCE_SETUP}
-        self.reference.setCurrentIndex(self.reference.findData(wanted["reference_mode"]))
-        self.osc_khz.setValue(wanted["oscillator_hz"] / 1000.0)
-        self.osc_v.setValue(wanted["oscillator_v"])
-        self.sensitivity.setCurrentIndex(SENSITIVITY_LABELS.index(wanted["sensitivity"]))
-        self.expand.setChecked(wanted["expand"])
-        self.time_constant.setCurrentIndex(TIME_CONSTANT_LABELS.index(wanted["time_constant"][0]))
-        self.filter.setCurrentIndex(self.filter.findData(wanted["filter"]))
-        self.reserve.setCurrentIndex(self.reserve.findData(wanted["dynamic_reserve"]))
-        self.signal_input.setCurrentIndex(self.signal_input.findData(wanted["signal_input"]))
+        self.set_model(self._get_cfg().lockin.model)
+        for key, _, wanted, _, _ in self.driver.SETUP_TABLE:
+            value = wanted[0] if isinstance(wanted, tuple) else wanted
+            if key in self.fields:
+                self._set(key, value)
+            elif f"{key}_index" in self.fields:  # the table names the label: sensitivity "1 V"
+                kind, w = self.fields[f"{key}_index"]
+                w.setCurrentIndex(w.findData(value))
         self.status.setText("Filled in the lab manual's values. Press Apply to send them.")
 
     def changes(self) -> dict:
@@ -182,9 +195,9 @@ class LockinPanel(QWidget):
     # --- actions ------------------------------------------------------------------------
     def _usable(self) -> bool:
         model = self._get_cfg().lockin.model
-        if model != "5302":
-            self.status.setText(f"Setting the lock-in from PyFERRO is available for the 5302; "
-                                f"the {model.upper()} is selected on the Instruments tab.")
+        self.set_model(model)
+        if model not in LOCKIN_MODELS:
+            self.status.setText(f"Unknown lock-in model {model!r}: choose one on the Instruments tab.")
             return False
         return True
 
@@ -219,7 +232,7 @@ class LockinPanel(QWidget):
             self.status.setText("Nothing to change: the lock-in already has these settings.")
             return
         try:
-            planned = commands_for(changes)
+            planned = self.driver.commands(changes)
         except ValueError as exc:
             self.status.setText(f"✘ {exc}")
             return

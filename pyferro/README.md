@@ -5,16 +5,17 @@ controller heats and cools the chamber. Replaces the LabVIEW routine `FERRO v.2.
 
 | Instrument | Connection | Default |
 |---|---|---|
-| EG&G/PAR 5302 lock-in | NI GPIB adapter | `GPIB0::12::INSTR` |
+| SRS SR830 lock-in | NI GPIB adapter | `GPIB0::8::INSTR` |
 | Omega CND3 PID controller (holds the control thermocouple) | Dtech USB → RS-485 (FTDI) | Modbus ASCII, address 1, 9600 7E1 |
 | HP 34401A multimeter (optional) | NI GPIB adapter | `GPIB0::24::INSTR`, Pt100 in 4-wire Ω |
 
-Other models can be chosen on the Instruments tab, for rigs built differently: an SRS
-SR830 lock-in (GPIB 8 on this rig) and a Keithley 199 multimeter (GPIB 6).
+Other models can be chosen on the Instruments tab: the lab's previous lock-in, an EG&G/PAR
+5302 (GPIB 12 on this rig), and a Keithley 199 multimeter (GPIB 6). Choosing a lock-in
+model moves the address to that model's, unless it was typed in by hand.
 
 PyFERRO **reads** the controller and never changes its setpoints or heater power, so
-the controller's *COMMUNICATION WRITE* setting stays **OFF**. The 5302 lock-in is the
-one instrument it can set, from the Lock-in tab, and only when asked (§3).
+the controller's *COMMUNICATION WRITE* setting stays **OFF**. The lock-in is the one
+instrument it can set, from the Lock-in tab, and only when asked (§3).
 
 This file is the complete documentation. [`CHANGELOG.md`](CHANGELOG.md) records what
 changed per version; [`docs/drivers-and-daq.md`](docs/drivers-and-daq.md) explains the
@@ -71,10 +72,10 @@ are the OUT1/OUT2 types (`R` relay, `V` voltage pulse, `C` current, `L` linear v
 `S` SSR, `N` none). The lab unit is 43.8 × 90.9 mm behind the bezel (1/8 DIN, cutout
 44.5 × 91.5 mm), 100–240 V AC.
 
-**Lock-in:** GPIB address 12. The sensitivity and expand settings are read from the
-instrument with every reading, so X and Y are always scaled correctly. The rest of the
-set-up follows the lab manual's 5302 table: *Test lock-in* compares the instrument with
-it, and the Lock-in tab can set it (§3).
+**Lock-in:** the SR830, GPIB address 8. The sensitivity and expand settings are read
+from the instrument with every reading, so X and Y are always scaled correctly. The rest
+of the set-up follows the lab manual's SR830 table (its 5302 table, for the 5302):
+*Test lock-in* compares the instrument with it, and the Lock-in tab can set it (§3).
 
 **Multimeter (optional):** the HP 34401A must be switched to **4-wire Ω** on its front
 panel — PyFERRO does not change its function, and on 2026-09-29 it was found set to DC
@@ -87,19 +88,20 @@ PyFERRO warns above that but is not a safety device; the controller and relay ar
 
 ## 3. Taking data
 
-1. **Instruments tab:** check the lock-in **Model** (EG&G 5302 on this rig), pick the
+1. **Instruments tab:** check the lock-in **Model** (SRS SR830 on this rig), pick the
    Dtech COM port (FTDI ports listed first), press **Test lock-in** and
    **Test controller**. A green ✔ shows the sensitivity, time constant and reference
-   frequency, and PV/SV, output level, control mode and firmware. For the 5302, a table
-   underneath compares every setting with the lab manual's and says which key changes
-   any that differ; starting a recording repeats the check and logs any difference as a
-   warning.
-2. **Lock-in tab (5302):** *Read from lock-in* shows its settings; change them there and
-   press *Apply to lock-in* (it lists the commands and asks first), or press
-   *Lab-manual values* to fill in the lab manual's table, then Apply. Only what differs is
-   sent, and the settings are read back afterwards. This works during a run too: the
-   change is sent between samples and written into the data file. AC/DC, FLOAT/GND
-   and the phase tuning stay on the front panel.
+   frequency, and PV/SV, output level, control mode and firmware. A table underneath
+   compares every lock-in setting with the lab manual's table for that model and says
+   which key changes any that differ; starting a recording repeats the check and logs
+   any difference as a warning.
+2. **Lock-in tab:** shows the chosen model's settings. *Read from lock-in* fills them in;
+   change them there and press *Apply to lock-in* (it lists the commands and asks
+   first), or press *Lab-manual values* to fill in the lab manual's table, then Apply.
+   Only what differs is sent, and the settings are read back afterwards. This works
+   during a run too: the change is sent between samples and written into the data file.
+   The phase tuning stays on the front panel, as does turning an SR830 offset or expand
+   on (the tab can turn them off), and on the 5302 its AC/DC and FLOAT/GND keys.
 3. **Run tab:** enter a sample/run name (becomes the file name), operator, drive details,
    notes, and the save folder.
 4. **▶ Start monitoring** (F5) shows live data without saving. **● Record** (Ctrl+R)
@@ -139,10 +141,10 @@ Settings persist in `%USERPROFILE%\.ferro\settings.json`; delete it to reset, or
 # software: pyferro 1.1.0
 # sample: BTO_1V_37kHz
 # temperature_source: CND3 controller PV
-# lockin_model: 5302
-# lockin_sensitivity: 50 mV
-# lockin_time_constant: 200 ms
-# lockin_setup_check: matches the lab manual's 5302 table
+# lockin_model: SR830
+# lockin_sensitivity: 1 V
+# lockin_time_constant: 300 ms
+# lockin_setup_check: matches the lab manual's SR830 table
 # controller_sv_c: 150.0
 # column 1: T_C - sample temperature used for plots (degC)
 # T_C	X_V	Y_V	time_s	R_V	theta_deg	SV_C	PV_C	T_dmm_C	sens_V	direction	segment	flags
@@ -173,8 +175,8 @@ the metadata then goes to a `.json` file of the same name.
 
 **Events inside the file.** Anything that changes what the numbers mean is written into
 the data file as a `#` comment line at the moment it happens — a sensitivity or time
-constant change, and on the 5302 any change of reference, oscillator level or
-frequency, filter, reserve, input or phase (checked every minute, and at once after a
+constant change, and any change of reference, oscillator level or frequency, filters,
+reserve, input, coupling, grounding, displays or phase (checked every minute, and at once after a
 change from the Lock-in tab, which is itself recorded), an overload starting or clearing, the controller switching to STOP, a
 changed reading interval or temperature source, edited notes. `numpy.loadtxt` and pandas
 skip these lines, so nothing breaks; the header also names the port each instrument used
@@ -272,7 +274,7 @@ resistance, converted with IEC 60751 (`R = R₀(1 + AT + BT²)`, A = 3.9083×10�
 B = −5.775×10⁻⁷). A reading outside 0.5–3 × R₀ (50–300 Ω for a Pt100) raises an error
 naming the likely cause. With *Reading* set to °C the value is recorded as it comes.
 
-**SRS SR830** (manual chapter 5), GPIB only, LF terminators both ways, default address 8:
+**SRS SR830** (manual chapter 5), GPIB only, LF terminators both ways, address 8:
 `OUTX 1` at connection so answers go to GPIB, `*IDN?` to identify. Each sample reads
 `SENS?` (index 0–26, 2 nV … 1 V), `OEXP? 1/2/3` (offset and expand of X, Y and R),
 `SNAP? 1,2,3,4` (X, Y, R, θ in volts and degrees, X and Y from one instant), then
@@ -281,6 +283,12 @@ time since the previous sample sets the overload flag. Reading the byte clears i
 if the read needs a retry the sample is flagged as overloaded too. The manual does not say whether
 `SNAP?` includes the output offset and expand; when either is set, at the start or
 later, the log says so and the header records them, so check the recorded X/Y against the display.
+The set-up is read with `FMOD?` (reference), `FREQ?`, `SLVL?` (sine output level),
+`ISRC?`, `ICPL?`, `IGND?` (input, coupling, grounding), `ILIN?` (line notches), `RMOD?`
+(reserve), `OFSL?` (filter slope), `DDEF? 1/2` (displays) and `PHAS?`, and each command
+with a value sets it — how the Lock-in tab applies the lab manual's table. Several go on
+one line separated by `;` (5-1), which is how `OEXP 1,0,0;OEXP 2,0,0;OEXP 3,0,0` turns
+every offset and expand off. The sine output's resistance is 50 Ω: the lab manual's R₀.
 
 **Keithley 199** (manual section 3.9): no `*IDN?`; `U0X` returns a status word starting
 `199`. Connecting sends a device clear, which resets the meter, so the program sets
@@ -295,7 +303,7 @@ connected. It has no °C function, so only the Pt100 reading is offered.
 ```
 ferro/gui/          main_window.py  window, plots, readouts, log
                     setup_panel.py  instrument settings, Test / Auto-detect
-                    lockin_panel.py the Lock-in tab: read and set the 5302
+                    lockin_panel.py the Lock-in tab: read and set the lock-in
                     widgets.py      status lights, readouts, background tasks
 ferro/acquisition.py   the measurement loop: open, read, log, retry
 ferro/instruments/  lockin5302.py, sr830.py, cnd3.py,
@@ -344,20 +352,20 @@ dependencies, it says to close and start again so pixi can install them.
 
 | File | Covers |
 |---|---|
-| `tests/test_core.py` | scaling, parsing, register decoding, Pt100, every driver against a fake of its manual's protocol, setting the 5302 and checking it against the lab manual, data files, direction tracking, settings, a simulated run |
+| `tests/test_core.py` | scaling, parsing, register decoding, Pt100, every driver against a fake of its manual's protocol, setting both lock-ins and checking them against the lab manual, data files, direction tracking, settings, a simulated run |
 | `tests/test_protocols.py` | real serial/Modbus code over a pty against manual-accurate emulators (skipped on Windows) |
-| `tests/test_gui.py` | record/stop cycles, run-name guard, one file per recording, plots after Clear, window width, the Test button for every model, other models recorded and kept in the settings, the Lock-in tab idle and during a run |
+| `tests/test_gui.py` | record/stop cycles, run-name guard, one file per recording, plots after Clear, window width, the Test button for every model, other models recorded and kept in the settings, the Lock-in tab for each model, idle and during a run, the address following the model |
 | `tests/test_version.py` | one version everywhere, matching the git tag |
 
 `tools/` has no tests: `update.py` and `gpib_check.py` are checked by running them.
 
 Simulated instruments sit **below** the drivers, so the same parsing and scaling code
 runs: a shared fake sample ramps 25 → 150 → 25 °C at 30 °C/min with a peak at 122 °C,
-the lock-in answers `ID`/`SEN`/`XTC`/`EX`/`FRQ`/`XY` with counts scaled to the current
-range, starts in the lab manual's set-up and accepts the Lock-in tab's commands, and
-the controller exposes the CND3 registers. The model chosen on the
-Instruments tab is simulated too: the SR830 answers its own commands in volts, the
-Keithley 199 gives prefixed ohms readings. Simulated runs show an orange
+and the controller exposes the CND3 registers. Whichever lock-in is chosen on the
+Instruments tab starts in the lab manual's set-up for it, apart from a 50 mV
+sensitivity, and accepts the Lock-in tab's commands: the SR830 answers its own commands
+in volts, the 5302 `ID`/`SEN`/`XTC`/`EX`/`FRQ`/`XY` with counts scaled to the current
+range. The Keithley 199 gives prefixed ohms readings. Simulated runs show an orange
 banner and `simulation: True` in the file header. Simulation cannot reproduce timing,
 bus noise, wiring faults or GPIB itself — check those with the *Test* buttons and
 `pixi run gpib`.

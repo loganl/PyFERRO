@@ -69,6 +69,11 @@ LOCKIN_WATCHED = (
     ("dynamic_reserve", "dynamic reserve", str, None),
     ("filter", "filter", str, None),
     ("signal_input", "signal input", str, None),
+    ("coupling", "input coupling", str, None),
+    ("grounding", "input grounding", str, None),
+    ("line_filter", "line notch filters", str, None),
+    ("filter_slope", "filter slope", str, None),
+    ("display", "displays", str, None),
     ("phase_deg", "reference phase", lambda v: f"{v:.1f}°", None),
 )
 
@@ -297,7 +302,7 @@ class Acquisition:
             self._record_request = on
 
     def set_lockin(self, changes: dict) -> None:
-        """Change lock-in settings during a run (keys as in lockin5302.SETTABLE).
+        """Change lock-in settings during a run (keys as in the driver's SETTABLE).
 
         Sent by the acquisition thread between samples, so the commands cannot land in
         the middle of a reading; then the settings are read back at once, and whatever
@@ -628,20 +633,20 @@ class Acquisition:
                 info = dev.settings() if key == "lockin" else dev.status()
                 for k, v in info.items():
                     meta[f"{label}_{k}"] = "not read" if v is None else v
-                if key == "lockin" and "reference_mode" in info:
-                    self._check_lockin_setup(info, meta)
+                if key == "lockin" and getattr(dev, "SETUP_TABLE", None):
+                    self._check_lockin_setup(dev, info, meta)
             except Exception as exc:
                 meta[f"{label}_error"] = str(exc)
         return meta
 
-    def _check_lockin_setup(self, settings: dict, meta: dict) -> None:
-        """Say, in the log and the header, where the 5302 differs from the lab manual."""
-        bad = [c for c in check_setup(settings) if c.ok is False]
+    def _check_lockin_setup(self, li, settings: dict, meta: dict) -> None:
+        """Say, in the log and the header, where the lock-in differs from the lab manual."""
+        bad = [c for c in check_setup(settings, li.SETUP_TABLE) if c.ok is False]
         if not bad:
-            meta["lockin_setup_check"] = "matches the lab manual's 5302 table"
+            meta["lockin_setup_check"] = f"matches {li.SETUP_NAME}"
             return
         text = "; ".join(f"{c.name} {c.now} (manual: {c.wanted})" for c in bad)
-        meta["lockin_setup_check"] = f"differs from the lab manual's 5302 table: {text}"
+        meta["lockin_setup_check"] = f"differs from {li.SETUP_NAME}: {text}"
         self.on_log("warning", f"Lock-in settings differ from the lab manual: {text}")
 
     def _open_writer(self) -> None:
