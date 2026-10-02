@@ -255,7 +255,7 @@ data will be stored in the computer and need not be in the notebook.
 \begin{itemize}
   \item Sample chamber with four electric leads.
   \item Temperature controller.
-  \item Lock-in amplifier to measure the samples.
+  \item Lock-in amplifier (SRS SR830) to measure the samples.
   \item HP 34401A multimeter (not needed for the standard measurement).
   \item Computer (username \texttt{LabStudent}, password \texttt{PhaseTransition}).
   \item Decade resistance box, additional resistors, capacitors, BNC cables etc.
@@ -271,7 +271,7 @@ all measurements in real time.
   \centering
   \tikzfig[width=\linewidth]{fig-daq-wiring}{%
     Wiring diagram of the experiment. At the top left a box labeled Lock-in
-    amplifier, EG and G 5302, has measuring-input and oscillator-output
+    amplifier, SRS SR830, has measuring-input and oscillator-output
     terminals; the oscillator drives the sample through resistor R-zero and the
     measuring input sits across the sample. Below it a dashed box marks the
     sample chamber, containing the sample capacitor, a heater winding and a
@@ -279,7 +279,7 @@ all measurements in real time.
     lists probe input terminals 10, 11 and 12, output OUT1 on terminals 8 and 9,
     and RS-485 on terminals 13 (D minus) and 14 (D plus). OUT1 switches a
     solid-state relay that powers the heater from AC mains. On the right, the
-    lock-in reaches the lab PC over GPIB at address 12 through an NI adapter,
+    lock-in reaches the lab PC over GPIB at address 8 through an NI adapter,
     and the controller reaches it over RS-485 through a Dtech USB converter.}
   \caption{Instrument connections for the temperature-dependent measurement.}
   \label{fig:daqwiring}
@@ -493,7 +493,7 @@ relationship to the reference. This is a version of the \emph{phase-sensitive
 detection} technique. The phase can be continually varied and also changed in
 \ang{90} steps.
 
-You should read about lock-in operation in our lock-in manual~\cite{ref:lockin}. Here and in
+You should read about lock-in operation in our lock-in manual~\cite{ref:sr830}. Here and in
 Appendix~\ref{app:ac} we give a brief general introduction to its operating
 principle, and discuss in more detail the two types of measurements we will be
 doing in this lab.
@@ -550,7 +550,7 @@ Figure~\ref{fig:lockinR}.
     the left-hand outer contact of the sample, so the current path forms one
     closed loop through the sample.}
   \caption{Connecting the lock-in amplifier for a four-probe resistance
-    measurement. $R_0 = \SI{600}{\ohm}$ is the oscillator's internal output
+    measurement. $R_0 = \SI{50}{\ohm}$ is the oscillator's internal output
     resistance, $R_D$ the limiting decade resistor, and $C_p$ the parasitic
     capacitance of the cables. The current enters and leaves through the outer
     contacts $I_{\pm}$; the voltage is measured across the inner contacts
@@ -558,9 +558,9 @@ Figure~\ref{fig:lockinR}.
   \label{fig:lockinR}
 \end{figure}
 
-Looking at the front panel of the lock-in reveals that the oscillator circuit
-has internal resistance $R_0 = \SI{600}{\ohm}$, which is really a part of the
-lock-in, but, for clarity, is shown on the diagram above outside of a lock-in
+The label under the lock-in's SINE OUT connector shows that the oscillator
+circuit has internal resistance $R_0 = \SI{50}{\ohm}$, which is really a part of
+the lock-in, but, for clarity, is shown on the diagram above outside of a lock-in
 block. It is connected in series with the limiting decade resistance $R_D$ and
 the sample. The measuring input of the lock-in is connected across the inner
 contacts of the sample.
@@ -593,7 +593,7 @@ is the rms voltage at the oscillator output. We want to have
 \end{equation}
 or, as it is easy to see, simply $R_{S\,tot}/(R_0+R_D) = 0.05$, or
 $R_0 + R_D = R_{S\,tot}/0.05 = \SI{10}{\mega\ohm}$. Compared to this value,
-$R_0 = \SI{600}{\ohm}$ can be neglected, and essentially our limiting resistor
+$R_0 = \SI{50}{\ohm}$ can be neglected, and essentially our limiting resistor
 $R_D$ should be set at \SI{10}{\mega\ohm} (which, incidentally, is the maximum
 resistance which can be set in our decade box). If we use this large limiting
 resistor, the current will be equal to
@@ -733,7 +733,7 @@ establish the validity of the measurement technique.}
 The sample is now a capacitor; the material we want to study (\BTO) is a
 dielectric inside the capacitor. In this measurement we do not need to worry
 about additionally limiting the current; the current we are dealing with here
-is sufficiently limited by $R_0 = \SI{600}{\ohm}$. Here we will be using lock-in
+is sufficiently limited by $R_0 = \SI{50}{\ohm}$. Here we will be using lock-in
 as a device to measure signals that are \emph{phase shifted} from the phase of
 $V_0$ due to the presence of resistors and capacitors in the circuit.
 The basic circuit diagram for the capacitance measurement is shown in
@@ -755,7 +755,7 @@ Figure~\ref{fig:lockinC}.
     across the capacitor, and a parasitic capacitance C-p, drawn with dashed
     lines, is connected in parallel with the sample.}
   \caption{Connecting the lock-in amplifier for a capacitance measurement.
-    $R_0 = \SI{600}{\ohm}$ is the built-in internal resistance of the signal
+    $R_0 = \SI{50}{\ohm}$ is the built-in internal resistance of the signal
     generator, and $C_p$ is the parasitic capacitance of the empty circuit,
     which acts in parallel with the sample.}
   \label{fig:lockinC}
@@ -763,9 +763,9 @@ Figure~\ref{fig:lockinC}.
 
 As in a resistance measurement described above, the signal is generated by the
 lock-in amplifier's internal reference (oscillator) output; in this measurement
-we will be setting it at $V_0 = \SI{2.0}{\volt}$ (actually, at
-\SI{1.999}{\volt}), $f = \SI{25}{\kilo\hertz}$. As before, the built-in internal
-resistance of the signal generator is $R_0 = \SI{600}{\ohm}$, and there exists
+we will be setting it at $V_0 = \SI{0.500}{\volt}$, $f = \SI{25}{\kilo\hertz}$.
+As before, the built-in internal
+resistance of the signal generator is $R_0 = \SI{50}{\ohm}$, and there exists
 parasitic capacitance $C_p$ shown in dashed lines; this capacitance can be
 thought of as connected in parallel to sample capacitance.
 
@@ -776,7 +776,7 @@ purpose of the measurement without the sample is in tuning the lock-in, so as to
 make it later correctly measure the sample's capacitance.
 
 First, leaving the sample unconnected, we will tune the lock-in so that it is
-in-phase with the oscillator; it will measure $V_0 = \SI{2.0}{\volt}$. We then
+in-phase with the oscillator; it will measure $V_0 = \SI{0.500}{\volt}$. We then
 change the phase by \ang{90} and look at $V_{\mathrm{meas}}$ while gradually
 increasing the sensitivity of the measuring readout. On a sensitive-enough scale
 we will see some non-zero signal due to parasitic capacitance of our ``empty''
@@ -792,7 +792,7 @@ readout from the sample $V_{\mathrm{meas}}$ will appear at the measuring input
 and the magnitude of that out-of-phase signal is going to be proportional to the
 capacitance of the sample. Indeed, the capacitance of our sample is usually
 small, of the order of \SI{100}{\pico\farad}--\SI{1}{\nano\farad}, and so, with
-$R_0 = \SI{600}{\ohm}$ and at our chosen frequency, we have $\omega R_0 C \ll 1$.
+$R_0 = \SI{50}{\ohm}$ and at our chosen frequency, we have $\omega R_0 C \ll 1$.
 In this limit the in-phase component of the signal will be very close to the
 voltage provided by the signal generator, $V_0$, and the out-of-phase component
 will be close to $V_0\,\omega R_0 C$ (see Appendix~\ref{app:ac} for the details).
@@ -804,45 +804,53 @@ $\omega$ and $R_0$, we can calculate the capacitance of the sample as
   \delta = \frac{|V_{\mathrm{meas}}|}{V_0}.
 \end{equation}
 
-\subsection{Lock-in amplifier settings}
+\subsection{Lock-in amplifier settings}\label{sec:lockinsettings}
 
-The standard settings of the EG\&G Princeton Applied Research Model 5302 are:
+The lab's lock-in amplifier is the Stanford Research Systems SR830 DSP
+lock-in (Figure~\ref{fig:frontpanel}). Its standard settings for the
+capacitance measurement are:
 
 \begin{center}
 \begin{tabular}{@{}ll@{}}
   \toprule
   \textbf{Setting} & \textbf{Value} \\
   \midrule
-  Input            & preamplifier A input (select PREAMP as signal source) \\
-  Sensitivity      & \SI{1}{\volt} initially \\
-  Filter           & flat \\
-  Oscillator level & \SI{0.500}{\volt} initially\\
+  Input            & A, AC coupled, shield floating \\
+  Sensitivity      & \SI{1}{\volt} \\
+  Line notch filters & out \\
+  Dynamic reserve  & low noise \\
+  Oscillator level & \SI{0.500}{\volt} initially \\
   Oscillator frequency & \SI{25}{\kilo\hertz} \\
   Reference phase  & tuned (see below) \\
   Reference        & internal \\
-  Oscillator out   & OSC to preamplifier A (BNC cable) \\
-  Time constant    & \SI{500}{\milli\second} \\
-  Dynamic reserve  & HI STAB \\
-  Output display   & X--YV \\
+  Oscillator out   & SINE OUT to input A (BNC cable) \\
+  Time constant    & \SI{300}{\milli\second}, \SI{12}{\deci\bel}/octave \\
+  Displays         & X on channel one, Y on channel two \\
   \bottomrule
 \end{tabular}
 \end{center}
 
-\paragraph{Setting the EG\&G model 5302.}
-Table~\ref{tab:lockin5302} gives the same settings in more detail: where to
-find each one on the front panel, and the equivalent GPIB command. The same command sent without a number makes the lock-in
-reply with the current value, which is how PyFERRO reads these settings back and
-records them in the data-file header.
+\paragraph{Setting the SRS SR830.}
+Table~\ref{tab:lockinsr830} gives the same settings in more detail: where to
+find each one on the front panel, and the equivalent GPIB command. A command
+followed by a question mark (\texttt{SENS?}) makes the lock-in reply with the
+current value, which is how PyFERRO reads these settings back and records them
+in the data-file header. Most of the table is the SR830's own standard set-up,
+which it returns to if you hold down the Setup key while switching it on; then
+only the frequency, the level and the time constant need changing. PyFERRO can
+also send the whole table (Appendix~\ref{app:pyferro}, Lock-in tab).
 
-\notebox{Oscillator resistance and level}{The 5302's oscillator output resistance is
-$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not the \SI{600}{\ohm} of
-the earlier lock-in that other sections of this manual still quote: use
-\SI{450}{\ohm} in $C = \delta/(\omega R_0)$ and wherever this manual writes
-$R_0$. Its least
-sensitive range is \SI{1}{\volt}, and the in-phase signal is close to the
-oscillator level $V_0$, so $V_0$ must stay below \SI{1}{\volt}; at
-$V_0 = \SI{0.500}{\volt}$ it is half of full scale. Nothing is lost, since
-$C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
+\notebox{Oscillator resistance and signal size}{The SR830's sine output has an
+output resistance of $R_0 = \SI{50}{\ohm}$ (marked under the SINE OUT
+connector). The lock-in's least sensitive range is \SI{1}{\volt}, and the
+in-phase signal is close to the oscillator level $V_0$, so $V_0$ must stay
+below \SI{1}{\volt}; at $V_0 = \SI{0.500}{\volt}$ it is half of full scale.
+The out-of-phase signal is then small: for \SI{100}{\pico\farad} at
+\SI{25}{\kilo\hertz}, $V_{\mathrm{meas}} = V_0\,\omega R_0 C \approx
+\SI{0.4}{\milli\volt}$. Read it with the channel-two Expand (below). A known
+resistor $R_s$ in series with SINE OUT raises the signal in proportion; then
+use $R_0 = \SI{50}{\ohm} + R_s$, and check that $\omega R_0 C$ stays well
+below~1 or use the exact formula of Appendix~\ref{app:ac}.}
 
 \begin{table}[htbp]
   \centering
@@ -852,62 +860,68 @@ $C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
     \textbf{Setting} & \textbf{Value} & \textbf{How to set it on the front panel}
       & \textbf{GPIB} \\
     \midrule
-    Signal input & preamplifier, input A
-      & Cable to input A of the plug-in preamplifier. The display shows PRE at the
-        upper right; if it shows DIR, select PREAMP as the signal source on the
-        SIGNAL SETUP screen.
-      & \texttt{PREAMP 1} \\
-    Reference & INT
-      & Press REF, the rightmost of the five keys under the display, until INT shows
-        in the upper-left window. The INT light above the meter comes on.
-      & \texttt{IE 0} \\
+    Reference & internal
+      & Press Source, in the REFERENCE section at the right, until INTERNAL is lit.
+      & \texttt{FMOD 1} \\
     Oscillator frequency & \SI{25.000}{\kilo\hertz}
-      & Press the keys to the right of the large setting knob until OSC F is in the
-        middle of the lower-right window, then turn the knob. The KNOB ACTIVE light
-        must be on; if it is off, press either key once.
-      & \texttt{OF 2500 7} \\
+      & Press Freq and turn the knob; the REFERENCE display shows the frequency.
+      & \texttt{FREQ 25000} \\
     Oscillator level & \SI{0.500}{\volt}
-      & As for the frequency, with OSC V selected.
-      & \texttt{OA 5000 1} \\
+      & Press Ampl and turn the knob.
+      & \texttt{SLVL 0.5} \\
+    Signal input & A
+      & Cable to the A/I input. Press Input, in the SIGNAL INPUT section at the
+        lower left, until A is lit.
+      & \texttt{ISRC 0} \\
+    Coupling & AC
+      & Press Couple until AC is lit.
+      & \texttt{ICPL 0} \\
+    Grounding & float
+      & Press Ground until FLOAT is lit.
+      & \texttt{IGND 0} \\
+    Line notch filters & out
+      & Press Notch, in the FILTERS section, until neither LINE nor 2xLINE is lit.
+      & \texttt{ILIN 0} \\
     Sensitivity & \SI{1}{\volt}
-      & The SEN keys, at the top of the two key columns to the right of the display:
-        the left one moves to a larger full scale (less sensitive).
-      & \texttt{SEN 21} \\
-    Expand & off
-      & When it is on, EX shows at the upper right. Press FUNCT and then the right SEN
-        key (SEN/EXPAND) to toggle it.
-      & \texttt{EX 0} \\
-    Time constant & \SI{500}{\milli\second} (or \SI{200}{\milli\second})
-      & The TC keys, below the SEN keys. The 5302 has no \SI{300}{\milli\second}.
-      & \texttt{XTC 8} (\texttt{XTC 7}) \\
-    Filter & FLAT
-      & Press FILT, the second key from the right under the display, until FLAT
-        shows at the upper left.
-      & \texttt{FLT 0} \\
-    Dynamic reserve & HI STAB
-      & The DYNRES/LOCAL key, to the left of the display near its bottom edge.
-      & \texttt{DR 1} \\
+      & The arrow keys in the SENSITIVITY section; the up arrow moves to a larger
+        full scale (less sensitive).
+      & \texttt{SENS 26} \\
+    Dynamic reserve & low noise
+      & Press Reserve, in the RESERVE section, until LOW NOISE is lit.
+      & \texttt{RMOD 2} \\
+    Time constant & \SI{300}{\milli\second}
+      & The arrow keys in the TIME CONSTANT section.
+      & \texttt{OFLT 9} \\
+    Filter slope & \SI{12}{\deci\bel}/oct
+      & Press Slope/Oct, in the TIME CONSTANT section, until 12 dB is lit.
+      & \texttt{OFSL 1} \\
+    Offset and expand & off
+      & Under each display: OFFSET On/Off until the offset is off, and Expand
+        until neither x10 nor x100 is lit.
+      & \texttt{OEXP 1,0,0} (and 2, 3) \\
+    Displays & X and Y
+      & Press Display under each display until X (channel one) and Y (channel two)
+        are lit.
+      & \texttt{DDEF 1,0,0}, \texttt{DDEF 2,0,0} \\
     Reference phase & $Y = 0$ with the sample disconnected
-      & Press AUTO and then the left PHASE key (Auto-Phase); repeat once the outputs
-        have settled. For fine tuning, select PHASE with the keys by the setting knob
-        and turn the knob.
-      & \texttt{AQN} \\
-    Display & X--YV
-      & The DISP keys, to the right of the display.
-      & --- \\
+      & Press Phase in the AUTO section (Auto Phase); repeat once the outputs
+        have settled. For fine tuning, press Phase in the REFERENCE section and
+        turn the knob.
+      & \texttt{APHS} \\
     \bottomrule
   \end{tabular}
-  \caption{EG\&G model 5302 settings for the capacitance measurement. The GPIB
-    commands are from chapter~9 of the 5302 manual; \texttt{OF 2500 7} means 2500 in
-    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 5000 1} means
-    5000 steps of \SI{0.1}{\milli\volt} in the \SIrange{25}{500}{\milli\volt} range.}
-  \label{tab:lockin5302}
+  \caption{SRS SR830 settings for the capacitance measurement. The GPIB
+    commands are from chapter~5 of the SR830 manual~\cite{ref:sr830};
+    \texttt{SENS 26} and \texttt{OFLT 9} are positions in its tables of
+    sensitivities (\SI{2}{\nano\volt} to \SI{1}{\volt}) and time constants
+    (\SI{10}{\micro\second} to \SI{30}{\kilo\second}).}
+  \label{tab:lockinsr830}
 \end{table}
 
-The 5302 is a dual-phase lock-in: it shows the in-phase signal as $X$ and the
-out-of-phase signal as $Y$ at the same time. Tune the phase with the sample disconnected until $Y$ is as close to zero as
-possible (Auto-Phase does this), then connect the sample and read $V_{\mathrm{meas}}$
-from $Y$.
+The SR830 is a dual-phase lock-in: it shows the in-phase signal as $X$ and the
+out-of-phase signal as $Y$ at the same time. Tune the phase with the sample
+disconnected until $Y$ is as close to zero as possible (Auto Phase does this),
+then connect the sample and read $V_{\mathrm{meas}}$ from $Y$.
 
 Before measuring the sample, we do a practice run by measuring the capacitance
 of a piece of BNC cable. See Appendix~\ref{app:ac} for the relevant phasor
@@ -915,27 +929,26 @@ diagrams.
 
 \begin{figure}[htbp]
   \centering
-  \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
-  Photograph of the instrument setup. On top is an HP 34401A digital
-  multimeter whose display reads approximately \SI{-0.025}{\milli\volt}
-  DC; its four front-panel input terminals are visible on the right.
-  Below it is an EG\&G Princeton Applied Research model 5302 lock-in
-  amplifier, with its differential preamplifier, central digital
-  display, analog meter, adjustment knob, and front-panel BNC
-  connectors visible.}
-  \caption{The HP 34401A multimeter (top) and the EG\&G Princeton
-    Applied Research model 5302 lock-in amplifier (bottom).}
+  \photo[width=\linewidth]{sr830-front-panel.jpg}{%
+  Photograph of the front panel of the Stanford Research Systems SR830 DSP
+  lock-in amplifier. From the left: the TIME CONSTANT and SENSITIVITY arrow
+  keys, with the SIGNAL INPUT, RESERVE and FILTERS sections below them and the
+  A/I and B input connectors at the bottom; the channel-one and channel-two
+  displays, each with Display, Ratio and Expand keys, OFFSET keys and an output
+  connector; the AUTO, SETUP and INTERFACE keys; and on the right the
+  REFERENCE display, the Phase, Freq, Ampl and Harm keys, the +90 and -90
+  degree keys, the setting knob, and the REF IN and SINE OUT connectors.}
+  \caption{The SRS SR830 DSP lock-in amplifier. Photo: Stanford Research Systems.}
   \label{fig:frontpanel}
 \end{figure}
 
 First, check the signal generated by the lock-in amplifier's internal
-oscillator. Connect one end of a BNC cable to the ``OSC'' output and the
-other end to input A on the preamplifier. Select ``PREAMP'' as the signal
-source. On the main display, select ``PHASE'' and turn the setting knob
-to set the reference phase to \ang{0.0}. Check that the analog meter
-and the in-phase component X show a clear signal. If most of the signal
-appears in X, its reading should be close to the oscillator setting of
-\SI{0.500}{\volt}.
+oscillator. Connect one end of a BNC cable to SINE OUT and the other end to
+the A/I input, and set the lock-in as in Table~\ref{tab:lockinsr830}. Press
+Phase in the REFERENCE section and turn the knob to set the reference phase
+to \ang{0.00}. Channel one shows the in-phase component X and channel two the
+out-of-phase component Y. If most of the signal appears in X, its reading
+should be close to the oscillator setting of \SI{0.500}{\volt}.
 
 We are interested in the out-of-phase component Y. Ideally, Y should
 be zero after the phase has been correctly adjusted. However, the
@@ -943,24 +956,19 @@ electronics inside the lock-in amplifier can introduce a small phase
 error, so Y may initially have a small but nonzero value.
 
 The lock-in amplifier provides an automatic way to correct this phase
-error. Press the red ``AUTO'' button, followed by the left ``PHASE''
-button, to run Auto-Phase. Wait a few seconds for the readings to
-settle. The in-phase component X should then be maximized, while the
-out-of-phase component Y should be close to zero.
+error. Press Phase in the AUTO section to run Auto Phase. Wait a few
+seconds for the readings to settle. The in-phase component X should then
+be maximized, while the out-of-phase component Y should be close to zero.
 
-Upon closer inspection, you may find that Auto-Phase has left a small
-out-of-phase signal. If Y is too small to read clearly, keep the
-sensitivity at \SI{1}{\volt} and press the ``+90'' phase button once
-to bring this small signal into the X channel. Then press ``FUNCT''
-followed by ``SEN down/EXPAND'' to magnify X by a factor of ten.
-Watch X and adjust the reference phase manually until it is as close
-to zero as possible. Press ``FUNCT'' followed by ``SEN down/EXPAND''
-again to turn off EXPAND, then select ``PHASE'' and subtract
-\ang{90} from its current setting to restore the original X--Y
-orientation. If the red ``OUTPUT OVLD'' indicator lights while
-EXPAND is on, turn EXPAND off before continuing. Do not reduce the
-\SI{1}{\volt} sensitivity setting while the oscillator is connected
-directly to the input.
+Upon closer inspection, you may find that Auto Phase has left a small
+out-of-phase signal, too small to read on the \SI{1}{\volt} range. Keep the
+sensitivity at \SI{1}{\volt} and press Expand under channel two once (x10) or
+twice (x100). The expand does not change the value shown for Y: it adds
+digits to it, so a signal of a fraction of a millivolt can be read. Press
+Phase in the REFERENCE section and turn the knob until Y is as close to zero
+as possible. If channel two's display shows OVLD, reduce the expand. Do not reduce the \SI{1}{\volt} sensitivity setting while the
+oscillator is connected directly to the input: X would then be beyond full
+scale.
 
 Now that the out-of-phase signal has been brought as close to zero as
 possible, keep the sensitivity at \SI{1}{\volt}. Insert a BNC ``T''
@@ -970,9 +978,10 @@ you can read from Y. Calculate its capacitance using
 $C = |V_{\mathrm{meas}}|/(V_0\omega R_0)$, where
 $V_0 = \SI{0.500}{\volt}$,
 $\omega = \SI{1.57e5}{\per\second}$, and
-$R_0 = \SI{450}{\ohm}$.
+$R_0 = \SI{50}{\ohm}$.
 Measure the length of the cable, then repeat the measurement with a
-longer cable.
+longer cable. Turn the expand off again when you are done: PyFERRO notes
+an expand in the data file.
 
 \notebox{Question}{In round numbers, what is the capacitance of one foot of BNC
 cable?}
@@ -1113,9 +1122,9 @@ Keep the sensitivity at \SI{1}{\volt} and insert the sample. The
 additional Y signal is due primarily to the sample; use its measured
 voltage $V_{\mathrm{meas}}$ in
 $C = (V_{\mathrm{meas}}/V_0)/(\omega R_0)$ to calculate the sample's
-capacitance. If Y is too small to read clearly, use the phase-shift
-and EXPAND procedure described above. Restore the phase and turn off
-EXPAND before recording the Y measurement.
+capacitance. If Y is too small to read clearly, expand the Y display as
+described in Section~\ref{sec:lockinsettings}, and turn the expand off
+again before recording.
 
 For all of this to work, $V_{\mathrm{meas}}/V_0 = \omega R_0 C$ should be
 much less than~1. In Appendix~\ref{app:ac} we derived the exact formula
@@ -1127,7 +1136,7 @@ approximate formula is about \SI{1}{\percent} or less if
 $V_{\mathrm{meas}}$ is smaller than \SI{50}{\milli\volt}. If the measured
 oscillator voltage differs from this setting, use the measured value of
 $V_0$ and adjust the voltage limit accordingly. Here
-$R_0 = \SI{450}{\ohm}$ and, at \SI{25}{\kilo\hertz},
+$R_0 = \SI{50}{\ohm}$ and, at \SI{25}{\kilo\hertz},
 $\omega = 2\pi f \simeq \SI{1.57e5}{\per\second}$.
 If you made a very thin sample and its capacitance is large, you may
 go outside this limit. In that case, use the exact formula or reduce
@@ -1314,21 +1323,20 @@ your observations in your lab report.
         in the sample chamber. Close the chamber with its fitted cover. If
         additional thermal insulation is needed, place the larger stainless-steel
         dewar over the covered chamber.
-  \item Start the PyFERRO routine.
-  \item Start saving data in PyFERRO.
+  \item Start the PyFERRO routine (see Appendix~\ref{app:pyferro}).
   \item Set the temperature-controller setpoint on the front panel to
   \SI{90.0}{\degreeCelsius} for a \VOtwo\ measurement or
   \SI{150.0}{\degreeCelsius} for the capacitance measurement of \BTO.
   \item Program the ramp rate. Change the ramp rate and examine the data: you
         want to make sure that your ramp rate is slow enough for the data to be
         reliable. Discuss with the laboratory staff what this means.
+  \item Set \texttt{R-S} to \texttt{RUN} to begin heating, the green light on the Solid-State Relay should blink.
   \item Watch the signal as the sample crosses the phase transition. In \VOtwo\
         this will take place over a fairly wide temperature range; in \BTO, in
         a narrow temperature range.
-  \item Once the setpoint is reached you will take more data while the sample is
+  \item Once the setpoint set \texttt{R-S} to \texttt{STOP} on the temperature controller and
+        confirm that the heating output is off. You will take more data while the sample is
         cooling.
-  \item Set \texttt{R-S} to \texttt{STOP} on the temperature controller and
-        confirm that the heating output is off.
   \item The sample will slowly cool while the data is recorded. In the \BTO\
         measurement, nothing interesting happens below \SI{80}{\degreeCelsius},
         so when the temperature reaches \SI{80}{\degreeCelsius} you can take off
@@ -1547,13 +1555,13 @@ given by
   \tan\alpha = \frac{V_R}{V_C} = \omega R C .
 \end{equation}
 For $\omega = 2\pi f = 2\pi \times \SI{25}{\kilo\hertz}$,
-$R_0 = \SI{600}{\ohm}$ and $C = \SI{100}{\pico\farad}$ we get
-$\tan\alpha = \num{0.0094}$. For such small angles (in radians!) we can safely
+$R_0 = \SI{50}{\ohm}$ and $C = \SI{100}{\pico\farad}$ we get
+$\tan\alpha = \num{0.00079}$. For such small angles (in radians!) we can safely
 take $\tan\alpha = \alpha = \omega R C$.
 
-For $V_0 = \SI{2.0}{\volt}$ the measured out-of-phase voltage is
+For $V_0 = \SI{0.500}{\volt}$ the measured out-of-phase voltage is
 $V_2 = V_C\sin\alpha$. For small $\alpha$, $V_C \approx V_0$ and
-$V_2 = -V_0\,\omega R_0 C = \SI{-19}{\milli\volt}$.
+$V_2 = -V_0\,\omega R_0 C = \SI{-0.39}{\milli\volt}$.
 
 \begin{figure}[htbp]
   \centering
@@ -1620,7 +1628,7 @@ where $\delta = -V_2/V_0$ ($\delta$ is a positive quantity and, of course, so is
 the capacitance). Here $V_2 = V_{\mathrm{meas}}$.
 
 The capacitance of the typical sample is in the \SI{100}{\pico\farad} range. For
-\SI{100}{\pico\farad}, at \SI{25}{\kilo\hertz} and $R_0 = \SI{600}{\ohm}$, the
+\SI{100}{\pico\farad}, at \SI{25}{\kilo\hertz} and $R_0 = \SI{50}{\ohm}$, the
 quantity $\omega R_0 C$ is much less than~1. Therefore, in this limit,
 \begin{align}
   V_1/V_0 &\sim 1, \\
@@ -1994,7 +2002,8 @@ on the controller itself.
     \item \texttt{pixi run start} updates the code to the latest version,
     then starts PyFERRO with the instruments.
     \item \texttt{pixi run simulate} starts PyFERRO without hardware.
-    \item \texttt{pixi run gpib} checks the lock-in amplifier's GPIB connection.
+    \item \texttt{pixi run gpib} checks the GPIB connection of the EG\&G 5302
+    (Appendix~\ref{app:lockin5302}); for the SR830, use the Test button below.
   \end{itemize}
   The first run downloads Python and all dependencies into the
   \texttt{.pixi\textbackslash} directory and requires about
@@ -2004,12 +2013,14 @@ on the controller itself.
   using the code already present.
 
     \item Instruments tab: Check the lock-in Model
-      (EG\&G 5302 on this rig), pick the DTECH COM port (FTDI ports listed
-      first), and press \texttt{Test lock-in} and \texttt{Test controller}.
+      (SRS SR830, at GPIB address 8, on this rig), pick the DTECH COM port (FTDI
+      ports listed first), and press \texttt{Test lock-in} and
+      \texttt{Test controller}.
       For a hardware run, make sure Simulation mode is off. A green check
       shows the sensitivity, time constant and reference frequency, and PV/SV,
-      output level, control mode and firmware. For the 5302, a table underneath
-      compares every setting with the lab manual's and says which key changes
+      output level, control mode and firmware. A table underneath
+      compares every lock-in setting with the lab manual's
+      (Table~\ref{tab:lockinsr830}) and says which key changes
       any that differ; starting a recording repeats the check and logs any
       difference as a warning.
 
@@ -2024,21 +2035,21 @@ on the controller itself.
       \label{fig:pyferro-instruments}
     \end{figure}
 
-    \item Lock-in tab (5302): \texttt{Read from lock-in} shows its
+    \item Lock-in tab: \texttt{Read from lock-in} shows its
     settings; change them there and press \texttt{Apply to lock-in} (it lists
     the commands and asks first), or press \texttt{Lab-manual values} to fill
     in the lab manual's table, then Apply. Only what differs is sent, and
     the settings are read back afterwards. This works during a run too: the
-    change is sent between samples and written into the data file. AC/DC,
-    FLOAT/GND and the phase tuning stay on the front panel.
+    change is sent between samples and written into the data file. The phase
+    tuning, and turning an offset or expand on, stay on the front panel.
 
     \begin{figure}[htbp]
       \centering
       \photo[width=0.48\linewidth]{pyferro-lockin.png}{%
-        Screenshot of the PyFERRO Lock-in tab for the EG\&G 5302, showing
+        Screenshot of the PyFERRO Lock-in tab for the SRS SR830, showing
         the controls for its settings and the buttons for reading, applying,
         and loading the lab-manual values.}
-      \caption{The PyFERRO Lock-in tab for the EG\&G 5302.}
+      \caption{The PyFERRO Lock-in tab for the SRS SR830.}
       \label{fig:pyferro-lockin}
     \end{figure}
 
@@ -2110,8 +2121,8 @@ on the controller itself.
   to reset, or set \texttt{FERRO\_CONFIG\_DIR} for a per-group file.
 
 The data file starts with \texttt{\#} lines that record the sample name, the
-lock-in's settings (sensitivity, time constant, reference, oscillator, filter,
-reserve and input) and the controller's, so the file itself says how the
+lock-in's settings (sensitivity, time constant, reference, oscillator, input,
+filters and reserve) and the controller's, so the file itself says how the
 measurement was set up. Anything that changes during the run, such as a
 sensitivity change or an overload, is written into the file as a \texttt{\#} line
 at the moment it happens. The columns are tab-separated; the first three are the
@@ -2126,6 +2137,179 @@ Write the file name in your lab notes all the same, with anything else you need
 to reconstruct the circumstances of the measurement.
 
 \clearpage
+% =============================================================================
+\section{The EG\&G 5302 lock-in}\label{app:lockin5302}
+
+Before the SR830, the lab used an EG\&G Princeton Applied Research model 5302
+lock-in, and PyFERRO still supports it (choose it as the lock-in Model on the
+Instruments tab). If you use the 5302, follow this appendix in place of
+Section~\ref{sec:lockinsettings}, and use its own oscillator resistance,
+$R_0 = \SI{450}{\ohm}$, wherever this manual writes $R_0$. Its standard
+settings for the capacitance measurement are:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+  \toprule
+  \textbf{Setting} & \textbf{Value} \\
+  \midrule
+  Input            & preamplifier A input (select PREAMP as signal source) \\
+  Sensitivity      & \SI{1}{\volt} initially \\
+  Filter           & flat \\
+  Oscillator level & \SI{0.500}{\volt} initially\\
+  Oscillator frequency & \SI{25}{\kilo\hertz} \\
+  Reference phase  & tuned (see below) \\
+  Reference        & internal \\
+  Oscillator out   & OSC to preamplifier A (BNC cable) \\
+  Time constant    & \SI{500}{\milli\second} \\
+  Dynamic reserve  & HI STAB \\
+  Output display   & X--YV \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Setting the EG\&G model 5302.}
+Table~\ref{tab:lockin5302} gives the same settings in more detail: where to
+find each one on the front panel, and the equivalent GPIB command. The same command sent without a number makes the lock-in
+reply with the current value, which is how PyFERRO reads these settings back and
+records them in the data-file header.
+
+\notebox{Oscillator resistance and level}{The 5302's oscillator output resistance is
+$R_0 = \SI{450}{\ohm}$ (5302 manual, section~4.6), not the \SI{50}{\ohm} of
+the SR830: use \SI{450}{\ohm} in $C = \delta/(\omega R_0)$. Its least
+sensitive range is \SI{1}{\volt}, and the in-phase signal is close to the
+oscillator level $V_0$, so $V_0$ must stay below \SI{1}{\volt}; at
+$V_0 = \SI{0.500}{\volt}$ it is half of full scale. Nothing is lost, since
+$C$ depends only on the ratio $\delta = V_{\mathrm{meas}}/V_0$.}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{@{}p{2.3cm}p{2.3cm}p{7.6cm}p{2.1cm}@{}}
+    \toprule
+    \textbf{Setting} & \textbf{Value} & \textbf{How to set it on the front panel}
+      & \textbf{GPIB} \\
+    \midrule
+    Signal input & preamplifier, input A
+      & Cable to input A of the plug-in preamplifier. The display shows PRE at the
+        upper right; if it shows DIR, select PREAMP as the signal source on the
+        SIGNAL SETUP screen.
+      & \texttt{PREAMP 1} \\
+    Reference & INT
+      & Press REF, the rightmost of the five keys under the display, until INT shows
+        in the upper-left window. The INT light above the meter comes on.
+      & \texttt{IE 0} \\
+    Oscillator frequency & \SI{25.000}{\kilo\hertz}
+      & Press the keys to the right of the large setting knob until OSC F is in the
+        middle of the lower-right window, then turn the knob. The KNOB ACTIVE light
+        must be on; if it is off, press either key once.
+      & \texttt{OF 2500 7} \\
+    Oscillator level & \SI{0.500}{\volt}
+      & As for the frequency, with OSC V selected.
+      & \texttt{OA 5000 1} \\
+    Sensitivity & \SI{1}{\volt}
+      & The SEN keys, at the top of the two key columns to the right of the display:
+        the left one moves to a larger full scale (less sensitive).
+      & \texttt{SEN 21} \\
+    Expand & off
+      & When it is on, EX shows at the upper right. Press FUNCT and then the right SEN
+        key (SEN/EXPAND) to toggle it.
+      & \texttt{EX 0} \\
+    Time constant & \SI{500}{\milli\second} (or \SI{200}{\milli\second})
+      & The TC keys, below the SEN keys. The 5302 has no \SI{300}{\milli\second}.
+      & \texttt{XTC 8} (\texttt{XTC 7}) \\
+    Filter & FLAT
+      & Press FILT, the second key from the right under the display, until FLAT
+        shows at the upper left.
+      & \texttt{FLT 0} \\
+    Dynamic reserve & HI STAB
+      & The DYNRES/LOCAL key, to the left of the display near its bottom edge.
+      & \texttt{DR 1} \\
+    Reference phase & $Y = 0$ with the sample disconnected
+      & Press AUTO and then the left PHASE key (Auto-Phase); repeat once the outputs
+        have settled. For fine tuning, select PHASE with the keys by the setting knob
+        and turn the knob.
+      & \texttt{AQN} \\
+    Display & X--YV
+      & The DISP keys, to the right of the display.
+      & --- \\
+    \bottomrule
+  \end{tabular}
+  \caption{EG\&G model 5302 settings for the capacitance measurement. The GPIB
+    commands are from chapter~9 of the 5302 manual; \texttt{OF 2500 7} means 2500 in
+    the \SIrange{10}{100}{\kilo\hertz} range and \texttt{OA 5000 1} means
+    5000 steps of \SI{0.1}{\milli\volt} in the \SIrange{25}{500}{\milli\volt} range.}
+  \label{tab:lockin5302}
+\end{table}
+
+The 5302 is a dual-phase lock-in: it shows the in-phase signal as $X$ and the
+out-of-phase signal as $Y$ at the same time. Tune the phase with the sample disconnected until $Y$ is as close to zero as
+possible (Auto-Phase does this), then connect the sample and read $V_{\mathrm{meas}}$
+from $Y$.
+
+The practice run with a piece of BNC cable
+(Section~\ref{sec:lockinsettings}) goes as follows with the 5302.
+
+\begin{figure}[htbp]
+  \centering
+  \photo[width=0.85\linewidth]{lockin-front-panel.png}{%
+  Photograph of the instrument setup. On top is an HP 34401A digital
+  multimeter whose display reads approximately \SI{-0.025}{\milli\volt}
+  DC; its four front-panel input terminals are visible on the right.
+  Below it is an EG\&G Princeton Applied Research model 5302 lock-in
+  amplifier, with its differential preamplifier, central digital
+  display, analog meter, adjustment knob, and front-panel BNC
+  connectors visible.}
+  \caption{The HP 34401A multimeter (top) and the EG\&G Princeton
+    Applied Research model 5302 lock-in amplifier (bottom).}
+  \label{fig:frontpanel5302}
+\end{figure}
+
+First, check the signal generated by the lock-in amplifier's internal
+oscillator. Connect one end of a BNC cable to the ``OSC'' output and the
+other end to input A on the preamplifier. Select ``PREAMP'' as the signal
+source. On the main display, select ``PHASE'' and turn the setting knob
+to set the reference phase to \ang{0.0}. Check that the analog meter
+and the in-phase component X show a clear signal. If most of the signal
+appears in X, its reading should be close to the oscillator setting of
+\SI{0.500}{\volt}.
+
+We are interested in the out-of-phase component Y. Ideally, Y should
+be zero after the phase has been correctly adjusted. However, the
+electronics inside the lock-in amplifier can introduce a small phase
+error, so Y may initially have a small but nonzero value.
+
+The lock-in amplifier provides an automatic way to correct this phase
+error. Press the red ``AUTO'' button, followed by the left ``PHASE''
+button, to run Auto-Phase. Wait a few seconds for the readings to
+settle. The in-phase component X should then be maximized, while the
+out-of-phase component Y should be close to zero.
+
+Upon closer inspection, you may find that Auto-Phase has left a small
+out-of-phase signal. If Y is too small to read clearly, keep the
+sensitivity at \SI{1}{\volt} and press the ``+90'' phase button once
+to bring this small signal into the X channel. Then press ``FUNCT''
+followed by ``SEN down/EXPAND'' to magnify X by a factor of ten.
+Watch X and adjust the reference phase manually until it is as close
+to zero as possible. Press ``FUNCT'' followed by ``SEN down/EXPAND''
+again to turn off EXPAND, then select ``PHASE'' and subtract
+\ang{90} from its current setting to restore the original X--Y
+orientation. If the red ``OUTPUT OVLD'' indicator lights while
+EXPAND is on, turn EXPAND off before continuing. Do not reduce the
+\SI{1}{\volt} sensitivity setting while the oscillator is connected
+directly to the input.
+
+Now that the out-of-phase signal has been brought as close to zero as
+possible, keep the sensitivity at \SI{1}{\volt}. Insert a BNC ``T''
+connector into the line and connect another BNC cable. The added cable
+will produce a nonzero out-of-phase signal $V_{\mathrm{meas}}$, which
+you can read from Y. Calculate its capacitance using
+$C = |V_{\mathrm{meas}}|/(V_0\omega R_0)$, where
+$V_0 = \SI{0.500}{\volt}$,
+$\omega = \SI{1.57e5}{\per\second}$, and
+$R_0 = \SI{450}{\ohm}$.
+Measure the length of the cable, then repeat the measurement with a
+longer cable.
+
 % =============================================================================
 \section{Physics of phase transitions}\label{app:physics}
 % =============================================================================
@@ -3458,6 +3642,10 @@ comment on discrepancies.}
 \begin{thebibliography}{99}
 \addcontentsline{toc}{section}{References}
 % =============================================================================
+
+\bibitem{ref:sr830}
+  \emph{Model SR830 DSP Lock-In Amplifier}, Stanford Research Systems, revision 2.5
+  (2011). A copy is in the PyFERRO repository, \texttt{pyferro/docs/manuals}.
 
 \bibitem{ref:lockin}
   \emph{Lock-in amplifier}, Wikipedia.

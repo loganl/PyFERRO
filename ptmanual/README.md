@@ -14,7 +14,7 @@ tikzpreamble.tex     TikZ/CircuiTikZ setup shared by main.tex and every figure
 tikz/fig-*.tex       28 standalone TikZ figures (all line art is redrawn)
 tikz/fig-*.pdf       the compiled figures, included by main.tex
 tikz/fig-daq-wiring.png  the wiring figure as an image, shown by the READMEs (make wiring-png)
-figures/*.png        photographs, screenshots, portraits and the two raster plots
+figures/*.png, *.jpg  photographs, screenshots, portraits and the two raster plots
 Makefile             build rules
 .latexmkrc           engine settings for latexmk (tikz/ has its own copy)
 ```

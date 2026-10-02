@@ -16,9 +16,9 @@
   % =======================================================================
   \draw[wire] (0.2,5.4) rectangle (5.4,7.0);
   \node[boxlabel,font=\sffamily\bfseries] at (2.8,6.55) {Lock-in amplifier};
-  \node[boxlabel,font=\sffamily\footnotesize] at (2.8,6.15) {EG\&G 5302};
+  \node[boxlabel,font=\sffamily\footnotesize] at (2.8,6.15) {SRS SR830};
   \node[boxlabel,font=\footnotesize] at (1.4,5.72) {Measuring in};
-  \node[boxlabel,font=\footnotesize] at (4.5,5.72) {Osc.\ out};
+  \node[boxlabel,font=\footnotesize] at (4.5,5.72) {Sine out};
   \foreach \x in {1.0,1.8,4.2,4.7} { \node[term] at (\x,5.4) {}; }
 
   % ---- sample chamber ----------------------------------------------------
@@ -99,7 +99,7 @@
 
   % GPIB from the lock-in
   \draw[wire] (5.4,6.60) -- (gpib.west);
-  \node[lead,anchor=south] at (8.3,6.68) {GPIB, address 12};
+  \node[lead,anchor=south] at (8.3,6.68) {GPIB, address 8};
   \draw[wire] (gpib.east) -- (16.7,6.60) -- (16.7,2.10) -- (pc.east);
   \node[lead,anchor=west] at (16.82,4.35) {USB};
 
